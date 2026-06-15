@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "ClassFlow",
+    "slug": "classflow",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "classflow",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.disruptivesolutions.classflow"
+    },
+    "android": {
+      "package": "com.disruptivesolutions.classflow",
+      "adaptiveIcon": {
+        "backgroundColor": "#5B35D5"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-splash-screen"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
