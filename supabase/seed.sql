@@ -1,0 +1,53 @@
+-- ClassFlow seed data template
+-- Run after creating a teacher auth user and replacing the UUID below.
+
+-- Replace this with the teacher's auth.users.id after signup.
+-- Example: select id, email from auth.users;
+
+-- do $$
+-- declare
+--   teacher_id uuid := '00000000-0000-0000-0000-000000000000';
+--   workspace_id uuid;
+--   maths_class_id uuid;
+--   science_class_id uuid;
+--   kavindu_id uuid;
+--   tharindu_id uuid;
+--   sithmi_id uuid;
+-- begin
+--   insert into public.workspaces (owner_id, name, plan, default_language)
+--   values (teacher_id, 'Nimal Perera Classes', 'free', 'en')
+--   returning id into workspace_id;
+--
+--   insert into public.workspace_members (workspace_id, user_id, role)
+--   values (workspace_id, teacher_id, 'owner');
+--
+--   insert into public.students (workspace_id, full_name, grade, medium, school, parent_name, parent_phone, consent_captured)
+--   values
+--     (workspace_id, 'Kavindu Perera', 9, 'English', 'Royal College', 'Mrs. Perera', '+94 77 123 4567', true),
+--     (workspace_id, 'Tharindu Silva', 9, 'English', 'Ananda College', 'Mr. Silva', '+94 71 882 1099', true),
+--     (workspace_id, 'Sithmi Fernando', 8, 'Sinhala', 'Mahamaya Girls College', 'Mrs. Fernando', '+94 76 456 7788', true)
+--   returning id into kavindu_id;
+--
+--   select id into tharindu_id from public.students where workspace_id = workspace_id and full_name = 'Tharindu Silva' limit 1;
+--   select id into sithmi_id from public.students where workspace_id = workspace_id and full_name = 'Sithmi Fernando' limit 1;
+--
+--   insert into public.classes (workspace_id, subject, grade, medium, hall, weekday, start_time, end_time, monthly_fee)
+--   values
+--     (workspace_id, 'Mathematics', 9, 'English', 'Hall A', 'Monday', '10:30', '12:00', 2500),
+--     (workspace_id, 'Science', 8, 'Sinhala', 'Hall B', 'Wednesday', '15:00', '16:30', 2200)
+--   returning id into maths_class_id;
+--
+--   select id into science_class_id from public.classes where workspace_id = workspace_id and subject = 'Science' limit 1;
+--
+--   insert into public.class_enrollments (workspace_id, class_id, student_id)
+--   values
+--     (workspace_id, maths_class_id, kavindu_id),
+--     (workspace_id, maths_class_id, tharindu_id),
+--     (workspace_id, science_class_id, sithmi_id);
+--
+--   insert into public.fee_invoices (workspace_id, student_id, class_id, month, monthly_fee, paid_amount, status, due_date)
+--   values
+--     (workspace_id, kavindu_id, maths_class_id, 'June 2026', 2500, 2500, 'paid', '2026-06-10'),
+--     (workspace_id, tharindu_id, maths_class_id, 'June 2026', 2500, 0, 'overdue', '2026-06-10'),
+--     (workspace_id, sithmi_id, science_class_id, 'June 2026', 2200, 1200, 'partial', '2026-06-10');
+-- end $$;
