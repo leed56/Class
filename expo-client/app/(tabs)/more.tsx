@@ -1,10 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
+import { useAuth } from '@/core/auth/AuthProvider';
 import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
 import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
@@ -12,6 +14,18 @@ import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function MoreScreen() {
+  const { user, signOut, demoMode } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -110,13 +124,31 @@ export default function MoreScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.signoutCard}>
-          <View style={styles.signoutIcon}>
-            <MaterialCommunityIcons name="shield-lock-outline" size={22} color={colors.primary} />
+          <View style={styles.signoutRow}>
+            <View style={styles.signoutIcon}>
+              <MaterialCommunityIcons name="shield-lock-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.signoutTextBlock}>
+              <Text style={styles.signoutTitle}>Secure teacher account</Text>
+              <Text style={styles.signoutCopy}>
+                {demoMode
+                  ? 'Demo mode is active. Connect Supabase env keys for secure sign-in.'
+                  : user?.email
+                    ? `Signed in as ${user.email}`
+                    : 'Your workspace stays private. Only you and invited staff can access student and fee records.'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.signoutTextBlock}>
-            <Text style={styles.signoutTitle}>Secure teacher account</Text>
-            <Text style={styles.signoutCopy}>Your workspace stays private. Only you and invited staff can access student and fee records.</Text>
-          </View>
+          <Pressable style={styles.signOutButton} onPress={handleSignOut} disabled={isSigningOut}>
+            {isSigningOut ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="logout" size={16} color="white" />
+                <Text style={styles.signOutButtonText}>Sign out</Text>
+              </>
+            )}
+          </Pressable>
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
@@ -287,10 +319,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   signoutCard: {
+    gap: spacing.md,
+    borderColor: colors.primarySoft,
+  },
+  signoutRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderColor: colors.primarySoft,
   },
   signoutIcon: {
     width: 46,
@@ -314,5 +349,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
+  },
+  signOutButton: {
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  signOutButtonText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '900',
   },
 });

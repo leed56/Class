@@ -1,7 +1,5 @@
 import type { VatStatus, VatSummary as VatSummaryType } from './types';
 
-export const VatSummary = undefined;
-
 function getQuarterRange(date = new Date()) {
   const year = date.getFullYear();
   const quarter = Math.floor(date.getMonth() / 3) + 1;

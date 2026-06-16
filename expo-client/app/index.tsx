@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Href, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,7 +35,7 @@ export default function IndexScreen() {
       const workspace = await getCurrentWorkspace();
       if (!isMounted) return;
 
-      router.replace(workspace ? '/(tabs)' : '/onboarding');
+      router.replace((workspace ? '/(tabs)' : '/onboarding') as Href);
     }
 
     routeBySession().catch(() => {
