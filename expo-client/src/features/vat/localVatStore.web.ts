@@ -1,4 +1,4 @@
-import { VatSummary } from './localVatStore';
+import type { VatStatus, VatSummary } from './localVatStore';
 
 function getQuarterRange(date = new Date()) {
   const year = date.getFullYear();
@@ -48,4 +48,4 @@ export async function getVatSummary(): Promise<VatSummary> {
   };
 }
 
-export type { VatStatus, VatSummary } from './localVatStore';
+export type { VatStatus, VatSummary };
