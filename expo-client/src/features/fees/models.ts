@@ -28,5 +28,6 @@ export type PaymentRecord = {
   method: PaymentMethod;
   paidAt: string;
   receiptNo: string;
+  parentPhone: string;
   note?: string | null;
 };

@@ -81,6 +81,7 @@ export const mockPayments: PaymentRecord[] = [
     method: 'cash',
     paidAt: '15 Jun 2026',
     receiptNo: 'RCPT-0001',
+    parentPhone: '+94 77 111 1111',
   },
   {
     id: 'pay-002',
@@ -91,6 +92,7 @@ export const mockPayments: PaymentRecord[] = [
     method: 'cash',
     paidAt: '08 Jun 2026',
     receiptNo: 'RCPT-0002',
+    parentPhone: '+94 77 222 2222',
   },
   {
     id: 'pay-003',
@@ -101,5 +103,6 @@ export const mockPayments: PaymentRecord[] = [
     method: 'cash',
     paidAt: '14 Jun 2026',
     receiptNo: 'RCPT-0003',
+    parentPhone: '+94 77 333 3333',
   },
 ];

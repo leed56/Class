@@ -6,11 +6,13 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { EnrolledClassCard } from '@/features/enrollment/components/EnrolledClassCard';
 import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { buildFeeReminderMessage, buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -22,6 +24,7 @@ export default function StudentProfileScreen() {
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
+  const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,12 +33,14 @@ export default function StudentProfileScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const [nextStudent, nextEnrollments] = await Promise.all([
+      const [nextStudent, nextEnrollments, workspace] = await Promise.all([
         getStudentById(params.studentId),
         listStudentEnrollments(params.studentId),
+        getCurrentWorkspace(),
       ]);
       setStudent(nextStudent);
       setEnrollments(nextEnrollments);
+      setWorkspaceName(workspace?.name ?? 'Your workspace');
       if (!nextStudent) setError('Student not found.');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
@@ -49,6 +54,27 @@ export default function StudentProfileScreen() {
       loadStudent();
     }, [loadStudent]),
   );
+
+  async function messageParent() {
+    if (!student) return;
+
+    const message =
+      student.outstandingAmount > 0
+        ? buildFeeReminderMessage({
+            workspaceName,
+            studentName: student.name,
+            className: student.className,
+            month: 'this month',
+            outstandingAmount: student.outstandingAmount,
+          })
+        : buildParentMessage({
+            workspaceName,
+            studentName: student.name,
+            parentName: student.parentName,
+          });
+
+    await openWhatsAppChat(student.parentPhone, message);
+  }
 
   if (isLoading) {
     return (
@@ -114,7 +140,7 @@ export default function StudentProfileScreen() {
         <View style={styles.actionRow}>
           <ProfileAction icon="clipboard-check-outline" label="Attendance" color={colors.primary} />
           <ProfileAction icon="cash-plus" label="Payment" color={colors.success} />
-          <ProfileAction icon="whatsapp" label="Message" color={colors.warning} />
+          <ProfileAction icon="whatsapp" label="Message" color={colors.warning} onPress={messageParent} />
         </View>
 
         <View style={styles.metricsRow}>
@@ -170,10 +196,10 @@ export default function StudentProfileScreen() {
               <Text style={styles.parentName}>{student.parentName}</Text>
               <Text style={styles.parentPhone}>{student.parentPhone}</Text>
             </View>
-            <View style={styles.whatsappPill}>
+            <Pressable style={styles.whatsappPill} onPress={messageParent}>
               <MaterialCommunityIcons name="whatsapp" size={15} color={colors.success} />
-              <Text style={styles.whatsappText}>Ready</Text>
-            </View>
+              <Text style={styles.whatsappText}>Message</Text>
+            </Pressable>
           </View>
         </PremiumCard>
 
@@ -212,14 +238,24 @@ export default function StudentProfileScreen() {
   );
 }
 
-function ProfileAction({ icon, label, color }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string }) {
+function ProfileAction({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  color: string;
+  onPress?: () => void;
+}) {
   return (
-    <View style={styles.profileAction}>
+    <Pressable style={styles.profileAction} onPress={onPress} disabled={!onPress}>
       <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={21} color={color} />
       </View>
       <Text style={styles.profileActionText}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 

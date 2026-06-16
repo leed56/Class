@@ -9,6 +9,7 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getPaymentByReceiptNo } from '@/features/fees/feeService';
 import { PaymentRecord } from '@/features/fees/models';
+import { buildReceiptMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -47,6 +48,22 @@ export default function ReceiptDetailScreen() {
       loadReceipt();
     }, [loadReceipt]),
   );
+
+  async function shareReceipt() {
+    if (!payment) return;
+
+    const message = buildReceiptMessage({
+      workspaceName,
+      studentName: payment.studentName,
+      className: payment.className,
+      amount: payment.amount,
+      receiptNo: payment.receiptNo,
+      paidAt: payment.paidAt,
+      method: payment.method,
+    });
+
+    await openWhatsAppChat(payment.parentPhone, message);
+  }
 
   if (isLoading) {
     return (
@@ -138,18 +155,20 @@ export default function ReceiptDetailScreen() {
           </View>
         </PremiumCard>
 
-        <PremiumCard style={styles.shareCard}>
-          <View style={styles.shareIcon}>
-            <MaterialCommunityIcons name="whatsapp" size={24} color={colors.success} />
-          </View>
-          <View style={styles.shareCopy}>
-            <Text style={styles.cardTitle}>Share with parent</Text>
-            <Text style={styles.cardSubtitle}>Send this receipt through WhatsApp after payment confirmation.</Text>
-          </View>
-          <View style={styles.shareButtonSmall}>
-            <Text style={styles.shareButtonSmallText}>Share</Text>
-          </View>
-        </PremiumCard>
+        <Pressable onPress={shareReceipt}>
+          <PremiumCard style={styles.shareCard}>
+            <View style={styles.shareIcon}>
+              <MaterialCommunityIcons name="whatsapp" size={24} color={colors.success} />
+            </View>
+            <View style={styles.shareCopy}>
+              <Text style={styles.cardTitle}>Share with parent</Text>
+              <Text style={styles.cardSubtitle}>Send this receipt through WhatsApp after payment confirmation.</Text>
+            </View>
+            <View style={styles.shareButtonSmall}>
+              <Text style={styles.shareButtonSmallText}>Share</Text>
+            </View>
+          </PremiumCard>
+        </Pressable>
       </ScrollView>
 
       <View style={styles.saveBar}>
@@ -157,10 +176,10 @@ export default function ReceiptDetailScreen() {
           <Text style={styles.saveLabel}>Receipt total</Text>
           <Text style={styles.saveValue}>{formatLkr(payment.amount)}</Text>
         </View>
-        <View style={styles.saveButton}>
+        <Pressable style={styles.saveButton} onPress={shareReceipt}>
           <MaterialCommunityIcons name="share-variant" size={18} color="white" />
           <Text style={styles.saveButtonText}>Share Receipt</Text>
-        </View>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

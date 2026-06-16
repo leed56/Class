@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { colors } from '@/theme/colors';
@@ -15,13 +15,14 @@ const statusConfig: Record<FeeStatus, { label: string; color: string; background
 
 type FeeInvoiceCardProps = {
   invoice: FeeInvoice;
+  onRemind?: () => void;
 };
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export function FeeInvoiceCard({ invoice }: FeeInvoiceCardProps) {
+export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
   const status = statusConfig[invoice.status];
   const progress = invoice.monthlyFee === 0 ? 0 : Math.min(invoice.paidAmount / invoice.monthlyFee, 1);
 
@@ -61,10 +62,10 @@ export function FeeInvoiceCard({ invoice }: FeeInvoiceCardProps) {
           <Text style={styles.parentText}>{invoice.parentPhone}</Text>
         </View>
         {invoice.outstandingAmount > 0 ? (
-          <View style={styles.reminderButton}>
+          <Pressable style={styles.reminderButton} onPress={onRemind}>
             <MaterialCommunityIcons name="whatsapp" size={15} color={colors.success} />
             <Text style={styles.reminderText}>Remind</Text>
-          </View>
+          </Pressable>
         ) : (
           <View style={styles.receiptButton}>
             <MaterialCommunityIcons name="receipt-text-check-outline" size={15} color={colors.success} />

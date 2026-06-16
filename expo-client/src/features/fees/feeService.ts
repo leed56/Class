@@ -103,6 +103,7 @@ function mapPaymentRow(
   row: PaymentRow,
   studentName: string,
   className: string,
+  parentPhone: string,
 ): PaymentRecord {
   return {
     id: row.id,
@@ -113,6 +114,7 @@ function mapPaymentRow(
     method: row.method,
     paidAt: formatDisplayDate(row.paid_at),
     receiptNo: row.receipt_no,
+    parentPhone,
     note: row.note,
   };
 }
@@ -289,7 +291,7 @@ export async function listRecentPayments(limit = 10) {
 
   const { data, error } = await supabase
     .from('payments')
-    .select('*, students(full_name), fee_invoices(class_id, classes(subject, grade))')
+    .select('*, students(full_name, parent_phone), fee_invoices(class_id, classes(subject, grade))')
     .eq('workspace_id', workspace.id)
     .order('paid_at', { ascending: false })
     .limit(limit);
@@ -298,7 +300,9 @@ export async function listRecentPayments(limit = 10) {
 
   return (data ?? [])
     .map((row) => {
-      const student = unwrapRelation(row.students as { full_name: string } | { full_name: string }[] | null);
+      const student = unwrapRelation(
+        row.students as { full_name: string; parent_phone: string } | { full_name: string; parent_phone: string }[] | null,
+      );
       const invoice = unwrapRelation(
         row.fee_invoices as
           | { class_id: string; classes: { subject: string; grade: number } | { subject: string; grade: number }[] | null }
@@ -311,6 +315,7 @@ export async function listRecentPayments(limit = 10) {
         row as PaymentRow,
         student.full_name,
         formatClassLabel(classInfo.subject, classInfo.grade),
+        student.parent_phone,
       );
     })
     .filter((payment): payment is PaymentRecord => payment !== null);
@@ -325,7 +330,7 @@ export async function getPaymentByReceiptNo(receiptNo: string) {
 
   const { data, error } = await supabase
     .from('payments')
-    .select('*, students(full_name), fee_invoices(class_id, classes(subject, grade))')
+    .select('*, students(full_name, parent_phone), fee_invoices(class_id, classes(subject, grade))')
     .eq('workspace_id', workspace.id)
     .eq('receipt_no', receiptNo)
     .maybeSingle();
@@ -333,7 +338,9 @@ export async function getPaymentByReceiptNo(receiptNo: string) {
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  const student = unwrapRelation(data.students as { full_name: string } | { full_name: string }[] | null);
+  const student = unwrapRelation(
+    data.students as { full_name: string; parent_phone: string } | { full_name: string; parent_phone: string }[] | null,
+  );
   const invoice = unwrapRelation(
     data.fee_invoices as
       | { class_id: string; classes: { subject: string; grade: number } | { subject: string; grade: number }[] | null }
@@ -346,6 +353,7 @@ export async function getPaymentByReceiptNo(receiptNo: string) {
     data as PaymentRow,
     student.full_name,
     formatClassLabel(classInfo.subject, classInfo.grade),
+    student.parent_phone,
   );
 }
 
@@ -436,7 +444,7 @@ export async function recordPayment(input: RecordPaymentInput) {
   if (invoiceError) throw new Error(invoiceError.message);
 
   return {
-    payment: mapPaymentRow(payment as PaymentRow, invoice.studentName, invoice.className),
+    payment: mapPaymentRow(payment as PaymentRow, invoice.studentName, invoice.className, invoice.parentPhone),
     invoice: {
       ...invoice,
       paidAmount: nextPaidAmount,
