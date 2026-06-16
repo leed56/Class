@@ -83,6 +83,7 @@ export default function ReportsScreen() {
         </View>
 
         <View style={styles.reportGrid}>
+          <ReportTile title="VAT Quarter" subtitle="Output, input and net VAT from SQLite" icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" />
           <ReportTile title="Attendance Report" subtitle="Present, late and absent by class" icon="clipboard-list-outline" color={colors.primary} />
           <ReportTile title="Fee Collection" subtitle="Paid, partial and outstanding fees" icon="cash-clock" color={colors.success} />
           <ReportTile title="Defaulter List" subtitle="Parents to follow up this week" icon="account-cancel-outline" color={colors.danger} />
@@ -111,7 +112,7 @@ export default function ReportsScreen() {
 function InsightCard({ label, value, note, icon, color }: { label: string; value: string; note: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string }) {
   return (
     <PremiumCard style={styles.insightCard}>
-      <View style={[styles.insightIcon, { backgroundColor: `${color}1F` }]}>
+      <View style={[styles.insightIcon, { backgroundColor: `${color}1F` }]}> 
         <MaterialCommunityIcons name={icon} size={22} color={color} />
       </View>
       <Text style={styles.insightLabel}>{label}</Text>
@@ -121,19 +122,27 @@ function InsightCard({ label, value, note, icon, color }: { label: string; value
   );
 }
 
-function ReportTile({ title, subtitle, icon, color }: { title: string; subtitle: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string }) {
-  return (
+function ReportTile({ title, subtitle, icon, color, href }: { title: string; subtitle: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; href?: string }) {
+  const content = (
     <PremiumCard style={styles.reportTile}>
-      <View style={[styles.tileIcon, { backgroundColor: `${color}1F` }]}>
+      <View style={[styles.tileIcon, { backgroundColor: `${color}1F` }]}> 
         <MaterialCommunityIcons name={icon} size={24} color={color} />
       </View>
       <Text style={styles.tileTitle}>{title}</Text>
       <Text style={styles.tileSubtitle}>{subtitle}</Text>
       <View style={styles.exportPill}>
-        <MaterialCommunityIcons name="file-export-outline" size={13} color={colors.primary} />
-        <Text style={styles.exportPillText}>Export</Text>
+        <MaterialCommunityIcons name={href ? 'chevron-right' : 'file-export-outline'} size={13} color={colors.primary} />
+        <Text style={styles.exportPillText}>{href ? 'Open' : 'Export'}</Text>
       </View>
     </PremiumCard>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href as never} asChild>
+      <Pressable>{content}</Pressable>
+    </Link>
   );
 }
 
