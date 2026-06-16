@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
@@ -30,9 +31,11 @@ export default function FeesScreen() {
             <Text style={styles.title}>Fees</Text>
             <Text style={styles.subtitle}>Track monthly tuition fees, cash payments, receipts and defaulters.</Text>
           </View>
-          <View style={styles.addButton}>
-            <MaterialCommunityIcons name="cash-plus" size={23} color="white" />
-          </View>
+          <Link href="/fees/record-payment" asChild>
+            <Pressable style={styles.addButton}>
+              <MaterialCommunityIcons name="cash-plus" size={23} color="white" />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -67,10 +70,12 @@ export default function FeesScreen() {
         </View>
 
         <View style={styles.actionRow}>
-          <View style={styles.primaryAction}>
-            <MaterialCommunityIcons name="cash-register" size={19} color="white" />
-            <Text style={styles.primaryActionText}>Record Payment</Text>
-          </View>
+          <Link href="/fees/record-payment" asChild>
+            <Pressable style={styles.primaryAction}>
+              <MaterialCommunityIcons name="cash-register" size={19} color="white" />
+              <Text style={styles.primaryActionText}>Record Payment</Text>
+            </Pressable>
+          </Link>
           <View style={styles.secondaryAction}>
             <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
             <Text style={styles.secondaryActionText}>Send Reminders</Text>
@@ -199,29 +204,29 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     height: 12,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
   },
   heroProgressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: colors.success,
+    backgroundColor: 'white',
   },
   heroStatsRow: {
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: spacing.lg,
   },
   heroStatLabel: {
     color: '#E7DEFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   heroStatValue: {
     marginTop: 4,
     color: 'white',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
   },
   metricsRow: {
@@ -234,7 +239,7 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     flex: 1,
-    minHeight: 52,
+    height: 52,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
     flexDirection: 'row',
@@ -244,12 +249,12 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: 'white',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
   },
   secondaryAction: {
     flex: 1,
-    minHeight: 52,
+    height: 52,
     borderRadius: radius.lg,
     backgroundColor: colors.successSoft,
     flexDirection: 'row',
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     color: colors.success,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
   },
   alertCard: {
@@ -269,8 +274,8 @@ const styles = StyleSheet.create({
     borderColor: colors.dangerSoft,
   },
   alertIcon: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: radius.lg,
     backgroundColor: colors.dangerSoft,
     alignItems: 'center',
@@ -314,13 +319,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.textPrimary,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
   },
   list: {
     gap: spacing.md,
   },
   paymentsList: {
-    gap: 2,
+    gap: spacing.xs,
   },
 });
