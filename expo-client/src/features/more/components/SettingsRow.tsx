@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -11,17 +12,19 @@ type Props = {
 
 export function SettingsRow({ item }: Props) {
   return (
-    <View style={styles.row}>
-      <View style={[styles.iconWrap, { backgroundColor: `${item.color}1F` }]}>
-        <MaterialCommunityIcons name={item.icon} size={21} color={item.color} />
-      </View>
-      <View style={styles.copyBlock}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
-      </View>
-      {item.value ? <Text style={styles.valueText}>{item.value}</Text> : null}
-      <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
-    </View>
+    <Link href={item.href as never} asChild>
+      <Pressable style={styles.row}>
+        <View style={[styles.iconWrap, { backgroundColor: `${item.color}1F` }]}> 
+          <MaterialCommunityIcons name={item.icon} size={21} color={item.color} />
+        </View>
+        <View style={styles.copyBlock}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.subtitle}>{item.subtitle}</Text>
+        </View>
+        {item.value ? <Text style={styles.valueText}>{item.value}</Text> : null}
+        <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
+      </Pressable>
+    </Link>
   );
 }
 
