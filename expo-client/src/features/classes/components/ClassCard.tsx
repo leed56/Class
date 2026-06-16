@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { colors } from '@/theme/colors';
@@ -62,10 +63,12 @@ export function ClassCard({ item }: ClassCardProps) {
         <Stat label="Collected" value={`${item.collectionPercent}%`} tone={item.collectionPercent >= 70 ? colors.success : colors.danger} />
       </View>
 
-      <View style={styles.primaryAction}>
-        <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-        <Text style={styles.primaryActionText}>Take Attendance</Text>
-      </View>
+      <Link href="/attendance/take" asChild>
+        <Pressable style={styles.primaryAction}>
+          <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
+          <Text style={styles.primaryActionText}>Take Attendance</Text>
+        </Pressable>
+      </Link>
     </PremiumCard>
   );
 }
