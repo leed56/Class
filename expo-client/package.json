@@ -23,6 +23,7 @@
     "expo-linking": "latest",
     "expo-router": "latest",
     "expo-splash-screen": "latest",
+    "expo-sqlite": "latest",
     "expo-status-bar": "latest",
     "react": "latest",
     "react-dom": "latest",
