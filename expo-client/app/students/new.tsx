@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,30 +13,27 @@ import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const gradeOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
-const mediumOptions: Medium[] = ['English', 'Sinhala', 'Tamil'];
-
 export default function NewStudentScreen() {
+  const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [school, setSchool] = useState('');
   const [grade, setGrade] = useState('9');
   const [medium, setMedium] = useState<Medium>('English');
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
-  const [consentCaptured, setConsentCaptured] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [consentCaptured, setConsentCaptured] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSave() {
-    setIsSaving(true);
     setError(null);
-
+    setSubmitting(true);
     try {
       await createStudent({
         fullName,
-        school,
         grade: Number(grade),
         medium,
+        school,
         parentName,
         parentPhone,
         consentCaptured,
@@ -45,12 +42,12 @@ export default function NewStudentScreen() {
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Could not save student.');
     } finally {
-      setIsSaving(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/(tabs)/students" asChild>
@@ -79,19 +76,14 @@ export default function NewStudentScreen() {
           <Text style={styles.cardTitle}>Student details</Text>
           <FormTextField label="Student name" placeholder="Kavindu Perera" icon="account-outline" value={fullName} onChangeText={setFullName} />
           <FormTextField label="School" placeholder="Ananda College" icon="school-outline" value={school} onChangeText={setSchool} />
-          <ChoiceChipGroup label="Grade" selected={grade} options={gradeOptions} onSelect={setGrade} />
-          <ChoiceChipGroup label="Medium" selected={medium} options={mediumOptions} onSelect={(value) => setMedium(value as Medium)} />
+          <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
+          <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Parent contact</Text>
           <FormTextField label="Parent name" placeholder="Mrs. Perera" icon="account-heart-outline" value={parentName} onChangeText={setParentName} />
           <FormTextField label="Parent phone" placeholder="+94 77 123 4567" icon="phone-outline" keyboardType="phone-pad" value={parentPhone} onChangeText={setParentPhone} />
-        </PremiumCard>
-
-        <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Enrollment & fee</Text>
-          <Text style={styles.helperText}>Class enrollment and monthly fee assignment are next in Phase 1. Save the student first, then enroll them after classes are connected.</Text>
         </PremiumCard>
 
         <PremiumCard style={styles.consentCard}>
@@ -104,9 +96,18 @@ export default function NewStudentScreen() {
               <Text style={styles.consentText}>Capture permission to store student details and send parent communication.</Text>
             </View>
           </View>
-          <Pressable style={[styles.consentPill, !consentCaptured && styles.consentPillOff]} onPress={() => setConsentCaptured((current) => !current)}>
-            <MaterialCommunityIcons name={consentCaptured ? 'check-circle' : 'shield-alert-outline'} size={18} color={consentCaptured ? colors.success : colors.warning} />
-            <Text style={[styles.consentPillText, !consentCaptured && styles.consentPillTextOff]}>{consentCaptured ? 'Consent captured' : 'Consent pending'}</Text>
+          <Pressable
+            style={[styles.consentPill, !consentCaptured && styles.consentPillPending]}
+            onPress={() => setConsentCaptured((current) => !current)}
+          >
+            <MaterialCommunityIcons
+              name={consentCaptured ? 'check-circle' : 'checkbox-blank-circle-outline'}
+              size={18}
+              color={consentCaptured ? colors.success : colors.warning}
+            />
+            <Text style={[styles.consentPillText, !consentCaptured && styles.consentPillTextPending]}>
+              {consentCaptured ? 'Consent captured' : 'Tap to capture consent'}
+            </Text>
           </Pressable>
         </PremiumCard>
 
@@ -116,11 +117,17 @@ export default function NewStudentScreen() {
       <View style={styles.saveBar}>
         <View>
           <Text style={styles.saveLabel}>Profile quality</Text>
-          <Text style={styles.saveValue}>{fullName && parentPhone ? 'Ready to save' : 'Missing required fields'}</Text>
+          <Text style={styles.saveValue}>{consentCaptured ? 'Ready to save' : 'Consent required'}</Text>
         </View>
-        <Pressable style={[styles.saveButton, isSaving && styles.disabledButton]} onPress={handleSave} disabled={isSaving}>
-          {isSaving ? <ActivityIndicator color="white" /> : <MaterialCommunityIcons name="content-save-check" size={18} color="white" />}
-          <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Student'}</Text>
+        <Pressable style={[styles.saveButton, submitting && styles.saveButtonDisabled]} onPress={handleSave} disabled={submitting}>
+          {submitting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
+              <Text style={styles.saveButtonText}>Save Student</Text>
+            </>
+          )}
         </Pressable>
       </View>
     </SafeAreaView>
@@ -143,7 +150,6 @@ const styles = StyleSheet.create({
   heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 12, lineHeight: 18, fontWeight: '700' },
   card: { gap: spacing.lg },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
-  helperText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   consentCard: { gap: spacing.lg, borderColor: colors.primarySoft },
   consentRow: { flexDirection: 'row', gap: spacing.md },
   consentIcon: { width: 46, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
@@ -151,14 +157,14 @@ const styles = StyleSheet.create({
   consentTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
   consentText: { marginTop: 5, color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   consentPill: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, backgroundColor: colors.successSoft },
-  consentPillOff: { backgroundColor: colors.warningSoft },
+  consentPillPending: { backgroundColor: colors.warningSoft },
   consentPillText: { color: colors.success, fontSize: 12, fontWeight: '900' },
-  consentPillTextOff: { color: colors.warning },
-  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
+  consentPillTextPending: { color: colors.warning },
+  errorText: { color: colors.danger, fontSize: 12, fontWeight: '800', textAlign: 'center' },
   saveBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   saveValue: { marginTop: 3, color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
   saveButton: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg },
-  disabledButton: { opacity: 0.72 },
+  saveButtonDisabled: { opacity: 0.7 },
   saveButtonText: { color: 'white', fontSize: 14, fontWeight: '900' },
 });

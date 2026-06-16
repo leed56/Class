@@ -1,6 +1,9 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
-import { Medium, StudentRow } from '@/lib/database.types';
-import { supabase } from '@/lib/supabase';
+import { getAttendanceTrend, getStudentAttendancePercents } from '@/features/attendance/attendanceService';
+import { getStudentFeeSummaries } from '@/features/fees/feeService';
+import { getClassLabelsByStudent } from '@/features/enrollment/enrollmentService';
+import { FeeStatus, Medium, StudentRow } from '@/lib/database.types';
+import { getSupabase } from '@/lib/supabase';
 import { Student } from './types';
 
 export type StudentFormInput = {
@@ -19,7 +22,14 @@ function requireText(value: string, message: string) {
   return trimmed;
 }
 
-function mapStudentRow(row: StudentRow): Student {
+function mapStudentRow(
+  row: StudentRow,
+  className = 'No class yet',
+  attendancePercent = 0,
+  feeStatus: FeeStatus = 'pending',
+  monthlyFee = 0,
+  outstandingAmount = 0,
+): Student {
   return {
     id: row.id,
     name: row.full_name,
@@ -28,12 +38,12 @@ function mapStudentRow(row: StudentRow): Student {
     school: row.school ?? 'School not set',
     parentName: row.parent_name ?? 'Parent not set',
     parentPhone: row.parent_phone,
-    className: 'No class yet',
-    feeStatus: 'pending',
-    monthlyFee: 0,
-    outstandingAmount: 0,
-    attendancePercent: 0,
-    attendanceTrend: 'watch',
+    className,
+    feeStatus,
+    monthlyFee,
+    outstandingAmount,
+    attendancePercent,
+    attendanceTrend: getAttendanceTrend(attendancePercent),
     consentCaptured: row.consent_captured,
   };
 }
@@ -41,6 +51,9 @@ function mapStudentRow(row: StudentRow): Student {
 export async function listStudents() {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before adding students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
 
   const { data, error } = await supabase
     .from('students')
@@ -50,12 +63,32 @@ export async function listStudents() {
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapStudentRow(row as StudentRow));
+  const rows = (data ?? []) as StudentRow[];
+  const studentIds = rows.map((row) => row.id);
+  const [labels, attendancePercents, feeSummaries] = await Promise.all([
+    getClassLabelsByStudent(studentIds),
+    getStudentAttendancePercents(studentIds),
+    getStudentFeeSummaries(studentIds),
+  ]);
+  return rows.map((row) => {
+    const fees = feeSummaries.get(row.id);
+    return mapStudentRow(
+      row,
+      labels.get(row.id) ?? 'No class yet',
+      attendancePercents.get(row.id) ?? 0,
+      fees?.feeStatus ?? 'pending',
+      fees?.monthlyFee ?? 0,
+      fees?.outstandingAmount ?? 0,
+    );
+  });
 }
 
 export async function getStudentById(studentId: string) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before viewing students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
 
   const { data, error } = await supabase
     .from('students')
@@ -65,15 +98,36 @@ export async function getStudentById(studentId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data ? mapStudentRow(data as StudentRow) : null;
+  if (!data) return null;
+  const [labels, attendancePercents, feeSummaries] = await Promise.all([
+    getClassLabelsByStudent([data.id]),
+    getStudentAttendancePercents([data.id]),
+    getStudentFeeSummaries([data.id]),
+  ]);
+  const fees = feeSummaries.get(data.id);
+  return mapStudentRow(
+    data as StudentRow,
+    labels.get(data.id) ?? 'No class yet',
+    attendancePercents.get(data.id) ?? 0,
+    fees?.feeStatus ?? 'pending',
+    fees?.monthlyFee ?? 0,
+    fees?.outstandingAmount ?? 0,
+  );
 }
 
 export async function createStudent(input: StudentFormInput) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before adding students.');
 
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
   const fullName = requireText(input.fullName, 'Student name is required.');
   const parentPhone = requireText(input.parentPhone, 'Parent phone is required.');
+
+  if (!input.consentCaptured) {
+    throw new Error('Parent consent is required before saving a student record.');
+  }
 
   const { data, error } = await supabase
     .from('students')
@@ -93,41 +147,4 @@ export async function createStudent(input: StudentFormInput) {
 
   if (error) throw new Error(error.message);
   return mapStudentRow(data as StudentRow);
-}
-
-export async function updateStudent(studentId: string, input: StudentFormInput) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before editing students.');
-
-  const { data, error } = await supabase
-    .from('students')
-    .update({
-      full_name: requireText(input.fullName, 'Student name is required.'),
-      grade: input.grade,
-      medium: input.medium,
-      school: input.school?.trim() || null,
-      parent_name: input.parentName?.trim() || null,
-      parent_phone: requireText(input.parentPhone, 'Parent phone is required.'),
-      consent_captured: input.consentCaptured,
-    })
-    .eq('workspace_id', workspace.id)
-    .eq('id', studentId)
-    .select('*')
-    .single();
-
-  if (error) throw new Error(error.message);
-  return mapStudentRow(data as StudentRow);
-}
-
-export async function archiveStudent(studentId: string) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before removing students.');
-
-  const { error } = await supabase
-    .from('students')
-    .update({ active: false })
-    .eq('workspace_id', workspace.id)
-    .eq('id', studentId);
-
-  if (error) throw new Error(error.message);
 }

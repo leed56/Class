@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { EnrolledClassCard } from '@/features/enrollment/components/EnrolledClassCard';
+import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
@@ -19,34 +21,40 @@ function formatLkr(amount: number) {
 export default function StudentProfileScreen() {
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
+  const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadStudent() {
-      if (!params.studentId) return;
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const nextStudent = await getStudentById(params.studentId);
-        setStudent(nextStudent);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
-      } finally {
-        setIsLoading(false);
-      }
+  const loadStudent = useCallback(async () => {
+    if (!params.studentId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [nextStudent, nextEnrollments] = await Promise.all([
+        getStudentById(params.studentId),
+        listStudentEnrollments(params.studentId),
+      ]);
+      setStudent(nextStudent);
+      setEnrollments(nextEnrollments);
+      if (!nextStudent) setError('Student not found.');
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+    } finally {
+      setIsLoading(false);
     }
-
-    loadStudent();
   }, [params.studentId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStudent();
+    }, [loadStudent]),
+  );
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <View style={styles.centerState}>
-          <ActivityIndicator color={colors.primary} />
-          <Text style={styles.stateTitle}>Loading student...</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} size="large" />
         </View>
       </SafeAreaView>
     );
@@ -54,13 +62,12 @@ export default function StudentProfileScreen() {
 
   if (error || !student) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <View style={styles.centerState}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={28} color={colors.danger} />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.centered}>
           <Text style={styles.errorText}>{error ?? 'Student not found.'}</Text>
           <Link href="/(tabs)/students" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Back to Students</Text>
+            <Pressable style={styles.retryButton}>
+              <Text style={styles.retryText}>Back to students</Text>
             </Pressable>
           </Link>
         </View>
@@ -69,7 +76,7 @@ export default function StudentProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/(tabs)/students" asChild>
@@ -92,7 +99,9 @@ export default function StudentProfileScreen() {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroName}>{student.name}</Text>
-            <Text style={styles.heroMeta}>Grade {student.grade} • {student.medium} • {student.school}</Text>
+            <Text style={styles.heroMeta}>
+              Grade {student.grade} • {student.medium} • {student.school}
+            </Text>
             <View style={styles.heroBadgeRow}>
               <View style={styles.heroBadge}>
                 <MaterialCommunityIcons name="school-outline" size={14} color="white" />
@@ -111,17 +120,39 @@ export default function StudentProfileScreen() {
         <View style={styles.metricsRow}>
           <PremiumCard style={styles.metricCard}>
             <Text style={styles.metricLabel}>Attendance</Text>
-            <Text style={[styles.metricValue, { color: student.attendancePercent >= 80 ? colors.success : colors.warning }]}>{student.attendancePercent}%</Text>
+            <Text style={[styles.metricValue, { color: student.attendancePercent >= 80 ? colors.success : colors.danger }]}>
+              {student.attendancePercent}%
+            </Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${student.attendancePercent}%` }]} />
             </View>
           </PremiumCard>
           <PremiumCard style={styles.metricCard}>
             <Text style={styles.metricLabel}>Outstanding</Text>
-            <Text style={[styles.metricValue, { color: student.outstandingAmount > 0 ? colors.danger : colors.success }]}>{formatLkr(student.outstandingAmount)}</Text>
-            <Text style={styles.metricNote}>Fee invoices pending</Text>
+            <Text style={[styles.metricValue, { color: student.outstandingAmount > 0 ? colors.danger : colors.success }]}>
+              {formatLkr(student.outstandingAmount)}
+            </Text>
+            <Text style={styles.metricNote}>{student.outstandingAmount > 0 ? 'Follow up on pending fees' : 'Fees up to date this month'}</Text>
           </PremiumCard>
         </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Enrolled classes</Text>
+          <Text style={styles.sectionCount}>{enrollments.length}</Text>
+        </View>
+
+        {enrollments.length === 0 ? (
+          <PremiumCard>
+            <Text style={styles.emptyClassesTitle}>Not enrolled yet</Text>
+            <Text style={styles.emptyClassesCopy}>Open a class and use Enroll Student to add this student to a roster.</Text>
+          </PremiumCard>
+        ) : (
+          <View style={styles.classList}>
+            {enrollments.map((entry) => (
+              <EnrolledClassCard key={entry.enrollmentId} tuitionClass={entry.tuitionClass} />
+            ))}
+          </View>
+        )}
 
         <PremiumCard style={styles.parentCard}>
           <View style={styles.cardHeaderRow}>
@@ -156,7 +187,7 @@ export default function StudentProfileScreen() {
           </View>
           <View style={styles.invoiceRow}>
             <FeeFigure label="Monthly fee" value={formatLkr(student.monthlyFee)} />
-            <FeeFigure label="Paid" value={formatLkr(0)} />
+            <FeeFigure label="Paid" value={formatLkr(Math.max(0, student.monthlyFee - student.outstandingAmount))} />
             <FeeFigure label="Pending" value={formatLkr(student.outstandingAmount)} danger={student.outstandingAmount > 0} />
           </View>
         </PremiumCard>
@@ -164,24 +195,15 @@ export default function StudentProfileScreen() {
         <PremiumCard style={styles.consentCard}>
           <View style={styles.parentRow}>
             <View style={[styles.parentIcon, { backgroundColor: student.consentCaptured ? colors.successSoft : colors.warningSoft }]}>
-              <MaterialCommunityIcons name={student.consentCaptured ? 'shield-check-outline' : 'shield-alert-outline'} size={21} color={student.consentCaptured ? colors.success : colors.warning} />
+              <MaterialCommunityIcons
+                name={student.consentCaptured ? 'shield-check-outline' : 'shield-alert-outline'}
+                size={21}
+                color={student.consentCaptured ? colors.success : colors.warning}
+              />
             </View>
             <View style={styles.parentCopy}>
               <Text style={styles.parentName}>{student.consentCaptured ? 'Consent captured' : 'Consent pending'}</Text>
               <Text style={styles.parentPhone}>Parent data and communication permission status</Text>
-            </View>
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={styles.activityCard}>
-          <Text style={styles.cardTitle}>Recent activity</Text>
-          <View style={styles.activityRow}>
-            <View style={styles.activityIcon}>
-              <MaterialCommunityIcons name="calendar-clock" size={18} color={colors.warning} />
-            </View>
-            <View style={styles.parentCopy}>
-              <Text style={styles.activityTitle}>No payments recorded yet</Text>
-              <Text style={styles.parentPhone}>Payment activity will appear when fee tracking is connected.</Text>
             </View>
           </View>
         </PremiumCard>
@@ -193,7 +215,7 @@ export default function StudentProfileScreen() {
 function ProfileAction({ icon, label, color }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string }) {
   return (
     <View style={styles.profileAction}>
-      <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}> 
+      <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={21} color={color} />
       </View>
       <Text style={styles.profileActionText}>{label}</Text>
@@ -213,11 +235,7 @@ function FeeFigure({ label, value, danger = false }: { label: string; value: str
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
-  centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
-  stateTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
-  errorText: { textAlign: 'center', color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
-  primaryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  primaryButtonText: { color: 'white', fontSize: 13, fontWeight: '900' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   headerCopy: { flex: 1 },
@@ -260,8 +278,13 @@ const styles = StyleSheet.create({
   feeLabel: { color: colors.textSecondary, fontSize: 10, fontWeight: '800' },
   feeValue: { marginTop: 4, fontSize: 13, fontWeight: '900' },
   consentCard: { borderColor: colors.primarySoft },
-  activityCard: { gap: spacing.md },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm },
-  activityIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successSoft },
-  activityTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
+  sectionCount: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  classList: { gap: spacing.md },
+  emptyClassesTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  emptyClassesCopy: { marginTop: 6, color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  errorText: { color: colors.danger, fontSize: 14, fontWeight: '800', textAlign: 'center' },
+  retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
 });

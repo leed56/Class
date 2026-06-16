@@ -1,39 +1,52 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Href } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { NavPressable } from '@/components/NavPressable';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { MoreCommand } from '../data/moreItems';
 
 type CommandTileProps = {
   item: MoreCommand;
+  href?: Href;
 };
 
-export function CommandTile({ item }: CommandTileProps) {
-  return (
-    <Link href={item.href as never} asChild>
-      <Pressable style={styles.tile}>
-        <View style={styles.topRow}>
-          <View style={[styles.iconWrap, { backgroundColor: `${item.color}1F` }]}>
-            <MaterialCommunityIcons name={item.icon} size={23} color={item.color} />
-          </View>
-          {item.badge ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.badge}</Text>
-            </View>
-          ) : null}
+export function CommandTile({ item, href }: CommandTileProps) {
+  const tile = (
+    <View style={styles.tile}>
+      <View style={styles.topRow}>
+        <View style={[styles.iconWrap, { backgroundColor: `${item.color}1F` }]}>
+          <MaterialCommunityIcons name={item.icon} size={23} color={item.color} />
         </View>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
-      </Pressable>
-    </Link>
+        {item.badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.badge}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.subtitle}>{item.subtitle}</Text>
+    </View>
   );
+
+  if (href) {
+    return (
+      <NavPressable href={href} style={styles.pressable}>
+        {tile}
+      </NavPressable>
+    );
+  }
+
+  return tile;
 }
 
 const styles = StyleSheet.create({
-  tile: {
+  pressable: {
     width: '48%',
+  },
+  tile: {
+    width: '100%',
     minHeight: 156,
     justifyContent: 'space-between',
     padding: spacing.lg,

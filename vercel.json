@@ -1,5 +1,6 @@
 {
   "installCommand": "cd expo-client && npm install",
   "buildCommand": "cd expo-client && npm run build:web",
-  "outputDirectory": "expo-client/dist"
+  "outputDirectory": "expo-client/dist",
+  "rewrites": [{ "source": "/((?!_expo/static/).*)", "destination": "/index.html" }]
 }

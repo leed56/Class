@@ -3,11 +3,14 @@ import { FeeInvoice, PaymentRecord } from '../models';
 export const mockFeeInvoices: FeeInvoice[] = [
   {
     id: 'inv-001',
+    studentId: 'stu-001',
+    classId: 'cls-001',
     studentName: 'Kavindu Perera',
     grade: 9,
     medium: 'English',
     className: 'Mathematics - Grade 9',
     month: 'June 2026',
+    monthKey: '2026-06',
     monthlyFee: 2500,
     paidAmount: 2500,
     outstandingAmount: 0,
@@ -17,11 +20,14 @@ export const mockFeeInvoices: FeeInvoice[] = [
   },
   {
     id: 'inv-002',
+    studentId: 'stu-002',
+    classId: 'cls-001',
     studentName: 'Tharindu Silva',
     grade: 9,
     medium: 'English',
     className: 'Mathematics - Grade 9',
     month: 'June 2026',
+    monthKey: '2026-06',
     monthlyFee: 2500,
     paidAmount: 0,
     outstandingAmount: 5000,
@@ -31,11 +37,14 @@ export const mockFeeInvoices: FeeInvoice[] = [
   },
   {
     id: 'inv-003',
+    studentId: 'stu-003',
+    classId: 'cls-002',
     studentName: 'Sithmi Fernando',
     grade: 8,
     medium: 'Sinhala',
     className: 'Science - Grade 8',
     month: 'June 2026',
+    monthKey: '2026-06',
     monthlyFee: 2200,
     paidAmount: 1200,
     outstandingAmount: 1000,
@@ -45,11 +54,14 @@ export const mockFeeInvoices: FeeInvoice[] = [
   },
   {
     id: 'inv-004',
+    studentId: 'stu-004',
+    classId: 'cls-002',
     studentName: 'Mehuli Fernando',
     grade: 8,
     medium: 'English',
     className: 'Science - Grade 8',
     month: 'June 2026',
+    monthKey: '2026-06',
     monthlyFee: 2200,
     paidAmount: 0,
     outstandingAmount: 2200,
@@ -62,6 +74,7 @@ export const mockFeeInvoices: FeeInvoice[] = [
 export const mockPayments: PaymentRecord[] = [
   {
     id: 'pay-001',
+    invoiceId: 'inv-001',
     studentName: 'Kavindu Perera',
     className: 'Mathematics - Grade 9',
     amount: 2500,
@@ -71,6 +84,7 @@ export const mockPayments: PaymentRecord[] = [
   },
   {
     id: 'pay-002',
+    invoiceId: 'inv-003',
     studentName: 'Sithmi Fernando',
     className: 'Science - Grade 8',
     amount: 1200,
@@ -80,6 +94,7 @@ export const mockPayments: PaymentRecord[] = [
   },
   {
     id: 'pay-003',
+    invoiceId: 'inv-005',
     studentName: 'Dulanjana Jayawardena',
     className: 'Mathematics - Grade 10',
     amount: 3000,

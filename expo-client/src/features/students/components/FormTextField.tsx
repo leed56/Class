@@ -11,10 +11,20 @@ type Props = {
   keyboardType?: 'default' | 'phone-pad' | 'email-address' | 'number-pad';
   helper?: string;
   value?: string;
-  onChangeText?: (value: string) => void;
+  onChangeText?: (text: string) => void;
+  secureTextEntry?: boolean;
 };
 
-export function FormTextField({ label, placeholder, icon, keyboardType = 'default', helper, value, onChangeText }: Props) {
+export function FormTextField({
+  label,
+  placeholder,
+  icon,
+  keyboardType = 'default',
+  helper,
+  value,
+  onChangeText,
+  secureTextEntry,
+}: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
@@ -24,6 +34,7 @@ export function FormTextField({ label, placeholder, icon, keyboardType = 'defaul
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry}
           value={value}
           onChangeText={onChangeText}
           style={styles.input}

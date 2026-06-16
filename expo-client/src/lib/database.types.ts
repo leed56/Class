@@ -51,6 +51,14 @@ export type ClassRow = {
   created_at: string;
 };
 
+export type ClassEnrollmentRow = {
+  id: string;
+  workspace_id: string;
+  class_id: string;
+  student_id: string;
+  enrolled_at: string;
+};
+
 export type FeeInvoiceRow = {
   id: string;
   workspace_id: string;

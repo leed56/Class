@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -14,9 +14,10 @@ const statusConfig: Record<AttendanceStatus, { label: string; color: string; bg:
 
 type Props = {
   student: AttendanceStudent;
+  onStatusPress?: () => void;
 };
 
-export function AttendanceStudentRow({ student }: Props) {
+export function AttendanceStudentRow({ student, onStatusPress }: Props) {
   const status = statusConfig[student.attendanceStatus];
 
   return (
@@ -32,10 +33,14 @@ export function AttendanceStudentRow({ student }: Props) {
           <Text style={styles.phone}>{student.parentPhone}</Text>
         </View>
       </View>
-      <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
+      <Pressable
+        style={[styles.statusPill, { backgroundColor: status.bg }]}
+        onPress={onStatusPress}
+        disabled={!onStatusPress}
+      >
         <MaterialCommunityIcons name={status.icon} size={15} color={status.color} />
         <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-      </View>
+      </Pressable>
     </View>
   );
 }

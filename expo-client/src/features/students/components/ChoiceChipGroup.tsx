@@ -18,7 +18,12 @@ export function ChoiceChipGroup({ label, options, selected, onSelect }: Props) {
         {options.map((option) => {
           const active = option === selected;
           return (
-            <Pressable key={option} style={[styles.chip, active && styles.activeChip]} onPress={() => onSelect?.(option)}>
+            <Pressable
+              key={option}
+              style={[styles.chip, active && styles.activeChip]}
+              onPress={() => onSelect?.(option)}
+              disabled={!onSelect}
+            >
               <Text style={[styles.chipText, active && styles.activeChipText]}>{option}</Text>
             </Pressable>
           );

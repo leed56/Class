@@ -1,6 +1,9 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { getClassAttendanceAverages } from '@/features/attendance/attendanceService';
+import { getClassCollectionPercents } from '@/features/fees/feeService';
+import { getEnrollmentCountsByClass } from '@/features/enrollment/enrollmentService';
 import { ClassRow, Medium } from '@/lib/database.types';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { ScheduleState, TuitionClass } from './models';
 
 export type ClassFormInput = {
@@ -20,18 +23,29 @@ function requireText(value: string, message: string) {
   return trimmed;
 }
 
-function normalizeTime(value: string, message: string) {
+function parseTimeToDb(value: string, message: string) {
   const trimmed = requireText(value, message);
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) throw new Error('Use time format HH:MM, for example 15:30.');
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    throw new Error('Use a valid 24-hour time, for example 15:30.');
+  const twelveHour = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (twelveHour) {
+    let hour = Number(twelveHour[1]);
+    const minute = twelveHour[2];
+    const period = twelveHour[3].toUpperCase();
+    if (period === 'PM' && hour < 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${minute}:00`;
   }
 
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  const twentyFourHour = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (twentyFourHour) {
+    const hour = Number(twentyFourHour[1]);
+    const minute = Number(twentyFourHour[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      throw new Error('Use a valid time, for example 10:30 AM or 15:30.');
+    }
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  }
+
+  throw new Error('Use time format like 10:30 AM or 15:30.');
 }
 
 function formatTime(value: string) {
@@ -59,7 +73,7 @@ function getScheduleState(row: ClassRow): ScheduleState {
   return 'inProgress';
 }
 
-function mapClassRow(row: ClassRow): TuitionClass {
+function mapClassRow(row: ClassRow, enrolledCount = 0, attendanceAverage = 0, collectionPercent = 0): TuitionClass {
   return {
     id: row.id,
     subject: row.subject,
@@ -71,9 +85,9 @@ function mapClassRow(row: ClassRow): TuitionClass {
     endTime: formatTime(row.end_time),
     monthlyFee: row.monthly_fee,
     capacity: 40,
-    enrolledCount: 0,
-    attendanceAverage: 0,
-    collectionPercent: 0,
+    enrolledCount,
+    attendanceAverage,
+    collectionPercent,
     state: getScheduleState(row),
   };
 }
@@ -81,6 +95,9 @@ function mapClassRow(row: ClassRow): TuitionClass {
 export async function listClasses() {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before adding classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
 
   const { data, error } = await supabase
     .from('classes')
@@ -91,12 +108,29 @@ export async function listClasses() {
     .order('start_time', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapClassRow(row as ClassRow));
+  const rows = (data ?? []) as ClassRow[];
+  const classIds = rows.map((row) => row.id);
+  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+    getEnrollmentCountsByClass(classIds),
+    getClassAttendanceAverages(classIds),
+    getClassCollectionPercents(classIds),
+  ]);
+  return rows.map((row) =>
+    mapClassRow(
+      row,
+      counts.get(row.id) ?? 0,
+      attendanceAverages.get(row.id) ?? 0,
+      collectionPercents.get(row.id) ?? 0,
+    ),
+  );
 }
 
 export async function getClassById(classId: string) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before viewing classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
 
   const { data, error } = await supabase
     .from('classes')
@@ -106,17 +140,31 @@ export async function getClassById(classId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data ? mapClassRow(data as ClassRow) : null;
+  if (!data) return null;
+  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+    getEnrollmentCountsByClass([data.id]),
+    getClassAttendanceAverages([data.id]),
+    getClassCollectionPercents([data.id]),
+  ]);
+  return mapClassRow(
+    data as ClassRow,
+    counts.get(data.id) ?? 0,
+    attendanceAverages.get(data.id) ?? 0,
+    collectionPercents.get(data.id) ?? 0,
+  );
 }
 
 export async function createClass(input: ClassFormInput) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before adding classes.');
 
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
   const subject = requireText(input.subject, 'Subject is required.');
   const weekday = requireText(input.weekday, 'Class day is required.');
-  const startTime = normalizeTime(input.startTime, 'Start time is required.');
-  const endTime = normalizeTime(input.endTime, 'End time is required.');
+  const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
+  const endTime = parseTimeToDb(input.endTime, 'End time is required.');
 
   const { data, error } = await supabase
     .from('classes')
@@ -137,42 +185,4 @@ export async function createClass(input: ClassFormInput) {
 
   if (error) throw new Error(error.message);
   return mapClassRow(data as ClassRow);
-}
-
-export async function updateClass(classId: string, input: ClassFormInput) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before editing classes.');
-
-  const { data, error } = await supabase
-    .from('classes')
-    .update({
-      subject: requireText(input.subject, 'Subject is required.'),
-      grade: input.grade,
-      medium: input.medium,
-      hall: input.hall?.trim() || null,
-      weekday: requireText(input.weekday, 'Class day is required.'),
-      start_time: normalizeTime(input.startTime, 'Start time is required.'),
-      end_time: normalizeTime(input.endTime, 'End time is required.'),
-      monthly_fee: Math.max(0, Math.round(input.monthlyFee || 0)),
-    })
-    .eq('workspace_id', workspace.id)
-    .eq('id', classId)
-    .select('*')
-    .single();
-
-  if (error) throw new Error(error.message);
-  return mapClassRow(data as ClassRow);
-}
-
-export async function archiveClass(classId: string) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before removing classes.');
-
-  const { error } = await supabase
-    .from('classes')
-    .update({ active: false })
-    .eq('workspace_id', workspace.id)
-    .eq('id', classId);
-
-  if (error) throw new Error(error.message);
 }

@@ -1,11 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { mockPayments } from '@/features/fees/data/mockFees';
+import { getCurrentWorkspace } from '@/features/auth/authService';
+import { getPaymentByReceiptNo } from '@/features/fees/feeService';
+import { PaymentRecord } from '@/features/fees/models';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -15,10 +18,63 @@ function formatLkr(amount: number) {
 
 export default function ReceiptDetailScreen() {
   const params = useLocalSearchParams<{ receiptId: string }>();
-  const payment = mockPayments.find((item) => item.receiptNo === params.receiptId || item.id === params.receiptId) ?? mockPayments[0];
+  const [payment, setPayment] = useState<PaymentRecord | null>(null);
+  const [workspaceName, setWorkspaceName] = useState('ClassFlow Tuition');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadReceipt = useCallback(async () => {
+    if (!params.receiptId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [nextPayment, workspace] = await Promise.all([
+        getPaymentByReceiptNo(params.receiptId),
+        getCurrentWorkspace(),
+      ]);
+      setPayment(nextPayment);
+      if (workspace?.name) setWorkspaceName(workspace.name);
+      if (!nextPayment) setError('Receipt not found.');
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load receipt.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [params.receiptId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReceipt();
+    }, [loadReceipt]),
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !payment) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error ?? 'Receipt not found.'}</Text>
+          <Link href="/(tabs)/fees" asChild>
+            <Pressable style={styles.retryButton}>
+              <Text style={styles.retryText}>Back to fees</Text>
+            </Pressable>
+          </Link>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/(tabs)/fees" asChild>
@@ -52,7 +108,7 @@ export default function ReceiptDetailScreen() {
               <MaterialCommunityIcons name="school" size={26} color="white" />
             </View>
             <View style={styles.teacherCopy}>
-              <Text style={styles.teacherName}>Nimal Perera Classes</Text>
+              <Text style={styles.teacherName}>{workspaceName}</Text>
               <Text style={styles.teacherMeta}>Premium tuition receipt</Text>
             </View>
           </View>
@@ -73,6 +129,7 @@ export default function ReceiptDetailScreen() {
             <ReceiptLine label="Receipt no" value={payment.receiptNo} />
             <ReceiptLine label="Paid date" value={payment.paidAt} />
             <ReceiptLine label="Method" value={payment.method.toUpperCase()} />
+            {payment.note ? <ReceiptLine label="Note" value={payment.note} /> : null}
           </View>
 
           <View style={styles.footerNote}>
@@ -93,19 +150,6 @@ export default function ReceiptDetailScreen() {
             <Text style={styles.shareButtonSmallText}>Share</Text>
           </View>
         </PremiumCard>
-
-        <View style={styles.actionGrid}>
-          <PremiumCard style={styles.actionTile}>
-            <MaterialCommunityIcons name="printer-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionTitle}>Print</Text>
-            <Text style={styles.actionCopy}>Thermal printer support later</Text>
-          </PremiumCard>
-          <PremiumCard style={styles.actionTile}>
-            <MaterialCommunityIcons name="download-outline" size={24} color={colors.success} />
-            <Text style={styles.actionTitle}>Download</Text>
-            <Text style={styles.actionCopy}>PDF export-ready layout</Text>
-          </PremiumCard>
-        </View>
       </ScrollView>
 
       <View style={styles.saveBar}>
@@ -133,6 +177,7 @@ function ReceiptLine({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   content: { padding: spacing.lg, paddingBottom: 116, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
@@ -169,13 +214,12 @@ const styles = StyleSheet.create({
   cardSubtitle: { marginTop: 4, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   shareButtonSmall: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: colors.primary },
   shareButtonSmallText: { color: 'white', fontSize: 12, fontWeight: '900' },
-  actionGrid: { flexDirection: 'row', gap: spacing.md },
-  actionTile: { flex: 1, minHeight: 130, justifyContent: 'center', gap: spacing.sm },
-  actionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
-  actionCopy: { color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   saveBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   saveValue: { marginTop: 3, color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
   saveButton: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg },
   saveButtonText: { color: 'white', fontSize: 14, fontWeight: '900' },
+  errorText: { color: colors.danger, fontSize: 14, fontWeight: '800', textAlign: 'center' },
+  retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
 });

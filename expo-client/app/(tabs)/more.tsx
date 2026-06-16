@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { NavPressable } from '@/components/NavPressable';
 import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
 import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
@@ -54,20 +55,31 @@ export default function MoreScreen() {
         </View>
         <View style={styles.commandGrid}>
           {reportCommands.map((item) => (
-            <CommandTile key={item.id} item={item} />
+            <CommandTile key={item.id} item={item} href="/reports" />
           ))}
         </View>
 
         <PremiumCard style={styles.panelCard}>
           <View style={styles.panelHeader}>
             <Text style={styles.sectionTitle}>Setup</Text>
-            <View style={styles.panelBadge}>
-              <Text style={styles.panelBadgeText}>MVP</Text>
-            </View>
+            <NavPressable href="/settings">
+              <Text style={styles.sectionAction}>Open settings</Text>
+            </NavPressable>
           </View>
           {setupCommands.map((item, index) => (
             <View key={item.id}>
-              <SettingsRow item={item} />
+              <SettingsRow
+                item={item}
+                href={
+                  item.id === 'subjects'
+                    ? '/settings/subjects'
+                    : item.id === 'receipts-settings'
+                      ? '/settings'
+                      : item.id === 'privacy-consent'
+                        ? '/settings/launch-checklist'
+                        : '/settings'
+                }
+              />
               {index < setupCommands.length - 1 ? <View style={styles.divider} /> : null}
             </View>
           ))}
@@ -82,7 +94,16 @@ export default function MoreScreen() {
           </View>
           {integrationCommands.map((item, index) => (
             <View key={item.id}>
-              <SettingsRow item={item} />
+              <SettingsRow
+                item={item}
+                href={
+                  item.id === 'subscription'
+                    ? '/settings/subscription'
+                    : item.id === 'reachwa'
+                      ? '/settings/communication'
+                      : '/settings/communication'
+                }
+              />
               {index < integrationCommands.length - 1 ? <View style={styles.divider} /> : null}
             </View>
           ))}
@@ -94,7 +115,7 @@ export default function MoreScreen() {
           </View>
           <View style={styles.signoutTextBlock}>
             <Text style={styles.signoutTitle}>Secure teacher account</Text>
-            <Text style={styles.signoutCopy}>Supabase Auth, tenant isolation and RLS will protect this workspace before production.</Text>
+            <Text style={styles.signoutCopy}>Your workspace stays private. Only you and invited staff can access student and fee records.</Text>
           </View>
         </PremiumCard>
       </ScrollView>

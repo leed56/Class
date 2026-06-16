@@ -9,7 +9,7 @@ import { mockClasses } from '@/features/classes/data/mockClasses';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const totalStudents = mockClasses.reduce((sum, item) => sum + item.enrolledStudents, 0);
+const totalStudents = mockClasses.reduce((sum, item) => sum + item.enrolledCount, 0);
 const weeklyHours = mockClasses.length * 2;
 const averageFee = Math.round(mockClasses.reduce((sum, item) => sum + item.monthlyFee, 0) / mockClasses.length);
 
@@ -91,8 +91,8 @@ export default function SubjectSetupScreen() {
               </View>
               <View style={styles.classStatsRow}>
                 <ClassStat label="Schedule" value={`${item.day} ${item.startTime}`} />
-                <ClassStat label="Students" value={`${item.enrolledStudents}`} />
-                <ClassStat label="Attendance" value={`${item.attendancePercent}%`} />
+                <ClassStat label="Students" value={`${item.enrolledCount}`} />
+                <ClassStat label="Attendance" value={`${item.attendanceAverage}%`} />
               </View>
             </PremiumCard>
           ))}

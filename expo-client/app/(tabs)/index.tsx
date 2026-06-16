@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Href } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { QuickActionTile } from '@/components/QuickActionTile';
 import { colors } from '@/theme/colors';
@@ -49,16 +51,20 @@ export default function HomeScreen() {
             <Text style={styles.metaText}>10:30 AM - 12:00 PM</Text>
             <Text style={styles.metaText}>Hall A</Text>
           </View>
-          <View style={styles.primaryButton}><Text style={styles.primaryButtonText}>Take Attendance</Text></View>
+          <View style={styles.primaryButton}>
+            <NavPressable href="/attendance/take" style={styles.primaryButtonInner}>
+              <Text style={styles.primaryButtonText}>Take Attendance</Text>
+            </NavPressable>
+          </View>
         </PremiumCard>
 
         <View>
           <Text style={styles.sectionTitle}>Quick actions</Text>
           <View style={styles.quickRow}>
-            <QuickActionTile label="Add Student" icon="account-plus" color={colors.primary} />
-            <QuickActionTile label="Create Class" icon="plus-box" color={colors.info} />
-            <QuickActionTile label="Payment" icon="cash-plus" color={colors.success} />
-            <QuickActionTile label="Message" icon="message-text" color={colors.warning} />
+            <QuickActionTile label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
+            <QuickActionTile label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
+            <QuickActionTile label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
+            <QuickActionTile label="Reports" icon="chart-box-outline" color={colors.warning} href="/reports" />
           </View>
         </View>
 
@@ -135,7 +141,8 @@ const styles = StyleSheet.create({
   muted: { marginTop: 4, color: colors.textSecondary, fontWeight: '700' },
   metaRow: { marginTop: spacing.lg, flexDirection: 'row', justifyContent: 'space-between' },
   metaText: { color: colors.textPrimary, fontWeight: '800' },
-  primaryButton: { marginTop: spacing.lg, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { marginTop: spacing.lg, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, overflow: 'hidden' },
+  primaryButtonInner: { flex: 1, height: 52, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: 'white', fontWeight: '900', fontSize: 15 },
   quickRow: { flexDirection: 'row', gap: spacing.sm },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

@@ -1,106 +1,106 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PremiumCard } from '@/components/PremiumCard';
-import { getCurrentWorkspace, signInTeacher } from '@/features/auth/authService';
+import { useAuth } from '@/core/auth/AuthProvider';
+import { FormTextField } from '@/features/students/components/FormTextField';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { demoMode } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleLogin() {
-    if (!email.trim() || !password) {
-      setError('Enter your email and password to continue.');
+    setError(null);
+
+    if (demoMode) {
+      router.replace('/(tabs)');
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await signInTeacher({ email, password });
-      const workspace = await getCurrentWorkspace();
-      router.replace(workspace ? '/(tabs)' : '/onboarding');
-    } catch (authError) {
-      setError(authError instanceof Error ? authError.message : 'Could not sign in. Please try again.');
-    } finally {
-      setIsLoading(false);
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured yet.');
+      return;
     }
+
+    setSubmitting(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setSubmitting(false);
+
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+
+    router.replace('/(tabs)');
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <MaterialCommunityIcons name="school" size={32} color="white" />
+          <View style={styles.logoMark}>
+            <MaterialCommunityIcons name="school" size={34} color="white" />
           </View>
-          <Text style={styles.heroKicker}>ClassFlow Teacher Cloud</Text>
-          <Text style={styles.heroTitle}>Run your tuition class like a premium institute.</Text>
-          <Text style={styles.heroNote}>Attendance, cash fees, receipts and parent follow-ups in one mobile-first workspace.</Text>
+          <Text style={styles.heroTitle}>ClassFlow</Text>
+          <Text style={styles.heroCopy}>Smart class management for Sri Lankan teachers</Text>
         </LinearGradient>
 
-        <PremiumCard style={styles.card}>
-          <View>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to continue to your teacher dashboard.</Text>
+        {!isSupabaseConfigured() ? (
+          <View style={styles.demoBanner}>
+            <MaterialCommunityIcons name="information-outline" size={18} color={colors.warning} />
+            <Text style={styles.demoBannerText}>
+              Demo mode: add Supabase env keys to enable secure sign-in.
+            </Text>
           </View>
+        ) : null}
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputWrap}>
-              <MaterialCommunityIcons name="email-outline" size={19} color={colors.textSecondary} />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="teacher@classflow.lk"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-              />
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputWrap}>
-              <MaterialCommunityIcons name="lock-outline" size={19} color={colors.textSecondary} />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Minimum 6 characters"
-                placeholderTextColor={colors.textSecondary}
-                secureTextEntry
-                style={styles.input}
-              />
-            </View>
-          </View>
-
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Teacher sign in</Text>
+          <FormTextField
+            label="Email"
+            placeholder="teacher@example.com"
+            icon="email-outline"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <FormTextField
+            label="Password"
+            placeholder="Your password"
+            icon="lock-outline"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Pressable style={[styles.primaryButton, isLoading && styles.disabledButton]} onPress={handleLogin} disabled={isLoading}>
-            {isLoading ? <ActivityIndicator color="white" /> : <MaterialCommunityIcons name="login" size={19} color="white" />}
-            <Text style={styles.primaryButtonText}>{isLoading ? 'Signing in...' : 'Sign In'}</Text>
+          <Pressable style={styles.primaryButton} onPress={handleLogin} disabled={submitting}>
+            {submitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.primaryButtonText}>{demoMode ? 'Continue in demo mode' : 'Sign in'}</Text>
+            )}
           </Pressable>
+        </View>
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>New to ClassFlow?</Text>
-            <Link href="/auth/signup" asChild>
-              <Pressable>
-                <Text style={styles.footerLink}>Create account</Text>
-              </Pressable>
-            </Link>
-          </View>
-        </PremiumCard>
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>New teacher?</Text>
+          <Link href={'/auth/register' as Href} asChild>
+            <Pressable>
+              <Text style={styles.footerLink}>Create account</Text>
+            </Pressable>
+          </Link>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -108,24 +108,35 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 32 },
-  hero: { minHeight: 250, borderRadius: radius.hero, padding: spacing.xxl, justifyContent: 'flex-end', overflow: 'hidden' },
-  heroIcon: { width: 62, height: 62, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
-  heroKicker: { color: '#E7DEFF', fontSize: 12, fontWeight: '900' },
-  heroTitle: { marginTop: 6, color: 'white', fontSize: 29, lineHeight: 34, fontWeight: '900', letterSpacing: -0.9 },
-  heroNote: { marginTop: 8, color: '#E7DEFF', fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  card: { gap: spacing.lg },
-  title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
-  subtitle: { marginTop: 5, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  fieldGroup: { gap: spacing.sm },
-  label: { color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
-  inputWrap: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.background, paddingHorizontal: spacing.md },
-  input: { flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
-  primaryButton: { height: 54, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  disabledButton: { opacity: 0.72 },
+  content: { padding: spacing.lg, gap: spacing.lg },
+  hero: { borderRadius: radius.hero, padding: spacing.xxl, alignItems: 'center', overflow: 'hidden' },
+  logoMark: {
+    width: 72,
+    height: 72,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  heroTitle: { marginTop: spacing.lg, color: 'white', fontSize: 30, fontWeight: '900', letterSpacing: -0.8 },
+  heroCopy: { marginTop: spacing.sm, color: '#E7DEFF', fontSize: 14, lineHeight: 21, fontWeight: '600', textAlign: 'center' },
+  demoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  demoBannerText: { flex: 1, color: colors.textPrimary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  formCard: { gap: spacing.lg, padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  formTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '900' },
+  errorText: { color: colors.danger, fontSize: 12, fontWeight: '700' },
+  primaryButton: { height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: 'white', fontSize: 15, fontWeight: '900' },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs },
+  footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
   footerText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
   footerLink: { color: colors.primary, fontSize: 13, fontWeight: '900' },
 });

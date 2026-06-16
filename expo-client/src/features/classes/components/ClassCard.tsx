@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -15,18 +16,21 @@ const stateConfig = {
 
 type ClassCardProps = {
   item: TuitionClass;
+  detailHref?: Href;
+  attendanceHref?: Href;
 };
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export function ClassCard({ item }: ClassCardProps) {
+export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) {
+  const router = useRouter();
   const status = stateConfig[item.state];
   const capacityPercent = Math.round((item.enrolledCount / item.capacity) * 100);
 
-  return (
-    <PremiumCard style={styles.card}>
+  const cardBody = (
+    <>
       <View style={styles.topRow}>
         <View style={styles.subjectIcon}>
           <MaterialCommunityIcons name="book-open-page-variant" size={24} color={colors.primary} />
@@ -62,13 +66,34 @@ export function ClassCard({ item }: ClassCardProps) {
         <Stat label="Attendance" value={`${item.attendanceAverage}%`} tone={colors.success} />
         <Stat label="Collected" value={`${item.collectionPercent}%`} tone={item.collectionPercent >= 70 ? colors.success : colors.danger} />
       </View>
+    </>
+  );
 
-      <Link href="/attendance/take" asChild>
-        <Pressable style={styles.primaryAction}>
-          <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-          <Text style={styles.primaryActionText}>Take Attendance</Text>
+  const attendanceButton = attendanceHref ? (
+    <NavPressable href={attendanceHref} style={styles.primaryAction}>
+      <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
+      <Text style={styles.primaryActionText}>Take Attendance</Text>
+    </NavPressable>
+  ) : (
+    <View style={styles.primaryAction}>
+      <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
+      <Text style={styles.primaryActionText}>Take Attendance</Text>
+    </View>
+  );
+
+  return (
+    <PremiumCard style={styles.card}>
+      {detailHref ? (
+        <Pressable
+          style={({ pressed }) => [styles.cardBody, pressed && styles.cardBodyPressed]}
+          onPress={() => router.push(detailHref)}
+        >
+          {cardBody}
         </Pressable>
-      </Link>
+      ) : (
+        <View style={styles.cardBody}>{cardBody}</View>
+      )}
+      {attendanceButton}
     </PremiumCard>
   );
 }
@@ -85,6 +110,12 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: stri
 const styles = StyleSheet.create({
   card: {
     gap: spacing.md,
+  },
+  cardBody: {
+    gap: spacing.md,
+  },
+  cardBodyPressed: {
+    opacity: 0.92,
   },
   topRow: {
     flexDirection: 'row',

@@ -93,7 +93,7 @@ export default function SettingsScreen() {
         <View style={styles.grid}>
           <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} />
           <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} />
-          <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-cog" color={colors.warning} />
+          <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} />
           <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} />
         </View>
 

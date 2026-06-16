@@ -120,7 +120,7 @@ function UsageFigure({ label, value }: { label: string; value: string }) {
 
 function PlanCard({ title, price, badge, description, color, features, featured = false }: { title: string; price: string; badge: string; description: string; color: string; features: string[]; featured?: boolean }) {
   return (
-    <PremiumCard style={[styles.planCard, featured && styles.featuredPlanCard]}>
+    <PremiumCard style={featured ? { ...styles.planCard, ...styles.featuredPlanCard } : styles.planCard}>
       <View style={styles.planTopRow}>
         <View style={[styles.planIcon, { backgroundColor: `${color}1F` }]}>
           <MaterialCommunityIcons name="crown-outline" size={23} color={color} />

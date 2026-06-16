@@ -36,7 +36,7 @@ export async function signOutTeacher() {
   if (error) throw error;
 }
 
-export async function getCurrentWorkspace() {
+export async function getCurrentWorkspace(): Promise<WorkspaceRow | null> {
   const {
     data: { user },
     error: userError,
@@ -95,4 +95,9 @@ export async function createTeacherWorkspace({ name, defaultLanguage }: Workspac
 
   if (memberError) throw memberError;
   return workspace as WorkspaceRow;
+}
+
+export async function getCurrentUserLanguage(): Promise<LanguageCode> {
+  const workspace = await getCurrentWorkspace();
+  return workspace?.default_language ?? 'en';
 }

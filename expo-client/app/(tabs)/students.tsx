@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
 import { MetricCard } from '@/components/MetricCard';
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { StudentCard } from '@/features/students/components/StudentCard';
 import { StudentFilterBar } from '@/features/students/components/StudentFilterBar';
@@ -54,18 +56,16 @@ export default function StudentsScreen() {
   }, [students]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Students</Text>
             <Text style={styles.subtitle}>Manage students, parents, fees, consent and attendance.</Text>
           </View>
-          <Link href="/students/new" asChild>
-            <Pressable style={styles.addButton}>
-              <MaterialCommunityIcons name="account-plus" size={22} color="white" />
-            </Pressable>
-          </Link>
+          <NavPressable href="/students/new" style={styles.addButton}>
+            <MaterialCommunityIcons name="account-plus" size={22} color="white" />
+          </NavPressable>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -75,13 +75,15 @@ export default function StudentsScreen() {
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>Active student registry</Text>
             <Text style={styles.heroValue}>{students.length} students</Text>
-            <Text style={styles.heroNote}>{summary.pendingCount} need fee follow-up • {summary.consentMissingCount} consent pending</Text>
+            <Text style={styles.heroNote}>
+              {summary.pendingCount} need fee follow-up • {summary.consentMissingCount} consent pending
+            </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.metricsRow}>
           <MetricCard label="Avg Attendance" value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
-          <MetricCard label="Outstanding" value={formatLkr(summary.totalOutstanding)} icon="cash-alert" tone={colors.danger} />
+          <MetricCard label="Outstanding" value={formatLkr(summary.totalOutstanding)} icon="account-alert" tone={colors.danger} />
         </View>
 
         <PremiumCard style={styles.insightCard}>
@@ -117,19 +119,18 @@ export default function StudentsScreen() {
           </PremiumCard>
         ) : students.length === 0 ? (
           <PremiumCard style={styles.stateCard}>
-            <MaterialCommunityIcons name="account-plus-outline" size={28} color={colors.primary} />
-            <Text style={styles.stateTitle}>No students yet</Text>
-            <Text style={styles.stateText}>Add your first student to start attendance, fees and receipts.</Text>
-            <Link href="/students/new" asChild>
-              <Pressable style={styles.retryButton}>
-                <Text style={styles.retryText}>Add Student</Text>
-              </Pressable>
-            </Link>
+            <EmptyState
+              icon="account-plus-outline"
+              title="No students yet"
+              message="Add your first student to start attendance, fees and receipts."
+              actionLabel="Add Student"
+              actionHref="/students/new"
+            />
           </PremiumCard>
         ) : (
           <View style={styles.list}>
             {students.map((student) => (
-              <StudentCard key={student.id} student={student} />
+              <StudentCard key={student.id} student={student} href={`/students/${student.id}`} />
             ))}
           </View>
         )}
@@ -139,173 +140,31 @@ export default function StudentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: 32,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  subtitle: {
-    maxWidth: 270,
-    marginTop: 4,
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  hero: {
-    minHeight: 138,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    borderRadius: radius.hero,
-    padding: spacing.xxl,
-    overflow: 'hidden',
-  },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroLabel: {
-    color: '#E7DEFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  heroValue: {
-    marginTop: 4,
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  heroNote: {
-    marginTop: 6,
-    color: '#E7DEFF',
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  insightCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderColor: colors.successSoft,
-  },
-  insightIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.lg,
-    backgroundColor: colors.successSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  insightTextBlock: {
-    flex: 1,
-  },
-  insightTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  insightCopy: {
-    marginTop: 3,
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  sectionAction: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  list: {
-    gap: spacing.md,
-  },
-  stateCard: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xxl,
-  },
-  stateTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  stateText: {
-    maxWidth: 260,
-    textAlign: 'center',
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  errorText: {
-    textAlign: 'center',
-    color: colors.danger,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '800',
-  },
-  retryButton: {
-    marginTop: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  retryText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '900',
-  },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
+  title: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
+  subtitle: { maxWidth: 270, marginTop: 4, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  addButton: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  hero: { minHeight: 138, flexDirection: 'row', alignItems: 'center', gap: spacing.lg, borderRadius: radius.hero, padding: spacing.xxl, overflow: 'hidden' },
+  heroIcon: { width: 58, height: 58, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  heroCopy: { flex: 1 },
+  heroLabel: { color: '#E7DEFF', fontSize: 12, fontWeight: '800' },
+  heroValue: { marginTop: 4, color: 'white', fontSize: 29, fontWeight: '900', letterSpacing: -0.9 },
+  heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  metricsRow: { flexDirection: 'row', gap: spacing.md },
+  insightCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.successSoft },
+  insightIcon: { width: 44, height: 44, borderRadius: radius.lg, backgroundColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
+  insightTextBlock: { flex: 1 },
+  insightTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  insightCopy: { marginTop: 3, color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
+  sectionAction: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  list: { gap: spacing.md },
+  stateCard: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl },
+  stateTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  errorText: { textAlign: 'center', color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
+  retryButton: { marginTop: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
 });
