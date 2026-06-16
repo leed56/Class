@@ -56,7 +56,7 @@ export default function LoginScreen() {
           <Text style={styles.heroCopy}>Smart class management for Sri Lankan teachers</Text>
         </LinearGradient>
 
-        {!isSupabaseConfigured() ? (
+        {!isSupabaseConfigured ? (
           <View style={styles.demoBanner}>
             <MaterialCommunityIcons name="information-outline" size={18} color={colors.warning} />
             <Text style={styles.demoBannerText}>

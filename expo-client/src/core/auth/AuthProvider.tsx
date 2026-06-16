@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
-  const demoMode = !isSupabaseConfigured();
+  const demoMode = !isSupabaseConfigured;
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(!demoMode);
 
