@@ -1,4 +1,6 @@
-import type { VatStatus, VatSummary } from './types';
+import type { VatStatus, VatSummary as VatSummaryType } from './types';
+
+export const VatSummary = undefined;
 
 function getQuarterRange(date = new Date()) {
   const year = date.getFullYear();
@@ -21,7 +23,7 @@ function toSqlDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export async function getVatSummary(): Promise<VatSummary> {
+export async function getVatSummary(): Promise<VatSummaryType> {
   const range = getQuarterRange();
   const taxableRevenue = 763000;
   const outputVat = 137340;
@@ -48,4 +50,4 @@ export async function getVatSummary(): Promise<VatSummary> {
   };
 }
 
-export type { VatStatus, VatSummary };
+export type { VatStatus, VatSummaryType as VatSummary };
