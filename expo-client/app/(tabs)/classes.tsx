@@ -1,32 +1,84 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
+import { PremiumCard } from '@/components/PremiumCard';
 import { ClassCard } from '@/features/classes/components/ClassCard';
-import { mockClasses } from '@/features/classes/data/mockClasses';
+import { listClasses } from '@/features/classes/classService';
+import { TuitionClass } from '@/features/classes/models';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const todayClasses = mockClasses.filter((item) => item.day === 'Monday').length;
-const totalStudents = mockClasses.reduce((sum, item) => sum + item.enrolledCount, 0);
-const averageAttendance = Math.round(
-  mockClasses.reduce((sum, item) => sum + item.attendanceAverage, 0) / mockClasses.length,
-);
+const weekdayShortNames: Record<string, string> = {
+  Monday: 'Mon',
+  Tuesday: 'Tue',
+  Wednesday: 'Wed',
+  Thursday: 'Thu',
+  Friday: 'Fri',
+  Saturday: 'Sat',
+  Sunday: 'Sun',
+};
+
+const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+function formatLkr(amount: number) {
+  return `LKR ${amount.toLocaleString('en-LK')}`;
+}
 
 export default function ClassesScreen() {
+  const [classes, setClasses] = useState<TuitionClass[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadClasses = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setIsLoading(true);
+    if (mode === 'refresh') setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const rows = await listClasses();
+      setClasses(rows);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load classes.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadClasses();
+    }, [loadClasses]),
+  );
+
+  const todayClasses = useMemo(() => classes.filter((item) => item.day === todayName), [classes]);
+  const nextClass = todayClasses.find((item) => item.state !== 'completed') ?? classes[0];
+  const weeklyRevenue = useMemo(() => classes.reduce((sum, item) => sum + item.monthlyFee, 0), [classes]);
+  const activeDays = useMemo(() => new Set(classes.map((item) => item.day)).size, [classes]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadClasses('refresh')} />}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Classes</Text>
-            <Text style={styles.subtitle}>Create schedules, manage halls, fees, capacity and attendance.</Text>
+            <Text style={styles.subtitle}>Create schedules, manage halls, fees and attendance from one polished workspace.</Text>
           </View>
-          <View style={styles.addButton}>
-            <MaterialCommunityIcons name="plus" size={24} color="white" />
-          </View>
+          <Link href="/classes/new" asChild>
+            <Pressable style={styles.addButton}>
+              <MaterialCommunityIcons name="plus" size={24} color="white" />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -35,34 +87,73 @@ export default function ClassesScreen() {
           </View>
           <View style={styles.heroTextBlock}>
             <Text style={styles.heroLabel}>Today’s teaching plan</Text>
-            <Text style={styles.heroValue}>{todayClasses} classes today</Text>
-            <Text style={styles.heroNote}>Next: Mathematics Grade 9 • 10:30 AM • Hall A</Text>
+            <Text style={styles.heroValue}>{todayClasses.length} classes today</Text>
+            <Text style={styles.heroNote}>
+              {nextClass ? `Next: ${nextClass.subject} Grade ${nextClass.grade} • ${nextClass.startTime} • ${nextClass.hall}` : 'Create your first class schedule to unlock attendance and fees.'}
+            </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.metricsRow}>
-          <MetricCard label="Active Students" value={`${totalStudents}`} icon="account-group" tone={colors.primary} />
-          <MetricCard label="Avg Attendance" value={`${averageAttendance}%`} icon="chart-line" tone={colors.success} />
+          <MetricCard label="Active Classes" value={`${classes.length}`} icon="google-classroom" tone={colors.primary} />
+          <MetricCard label="Monthly Fees" value={formatLkr(weeklyRevenue)} icon="cash-multiple" tone={colors.success} />
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Class schedule</Text>
-          <Text style={styles.sectionAction}>This week</Text>
+          <Text style={styles.sectionAction}>{activeDays || 0} active days</Text>
         </View>
 
         <View style={styles.dayTabs}>
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, index) => (
-            <View key={day} style={[styles.dayChip, index === 0 && styles.activeDayChip]}>
-              <Text style={[styles.dayChipText, index === 0 && styles.activeDayChipText]}>{day}</Text>
-            </View>
-          ))}
+          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => {
+            const isActive = day === todayName;
+            const hasClasses = classes.some((item) => item.day === day);
+            return (
+              <View key={day} style={[styles.dayChip, isActive && styles.activeDayChip, hasClasses && !isActive && styles.filledDayChip]}>
+                <Text style={[styles.dayChipText, isActive && styles.activeDayChipText]}>{weekdayShortNames[day]}</Text>
+              </View>
+            );
+          })}
         </View>
 
-        <View style={styles.list}>
-          {mockClasses.map((item) => (
-            <ClassCard key={item.id} item={item} />
-          ))}
-        </View>
+        {isLoading ? (
+          <PremiumCard style={styles.stateCard}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.stateTitle}>Loading your class schedule</Text>
+            <Text style={styles.stateText}>Preparing the latest Supabase data for this workspace.</Text>
+          </PremiumCard>
+        ) : error ? (
+          <PremiumCard style={styles.stateCard}>
+            <View style={styles.stateIconDanger}>
+              <MaterialCommunityIcons name="cloud-alert-outline" size={28} color={colors.danger} />
+            </View>
+            <Text style={styles.stateTitle}>Could not load classes</Text>
+            <Text style={styles.stateText}>{error}</Text>
+            <Pressable style={styles.retryButton} onPress={() => loadClasses()}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </Pressable>
+          </PremiumCard>
+        ) : classes.length === 0 ? (
+          <PremiumCard style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <MaterialCommunityIcons name="calendar-plus" size={34} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>Build your first premium class</Text>
+            <Text style={styles.emptyText}>Add subject, grade, medium, time, hall and monthly fee. This becomes the foundation for enrollment, attendance and payments.</Text>
+            <Link href="/classes/new" asChild>
+              <Pressable style={styles.emptyButton}>
+                <MaterialCommunityIcons name="plus" size={18} color="white" />
+                <Text style={styles.emptyButtonText}>Add Class</Text>
+              </Pressable>
+            </Link>
+          </PremiumCard>
+        ) : (
+          <View style={styles.list}>
+            {classes.map((item) => (
+              <ClassCard key={item.id} item={item} />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -186,6 +277,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  filledDayChip: {
+    borderColor: colors.primarySoft,
+    backgroundColor: colors.primarySoft,
+  },
   dayChipText: {
     color: colors.textSecondary,
     fontSize: 12,
@@ -196,5 +291,85 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  stateCard: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xxl,
+  },
+  stateIconDanger: {
+    width: 58,
+    height: 58,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dangerSoft,
+  },
+  stateTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  stateText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: spacing.xs,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 12,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  emptyCard: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xxl,
+  },
+  emptyIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyButton: {
+    marginTop: spacing.sm,
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '900',
   },
 });
