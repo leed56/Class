@@ -1,12 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { useAuth } from '@/core/auth/AuthProvider';
 import { createTeacherWorkspace } from '@/features/auth/authService';
+import { getTeacherDisplayName } from '@/features/auth/teacherProfile';
 import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -18,10 +20,16 @@ const languageOptions: { label: string; value: LanguageCode; helper: string }[] 
 ];
 
 export default function OnboardingScreen() {
-  const [workspaceName, setWorkspaceName] = useState('Nimal Perera Classes');
+  const { user } = useAuth();
+  const [workspaceName, setWorkspaceName] = useState('');
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const teacherName = getTeacherDisplayName(user);
+    setWorkspaceName(teacherName === 'Teacher' ? '' : `${teacherName} Classes`);
+  }, [user]);
 
   async function handleCreateWorkspace() {
     if (!workspaceName.trim()) {
@@ -63,7 +71,7 @@ export default function OnboardingScreen() {
           </View>
           <View style={styles.inputWrap}>
             <MaterialCommunityIcons name="storefront-outline" size={20} color={colors.textSecondary} />
-            <TextInput value={workspaceName} onChangeText={setWorkspaceName} placeholder="Nimal Perera Classes" placeholderTextColor={colors.textMuted} style={styles.input} />
+            <TextInput value={workspaceName} onChangeText={setWorkspaceName} placeholder="Your institute name" placeholderTextColor={colors.textMuted} style={styles.input} />
           </View>
         </PremiumCard>
 

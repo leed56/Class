@@ -1,25 +1,74 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
-import { mockClasses } from '@/features/classes/data/mockClasses';
+import { listClasses } from '@/features/classes/classService';
+import { TuitionClass } from '@/features/classes/models';
+import { listStudents } from '@/features/students/studentService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-const totalStudents = mockClasses.reduce((sum, item) => sum + item.enrolledCount, 0);
-const weeklyHours = mockClasses.length * 2;
-const averageFee = Math.round(mockClasses.reduce((sum, item) => sum + item.monthlyFee, 0) / mockClasses.length);
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
+function getSubjectSummary(classes: TuitionClass[]) {
+  const bySubject = new Map<string, { grades: number[]; mediums: Set<string> }>();
+
+  for (const item of classes) {
+    const existing = bySubject.get(item.subject) ?? { grades: [], mediums: new Set<string>() };
+    existing.grades.push(item.grade);
+    existing.mediums.add(item.medium);
+    bySubject.set(item.subject, existing);
+  }
+
+  return Array.from(bySubject.entries()).map(([title, info]) => {
+    const minGrade = Math.min(...info.grades);
+    const maxGrade = Math.max(...info.grades);
+    const grades = minGrade === maxGrade ? `Grade ${minGrade}` : `Grade ${minGrade} - ${maxGrade}`;
+    const medium = Array.from(info.mediums).join(' / ');
+    return { title, grades, medium };
+  });
+}
+
+const subjectColors = [colors.primary, colors.success, colors.warning, colors.info];
+
 export default function SubjectSetupScreen() {
+  const [classes, setClasses] = useState<TuitionClass[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadSubjects = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [nextClasses, students] = await Promise.all([listClasses(), listStudents()]);
+      setClasses(nextClasses);
+      setTotalStudents(students.length);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSubjects();
+    }, [loadSubjects]),
+  );
+
+  const weeklyHours = classes.length * 2;
+  const averageFee = classes.length
+    ? Math.round(classes.reduce((sum, item) => sum + item.monthlyFee, 0) / classes.length)
+    : 0;
+  const subjects = useMemo(() => getSubjectSummary(classes), [classes]);
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/settings" asChild>
@@ -42,31 +91,46 @@ export default function SubjectSetupScreen() {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>Academic setup</Text>
-            <Text style={styles.heroTitle}>{mockClasses.length} active classes</Text>
-            <Text style={styles.heroNote}>{totalStudents} students • {weeklyHours} teaching hours/week • Avg fee {formatLkr(averageFee)}</Text>
+            <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : `${classes.length} active classes`}</Text>
+            <Text style={styles.heroNote}>
+              {totalStudents} students • {weeklyHours} teaching hours/week
+              {averageFee > 0 ? ` • Avg fee ${formatLkr(averageFee)}` : ''}
+            </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.summaryRow}>
-          <SetupMetric label="Students" value={`${totalStudents}`} icon="account-group-outline" color={colors.primary} />
-          <SetupMetric label="Weekly load" value={`${weeklyHours}h`} icon="calendar-clock" color={colors.warning} />
+          <SetupMetric label="Students" value={isLoading ? '—' : `${totalStudents}`} icon="account-group-outline" color={colors.primary} />
+          <SetupMetric label="Weekly load" value={isLoading ? '—' : `${weeklyHours}h`} icon="calendar-clock" color={colors.warning} />
         </View>
 
         <PremiumCard style={styles.subjectCard}>
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>Subject library</Text>
-              <Text style={styles.cardSubtitle}>Keep subjects simple for fast class creation.</Text>
+              <Text style={styles.cardSubtitle}>Derived from your active classes.</Text>
             </View>
             <View style={styles.smallAddButton}>
               <MaterialCommunityIcons name="plus" size={18} color="white" />
             </View>
           </View>
-          <SubjectRow title="Mathematics" grades="Grade 6 - 11" medium="English / Sinhala" color={colors.primary} />
-          <View style={styles.divider} />
-          <SubjectRow title="Science" grades="Grade 6 - 11" medium="Sinhala / English" color={colors.success} />
-          <View style={styles.divider} />
-          <SubjectRow title="English" grades="Grade 3 - 11" medium="English" color={colors.warning} />
+          {isLoading ? (
+            <ActivityIndicator color={colors.primary} style={styles.loader} />
+          ) : subjects.length === 0 ? (
+            <Text style={styles.emptyNote}>Add a class to populate subjects.</Text>
+          ) : (
+            subjects.map((item, index) => (
+              <View key={item.title}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <SubjectRow
+                  title={item.title}
+                  grades={item.grades}
+                  medium={item.medium}
+                  color={subjectColors[index % subjectColors.length]}
+                />
+              </View>
+            ))
+          )}
         </PremiumCard>
 
         <View style={styles.sectionHeader}>
@@ -74,29 +138,45 @@ export default function SubjectSetupScreen() {
           <Text style={styles.sectionAction}>View calendar</Text>
         </View>
 
-        <View style={styles.classList}>
-          {mockClasses.map((item) => (
-            <PremiumCard key={item.id} style={styles.classCard}>
-              <View style={styles.classTopRow}>
-                <View style={styles.classIcon}>
-                  <MaterialCommunityIcons name="google-classroom" size={22} color={colors.primary} />
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : classes.length === 0 ? (
+          <EmptyState
+            icon="google-classroom"
+            title="No classes yet"
+            message="Create your first class to see schedules and fee defaults here."
+            actionLabel="Add class"
+            actionHref="/classes/new"
+          />
+        ) : (
+          <View style={styles.classList}>
+            {classes.map((item) => (
+              <PremiumCard key={item.id} style={styles.classCard}>
+                <View style={styles.classTopRow}>
+                  <View style={styles.classIcon}>
+                    <MaterialCommunityIcons name="google-classroom" size={22} color={colors.primary} />
+                  </View>
+                  <View style={styles.classCopy}>
+                    <Text style={styles.classTitle}>
+                      {item.subject} Grade {item.grade}
+                    </Text>
+                    <Text style={styles.classMeta}>
+                      {item.medium} • {item.hall}
+                    </Text>
+                  </View>
+                  <View style={styles.feePill}>
+                    <Text style={styles.feePillText}>{formatLkr(item.monthlyFee)}</Text>
+                  </View>
                 </View>
-                <View style={styles.classCopy}>
-                  <Text style={styles.classTitle}>{item.subject} Grade {item.grade}</Text>
-                  <Text style={styles.classMeta}>{item.medium} • {item.hall}</Text>
+                <View style={styles.classStatsRow}>
+                  <ClassStat label="Schedule" value={`${item.day} ${item.startTime}`} />
+                  <ClassStat label="Students" value={`${item.enrolledCount}`} />
+                  <ClassStat label="Attendance" value={`${item.attendanceAverage}%`} />
                 </View>
-                <View style={styles.feePill}>
-                  <Text style={styles.feePillText}>{formatLkr(item.monthlyFee)}</Text>
-                </View>
-              </View>
-              <View style={styles.classStatsRow}>
-                <ClassStat label="Schedule" value={`${item.day} ${item.startTime}`} />
-                <ClassStat label="Students" value={`${item.enrolledCount}`} />
-                <ClassStat label="Attendance" value={`${item.attendanceAverage}%`} />
-              </View>
-            </PremiumCard>
-          ))}
-        </View>
+              </PremiumCard>
+            ))}
+          </View>
+        )}
 
         <PremiumCard style={styles.defaultsCard}>
           <View style={styles.cardHeaderRow}>
@@ -110,7 +190,11 @@ export default function SubjectSetupScreen() {
           <View style={styles.divider} />
           <RuleRow icon="bell-ring-outline" label="Fee reminder day" value="After 10th day" />
           <View style={styles.divider} />
-          <RuleRow icon="map-marker-outline" label="Default location" value="Main hall" />
+          <RuleRow
+            icon="map-marker-outline"
+            label="Default location"
+            value={classes[0]?.hall ?? 'Main hall'}
+          />
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
@@ -137,7 +221,9 @@ function SubjectRow({ title, grades, medium, color }: { title: string; grades: s
       </View>
       <View style={styles.subjectCopy}>
         <Text style={styles.subjectTitle}>{title}</Text>
-        <Text style={styles.subjectMeta}>{grades} • {medium}</Text>
+        <Text style={styles.subjectMeta}>
+          {grades} • {medium}
+        </Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
     </View>
@@ -219,4 +305,6 @@ const styles = StyleSheet.create({
   ruleCopy: { flex: 1 },
   ruleLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   ruleValue: { marginTop: 3, color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
+  loader: { paddingVertical: spacing.lg },
+  emptyNote: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', paddingVertical: spacing.md },
 });

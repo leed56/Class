@@ -1,21 +1,47 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
 import { useAuth } from '@/core/auth/AuthProvider';
+import { getCurrentWorkspace } from '@/features/auth/authService';
+import { getTeacherInitials } from '@/features/auth/teacherProfile';
 import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
 import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
+import { getWorkspaceHealth } from '@/features/reports/reportsService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function MoreScreen() {
   const { user, signOut, demoMode } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [dataHealth, setDataHealth] = useState(100);
+  const [consentMissingCount, setConsentMissingCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadMore = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [workspace, health] = await Promise.all([getCurrentWorkspace(), getWorkspaceHealth()]);
+      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setDataHealth(health.dataHealth);
+      setConsentMissingCount(health.consentMissingCount);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMore();
+    }, [loadMore]),
+  );
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -35,7 +61,7 @@ export default function MoreScreen() {
             <Text style={styles.subtitle}>Reports, settings, communication and account controls.</Text>
           </View>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>NP</Text>
+            <Text style={styles.avatarText}>{getTeacherInitials(user)}</Text>
           </View>
         </View>
 
@@ -44,17 +70,17 @@ export default function MoreScreen() {
             <MaterialCommunityIcons name="school" size={30} color="white" />
           </View>
           <View style={styles.heroTextBlock}>
-            <Text style={styles.heroLabel}>Nimal Perera Classes</Text>
-            <Text style={styles.heroValue}>Starter-ready setup</Text>
-            <Text style={styles.heroNote}>Trilingual UI foundation • Cash receipts • Parent consent tracking</Text>
+            <Text style={styles.heroLabel}>{workspaceName}</Text>
+            <Text style={styles.heroValue}>Teacher workspace</Text>
+            <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent tracking</Text>
           </View>
         </LinearGradient>
 
         <View style={styles.healthRow}>
           <PremiumCard style={styles.healthCard}>
             <Text style={styles.healthLabel}>Data Health</Text>
-            <Text style={styles.healthValue}>92%</Text>
-            <Text style={styles.healthNote}>1 consent pending</Text>
+            <Text style={styles.healthValue}>{isLoading ? '—' : `${dataHealth}%`}</Text>
+            <Text style={styles.healthNote}>{consentMissingCount} consent pending</Text>
           </PremiumCard>
           <PremiumCard style={styles.healthCard}>
             <Text style={styles.healthLabel}>Plan</Text>

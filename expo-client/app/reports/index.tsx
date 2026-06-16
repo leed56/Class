@@ -1,32 +1,61 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
-import { attendanceStudentsSeed } from '@/features/attendance/data/sessionSeed';
-import { mockFeeInvoices } from '@/features/fees/data/mockFees';
-import { mockStudents } from '@/features/students/data/mockStudents';
+import {
+  ClassPerformanceRow,
+  getClassPerformanceRows,
+  getReportSummary,
+  ReportSummary,
+} from '@/features/reports/reportsService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-const present = attendanceStudentsSeed.filter((item) => item.attendanceStatus === 'present').length;
-const marked = attendanceStudentsSeed.filter((item) => item.attendanceStatus !== 'unmarked').length;
-const attendanceRate = Math.round((present / Math.max(marked, 1)) * 100);
-const collected = mockFeeInvoices.reduce((sum, item) => sum + item.paidAmount, 0);
-const outstanding = mockFeeInvoices.reduce((sum, item) => sum + item.outstandingAmount, 0);
-const collectionRate = Math.round((collected / Math.max(collected + outstanding, 1)) * 100);
-const defaulters = mockFeeInvoices.filter((item) => item.outstandingAmount > 0).length;
-const averageStudentAttendance = Math.round(mockStudents.reduce((sum, item) => sum + item.attendancePercent, 0) / mockStudents.length);
+import { Link, Href } from 'expo-router';
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
 export default function ReportsScreen() {
+  const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [classRows, setClassRows] = useState<ClassPerformanceRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadReports = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [nextSummary, nextClassRows] = await Promise.all([getReportSummary(), getClassPerformanceRows()]);
+      setSummary(nextSummary);
+      setClassRows(nextClassRows);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load reports.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports]),
+  );
+
+  const monthLabel = summary?.monthLabel ?? 'This month';
+  const collectionRate = summary?.collectionPercent ?? 0;
+  const averageStudentAttendance = summary?.averageStudentAttendance ?? 0;
+  const defaulters = summary?.defaulterCount ?? 0;
+  const outstanding = summary?.outstanding ?? 0;
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/(tabs)/more" asChild>
@@ -48,62 +77,102 @@ export default function ReportsScreen() {
             <MaterialCommunityIcons name="chart-box-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>June 2026 performance</Text>
+            <Text style={styles.heroLabel}>{monthLabel} performance</Text>
             <Text style={styles.heroTitle}>Teacher command report</Text>
-            <Text style={styles.heroNote}>{collectionRate}% fees collected • {attendanceRate}% session attendance</Text>
+            <Text style={styles.heroNote}>
+              {collectionRate}% fees collected • {averageStudentAttendance}% avg student attendance
+            </Text>
           </View>
         </LinearGradient>
 
-        <View style={styles.monthRow}>
-          <View style={styles.monthChipActive}><Text style={styles.monthChipActiveText}>June</Text></View>
-          <View style={styles.monthChip}><Text style={styles.monthChipText}>May</Text></View>
-          <View style={styles.monthChip}><Text style={styles.monthChipText}>April</Text></View>
-          <View style={styles.monthChip}><Text style={styles.monthChipText}>Custom</Text></View>
-        </View>
-
-        <View style={styles.summaryRow}>
-          <InsightCard label="Collection" value={`${collectionRate}%`} note={formatLkr(outstanding) + ' due'} icon="cash-multiple" color={colors.success} />
-          <InsightCard label="Attendance" value={`${averageStudentAttendance}%`} note="Average student rate" icon="clipboard-check-outline" color={colors.primary} />
-        </View>
-
-        <PremiumCard style={styles.alertCard}>
-          <View style={styles.alertIcon}>
-            <MaterialCommunityIcons name="account-alert-outline" size={24} color={colors.danger} />
-          </View>
-          <View style={styles.alertCopy}>
-            <Text style={styles.cardTitle}>Defaulter follow-up report</Text>
-            <Text style={styles.cardSubtitle}>{defaulters} parents need payment follow-up this month. Export list or send WhatsApp reminders.</Text>
-          </View>
-          <View style={styles.alertBadge}><Text style={styles.alertBadgeText}>{defaulters}</Text></View>
-        </PremiumCard>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Report library</Text>
-          <Text style={styles.sectionAction}>Export all</Text>
-        </View>
-
-        <View style={styles.reportGrid}>
-          <ReportTile title="VAT Quarter" subtitle="Output, input and net VAT from SQLite" icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" />
-          <ReportTile title="Attendance Report" subtitle="Present, late and absent by class" icon="clipboard-list-outline" color={colors.primary} />
-          <ReportTile title="Fee Collection" subtitle="Paid, partial and outstanding fees" icon="cash-clock" color={colors.success} />
-          <ReportTile title="Defaulter List" subtitle="Parents to follow up this week" icon="account-cancel-outline" color={colors.danger} />
-          <ReportTile title="Class Performance" subtitle="Attendance trend and risk students" icon="chart-line" color={colors.warning} />
-        </View>
-
-        <PremiumCard style={styles.performanceCard}>
-          <View style={styles.cardHeaderRow}>
-            <View>
-              <Text style={styles.cardTitle}>Class performance snapshot</Text>
-              <Text style={styles.cardSubtitle}>Highest priority classes for teacher attention</Text>
+        {isLoading ? (
+          <PremiumCard style={styles.stateCard}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.stateText}>Loading live report data...</Text>
+          </PremiumCard>
+        ) : error ? (
+          <PremiumCard style={styles.stateCard}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable style={styles.retryButton} onPress={loadReports}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </PremiumCard>
+        ) : (
+          <>
+            <View style={styles.monthRow}>
+              <View style={styles.monthChipActive}>
+                <Text style={styles.monthChipActiveText}>{monthLabel.split(' ')[0]}</Text>
+              </View>
+              <View style={styles.monthChip}>
+                <Text style={styles.monthChipText}>History soon</Text>
+              </View>
             </View>
-            <MaterialCommunityIcons name="trending-up" size={24} color={colors.success} />
-          </View>
-          <PerformanceRow subject="Mathematics G9" attendance="91%" collection="78%" />
-          <View style={styles.divider} />
-          <PerformanceRow subject="Science G8" attendance="84%" collection="62%" />
-          <View style={styles.divider} />
-          <PerformanceRow subject="English G7" attendance="88%" collection="70%" />
-        </PremiumCard>
+
+            <View style={styles.summaryRow}>
+              <InsightCard label="Collection" value={`${collectionRate}%`} note={`${formatLkr(outstanding)} due`} icon="cash-multiple" color={colors.success} />
+              <InsightCard label="Attendance" value={`${averageStudentAttendance}%`} note="Average student rate" icon="clipboard-check-outline" color={colors.primary} />
+            </View>
+
+            {defaulters > 0 ? (
+              <PremiumCard style={styles.alertCard}>
+                <View style={styles.alertIcon}>
+                  <MaterialCommunityIcons name="account-alert-outline" size={24} color={colors.danger} />
+                </View>
+                <View style={styles.alertCopy}>
+                  <Text style={styles.cardTitle}>Defaulter follow-up report</Text>
+                  <Text style={styles.cardSubtitle}>
+                    {defaulters} parent{defaulters === 1 ? '' : 's'} need payment follow-up this month.
+                  </Text>
+                </View>
+                <View style={styles.alertBadge}>
+                  <Text style={styles.alertBadgeText}>{defaulters}</Text>
+                </View>
+              </PremiumCard>
+            ) : null}
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Report library</Text>
+              <Text style={styles.sectionAction}>Live data</Text>
+            </View>
+
+            <View style={styles.reportGrid}>
+              <ReportTile title="VAT Quarter" subtitle="Output, input and net VAT" icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" />
+              <ReportTile title="Fee Collection" subtitle="Paid, partial and outstanding fees" icon="cash-clock" color={colors.success} href="/(tabs)/fees" />
+              <ReportTile title="Defaulter List" subtitle="Parents to follow up this month" icon="account-cancel-outline" color={colors.danger} href="/(tabs)/fees" />
+              <ReportTile title="Class Performance" subtitle="Attendance and collection by class" icon="chart-line" color={colors.warning} />
+            </View>
+
+            <PremiumCard style={styles.performanceCard}>
+              <View style={styles.cardHeaderRow}>
+                <View>
+                  <Text style={styles.cardTitle}>Class performance snapshot</Text>
+                  <Text style={styles.cardSubtitle}>Sorted by lowest collection this month</Text>
+                </View>
+                <MaterialCommunityIcons name="trending-up" size={24} color={colors.success} />
+              </View>
+              {classRows.length === 0 ? (
+                <EmptyState
+                  icon="calendar-plus"
+                  title="No classes yet"
+                  message="Create classes and record attendance and fees to populate performance reports."
+                  actionLabel="Create Class"
+                  actionHref={'/classes/new' as Href}
+                />
+              ) : (
+                classRows.map((row, index) => (
+                  <View key={row.id}>
+                    {index > 0 ? <View style={styles.divider} /> : null}
+                    <PerformanceRow
+                      subject={`${row.label} • ${row.enrolledCount} enrolled`}
+                      attendance={`${row.attendancePercent}%`}
+                      collection={`${row.collectionPercent}%`}
+                    />
+                  </View>
+                ))
+              )}
+            </PremiumCard>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -112,7 +181,7 @@ export default function ReportsScreen() {
 function InsightCard({ label, value, note, icon, color }: { label: string; value: string; note: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string }) {
   return (
     <PremiumCard style={styles.insightCard}>
-      <View style={[styles.insightIcon, { backgroundColor: `${color}1F` }]}> 
+      <View style={[styles.insightIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={22} color={color} />
       </View>
       <Text style={styles.insightLabel}>{label}</Text>
@@ -125,14 +194,14 @@ function InsightCard({ label, value, note, icon, color }: { label: string; value
 function ReportTile({ title, subtitle, icon, color, href }: { title: string; subtitle: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; href?: string }) {
   const content = (
     <PremiumCard style={styles.reportTile}>
-      <View style={[styles.tileIcon, { backgroundColor: `${color}1F` }]}> 
+      <View style={[styles.tileIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={24} color={color} />
       </View>
       <Text style={styles.tileTitle}>{title}</Text>
       <Text style={styles.tileSubtitle}>{subtitle}</Text>
       <View style={styles.exportPill}>
         <MaterialCommunityIcons name={href ? 'chevron-right' : 'file-export-outline'} size={13} color={colors.primary} />
-        <Text style={styles.exportPillText}>{href ? 'Open' : 'Export'}</Text>
+        <Text style={styles.exportPillText}>{href ? 'Open' : 'Soon'}</Text>
       </View>
     </PremiumCard>
   );
@@ -140,9 +209,7 @@ function ReportTile({ title, subtitle, icon, color, href }: { title: string; sub
   if (!href) return content;
 
   return (
-    <Link href={href as never} asChild>
-      <Pressable>{content}</Pressable>
-    </Link>
+    <NavPressable href={href as Href}>{content}</NavPressable>
   );
 }
 
@@ -172,6 +239,11 @@ const styles = StyleSheet.create({
   heroLabel: { color: '#E7DEFF', fontSize: 12, fontWeight: '800' },
   heroTitle: { marginTop: 4, color: 'white', fontSize: 24, lineHeight: 29, fontWeight: '900' },
   heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  stateCard: { alignItems: 'center', gap: spacing.md },
+  stateText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
   monthRow: { flexDirection: 'row', gap: spacing.sm },
   monthChip: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   monthChipActive: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: colors.primary },

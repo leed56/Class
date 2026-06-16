@@ -1,14 +1,46 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { useAuth } from '@/core/auth/AuthProvider';
+import { getCurrentWorkspace } from '@/features/auth/authService';
+import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teacherProfile';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function SettingsScreen() {
+  const { user } = useAuth();
+  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const displayName = getTeacherDisplayName(user);
+  const initials = getTeacherInitials(user);
+  const phone =
+    typeof user?.user_metadata?.phone === 'string' && user.user_metadata.phone.trim()
+      ? user.user_metadata.phone.trim()
+      : 'Not set';
+
+  const loadSettings = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const workspace = await getCurrentWorkspace();
+      setWorkspaceName(workspace?.name ?? 'Your workspace');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [loadSettings]),
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -29,12 +61,12 @@ export default function SettingsScreen() {
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <View style={styles.avatarMark}>
-            <Text style={styles.avatarText}>NP</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>Teacher workspace</Text>
-            <Text style={styles.heroTitle}>Nimal Perera Classes</Text>
-            <Text style={styles.heroNote}>Starter-ready • Cash receipts • Parent consent controls</Text>
+            <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : workspaceName}</Text>
+            <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent controls</Text>
           </View>
         </LinearGradient>
 
@@ -46,11 +78,11 @@ export default function SettingsScreen() {
             </View>
             <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.primary} />
           </View>
-          <SettingValue label="Display name" value="Nimal Perera" icon="account-outline" />
+          <SettingValue label="Display name" value={displayName} icon="account-outline" />
           <View style={styles.divider} />
-          <SettingValue label="Institute name" value="Nimal Perera Classes" icon="school-outline" />
+          <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
           <View style={styles.divider} />
-          <SettingValue label="Mobile number" value="+94 77 000 0000" icon="phone-outline" />
+          <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
         </PremiumCard>
 
         <PremiumCard style={styles.languageCard}>
@@ -81,7 +113,7 @@ export default function SettingsScreen() {
           <SettingValue label="Footer note" value="Thank you for your payment" icon="note-text-outline" />
           <View style={styles.previewBox}>
             <Text style={styles.previewLabel}>Preview</Text>
-            <Text style={styles.previewTitle}>Nimal Perera Classes</Text>
+            <Text style={styles.previewTitle}>{workspaceName}</Text>
             <Text style={styles.previewText}>Receipt no: RCPT-0004 • LKR 2,500</Text>
           </View>
         </PremiumCard>
