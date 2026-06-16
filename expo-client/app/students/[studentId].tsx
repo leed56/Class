@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { mockFeeInvoices, mockPayments } from '@/features/fees/data/mockFees';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
-import { mockStudents } from '@/features/students/data/mockStudents';
+import { getStudentById } from '@/features/students/studentService';
+import { Student } from '@/features/students/types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -17,9 +18,55 @@ function formatLkr(amount: number) {
 
 export default function StudentProfileScreen() {
   const params = useLocalSearchParams<{ studentId: string }>();
-  const student = mockStudents.find((item) => item.id === params.studentId) ?? mockStudents[0];
-  const invoice = mockFeeInvoices.find((item) => item.studentName === student.name);
-  const payments = mockPayments.filter((item) => item.studentName === student.name);
+  const [student, setStudent] = useState<Student | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadStudent() {
+      if (!params.studentId) return;
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const nextStudent = await getStudentById(params.studentId);
+        setStudent(nextStudent);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadStudent();
+  }, [params.studentId]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <View style={styles.centerState}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.stateTitle}>Loading student...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !student) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <View style={styles.centerState}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={28} color={colors.danger} />
+          <Text style={styles.errorText}>{error ?? 'Student not found.'}</Text>
+          <Link href="/(tabs)/students" asChild>
+            <Pressable style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Back to Students</Text>
+            </Pressable>
+          </Link>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -64,7 +111,7 @@ export default function StudentProfileScreen() {
         <View style={styles.metricsRow}>
           <PremiumCard style={styles.metricCard}>
             <Text style={styles.metricLabel}>Attendance</Text>
-            <Text style={[styles.metricValue, { color: student.attendancePercent >= 80 ? colors.success : colors.danger }]}>{student.attendancePercent}%</Text>
+            <Text style={[styles.metricValue, { color: student.attendancePercent >= 80 ? colors.success : colors.warning }]}>{student.attendancePercent}%</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${student.attendancePercent}%` }]} />
             </View>
@@ -72,7 +119,7 @@ export default function StudentProfileScreen() {
           <PremiumCard style={styles.metricCard}>
             <Text style={styles.metricLabel}>Outstanding</Text>
             <Text style={[styles.metricValue, { color: student.outstandingAmount > 0 ? colors.danger : colors.success }]}>{formatLkr(student.outstandingAmount)}</Text>
-            <Text style={styles.metricNote}>{invoice ? invoice.month : 'No active invoice'}</Text>
+            <Text style={styles.metricNote}>Fee invoices pending</Text>
           </PremiumCard>
         </View>
 
@@ -109,7 +156,7 @@ export default function StudentProfileScreen() {
           </View>
           <View style={styles.invoiceRow}>
             <FeeFigure label="Monthly fee" value={formatLkr(student.monthlyFee)} />
-            <FeeFigure label="Paid" value={formatLkr(invoice?.paidAmount ?? 0)} />
+            <FeeFigure label="Paid" value={formatLkr(0)} />
             <FeeFigure label="Pending" value={formatLkr(student.outstandingAmount)} danger={student.outstandingAmount > 0} />
           </View>
         </PremiumCard>
@@ -128,27 +175,15 @@ export default function StudentProfileScreen() {
 
         <PremiumCard style={styles.activityCard}>
           <Text style={styles.cardTitle}>Recent activity</Text>
-          {payments.length > 0 ? payments.map((payment) => (
-            <View key={payment.id} style={styles.activityRow}>
-              <View style={styles.activityIcon}>
-                <MaterialCommunityIcons name="receipt-text-check-outline" size={18} color={colors.success} />
-              </View>
-              <View style={styles.parentCopy}>
-                <Text style={styles.activityTitle}>{formatLkr(payment.amount)} payment recorded</Text>
-                <Text style={styles.parentPhone}>{payment.paidAt} • {payment.receiptNo}</Text>
-              </View>
+          <View style={styles.activityRow}>
+            <View style={styles.activityIcon}>
+              <MaterialCommunityIcons name="calendar-clock" size={18} color={colors.warning} />
             </View>
-          )) : (
-            <View style={styles.activityRow}>
-              <View style={styles.activityIcon}>
-                <MaterialCommunityIcons name="calendar-clock" size={18} color={colors.warning} />
-              </View>
-              <View style={styles.parentCopy}>
-                <Text style={styles.activityTitle}>No payments recorded yet</Text>
-                <Text style={styles.parentPhone}>Record a cash payment to create a receipt.</Text>
-              </View>
+            <View style={styles.parentCopy}>
+              <Text style={styles.activityTitle}>No payments recorded yet</Text>
+              <Text style={styles.parentPhone}>Payment activity will appear when fee tracking is connected.</Text>
             </View>
-          )}
+          </View>
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
@@ -158,7 +193,7 @@ export default function StudentProfileScreen() {
 function ProfileAction({ icon, label, color }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string }) {
   return (
     <View style={styles.profileAction}>
-      <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}>
+      <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}> 
         <MaterialCommunityIcons name={icon} size={21} color={color} />
       </View>
       <Text style={styles.profileActionText}>{label}</Text>
@@ -178,6 +213,11 @@ function FeeFigure({ label, value, danger = false }: { label: string; value: str
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
+  centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
+  stateTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  errorText: { textAlign: 'center', color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
+  primaryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  primaryButtonText: { color: 'white', fontSize: 13, fontWeight: '900' },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   headerCopy: { flex: 1 },
