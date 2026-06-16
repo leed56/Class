@@ -1,29 +1,58 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
 import { PremiumCard } from '@/components/PremiumCard';
 import { StudentCard } from '@/features/students/components/StudentCard';
 import { StudentFilterBar } from '@/features/students/components/StudentFilterBar';
-import { mockStudents } from '@/features/students/data/mockStudents';
+import { listStudents } from '@/features/students/studentService';
+import { Student } from '@/features/students/types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-const totalOutstanding = mockStudents.reduce((sum, student) => sum + student.outstandingAmount, 0);
-const pendingCount = mockStudents.filter((student) => student.outstandingAmount > 0).length;
-const consentMissingCount = mockStudents.filter((student) => !student.consentCaptured).length;
-const averageAttendance = Math.round(
-  mockStudents.reduce((sum, student) => sum + student.attendancePercent, 0) / mockStudents.length,
-);
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
 export default function StudentsScreen() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStudents = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const nextStudents = await listStudents();
+      setStudents(nextStudents);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load students.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStudents();
+    }, [loadStudents]),
+  );
+
+  const summary = useMemo(() => {
+    const totalOutstanding = students.reduce((sum, student) => sum + student.outstandingAmount, 0);
+    const pendingCount = students.filter((student) => student.outstandingAmount > 0).length;
+    const consentMissingCount = students.filter((student) => !student.consentCaptured).length;
+    const averageAttendance = students.length
+      ? Math.round(students.reduce((sum, student) => sum + student.attendancePercent, 0) / students.length)
+      : 0;
+
+    return { totalOutstanding, pendingCount, consentMissingCount, averageAttendance };
+  }, [students]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -45,14 +74,14 @@ export default function StudentsScreen() {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>Active student registry</Text>
-            <Text style={styles.heroValue}>{mockStudents.length} students</Text>
-            <Text style={styles.heroNote}>{pendingCount} need fee follow-up • {consentMissingCount} consent pending</Text>
+            <Text style={styles.heroValue}>{students.length} students</Text>
+            <Text style={styles.heroNote}>{summary.pendingCount} need fee follow-up • {summary.consentMissingCount} consent pending</Text>
           </View>
         </LinearGradient>
 
         <View style={styles.metricsRow}>
-          <MetricCard label="Avg Attendance" value={`${averageAttendance}%`} icon="chart-line" tone={colors.success} />
-          <MetricCard label="Outstanding" value={formatLkr(totalOutstanding)} icon="cash-alert" tone={colors.danger} />
+          <MetricCard label="Avg Attendance" value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
+          <MetricCard label="Outstanding" value={formatLkr(summary.totalOutstanding)} icon="cash-alert" tone={colors.danger} />
         </View>
 
         <PremiumCard style={styles.insightCard}>
@@ -61,7 +90,7 @@ export default function StudentsScreen() {
           </View>
           <View style={styles.insightTextBlock}>
             <Text style={styles.insightTitle}>High-value action</Text>
-            <Text style={styles.insightCopy}>Send WhatsApp reminders to parents with overdue June fees.</Text>
+            <Text style={styles.insightCopy}>WhatsApp reminders unlock after real fee invoices are generated.</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
         </PremiumCard>
@@ -70,14 +99,40 @@ export default function StudentsScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent students</Text>
-          <Text style={styles.sectionAction}>View all</Text>
+          <Text style={styles.sectionAction}>{students.length ? 'Live data' : 'Empty'}</Text>
         </View>
 
-        <View style={styles.list}>
-          {mockStudents.map((student) => (
-            <StudentCard key={student.id} student={student} />
-          ))}
-        </View>
+        {isLoading ? (
+          <PremiumCard style={styles.stateCard}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.stateTitle}>Loading students...</Text>
+          </PremiumCard>
+        ) : error ? (
+          <PremiumCard style={styles.stateCard}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={24} color={colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable style={styles.retryButton} onPress={loadStudents}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </PremiumCard>
+        ) : students.length === 0 ? (
+          <PremiumCard style={styles.stateCard}>
+            <MaterialCommunityIcons name="account-plus-outline" size={28} color={colors.primary} />
+            <Text style={styles.stateTitle}>No students yet</Text>
+            <Text style={styles.stateText}>Add your first student to start attendance, fees and receipts.</Text>
+            <Link href="/students/new" asChild>
+              <Pressable style={styles.retryButton}>
+                <Text style={styles.retryText}>Add Student</Text>
+              </Pressable>
+            </Link>
+          </PremiumCard>
+        ) : (
+          <View style={styles.list}>
+            {students.map((student) => (
+              <StudentCard key={student.id} student={student} />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -215,5 +270,42 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  stateCard: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+  },
+  stateTitle: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  stateText: {
+    maxWidth: 260,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  errorText: {
+    textAlign: 'center',
+    color: colors.danger,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  retryButton: {
+    marginTop: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  retryText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '900',
   },
 });
