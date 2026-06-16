@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
@@ -31,9 +32,11 @@ export default function StudentsScreen() {
             <Text style={styles.title}>Students</Text>
             <Text style={styles.subtitle}>Manage students, parents, fees, consent and attendance.</Text>
           </View>
-          <View style={styles.addButton}>
-            <MaterialCommunityIcons name="account-plus" size={22} color="white" />
-          </View>
+          <Link href="/students/new" asChild>
+            <Pressable style={styles.addButton}>
+              <MaterialCommunityIcons name="account-plus" size={22} color="white" />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -151,9 +154,9 @@ const styles = StyleSheet.create({
   heroValue: {
     marginTop: 4,
     color: 'white',
-    fontSize: 29,
+    fontSize: 28,
     fontWeight: '900',
-    letterSpacing: -0.9,
+    letterSpacing: -0.8,
   },
   heroNote: {
     marginTop: 6,
@@ -173,8 +176,8 @@ const styles = StyleSheet.create({
     borderColor: colors.successSoft,
   },
   insightIcon: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: radius.lg,
     backgroundColor: colors.successSoft,
     alignItems: 'center',
