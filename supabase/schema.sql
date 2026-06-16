@@ -131,8 +131,17 @@ alter table public.attendance_marks enable row level security;
 alter table public.fee_invoices enable row level security;
 alter table public.payments enable row level security;
 
+drop policy if exists "Members can read own workspaces" on public.workspaces;
+drop policy if exists "Owners can read own workspaces" on public.workspaces;
+drop policy if exists "Owners can create workspaces" on public.workspaces;
+drop policy if exists "Members can read workspace members" on public.workspace_members;
+drop policy if exists "Owners can add themselves as member" on public.workspace_members;
+
 create policy "Members can read own workspaces" on public.workspaces
   for select using (public.is_workspace_member(id));
+
+create policy "Owners can read own workspaces" on public.workspaces
+  for select using (owner_id = auth.uid());
 
 create policy "Owners can create workspaces" on public.workspaces
   for insert with check (owner_id = auth.uid());
@@ -141,7 +150,15 @@ create policy "Members can read workspace members" on public.workspace_members
   for select using (public.is_workspace_member(workspace_id));
 
 create policy "Owners can add themselves as member" on public.workspace_members
-  for insert with check (user_id = auth.uid());
+  for insert with check (
+    user_id = auth.uid()
+    and exists (
+      select 1
+      from public.workspaces w
+      where w.id = workspace_id
+        and w.owner_id = auth.uid()
+    )
+  );
 
 create policy "Members can manage students" on public.students
   for all using (public.is_workspace_member(workspace_id)) with check (public.is_workspace_member(workspace_id));
