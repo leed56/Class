@@ -10,9 +10,11 @@ type Props = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   keyboardType?: 'default' | 'phone-pad' | 'email-address' | 'number-pad';
   helper?: string;
+  value?: string;
+  onChangeText?: (value: string) => void;
 };
 
-export function FormTextField({ label, placeholder, icon, keyboardType = 'default', helper }: Props) {
+export function FormTextField({ label, placeholder, icon, keyboardType = 'default', helper, value, onChangeText }: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
@@ -22,6 +24,8 @@ export function FormTextField({ label, placeholder, icon, keyboardType = 'defaul
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
           keyboardType={keyboardType}
+          value={value}
+          onChangeText={onChangeText}
           style={styles.input}
         />
       </View>
