@@ -14,6 +14,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSignup() {
@@ -24,10 +25,17 @@ export default function SignupScreen() {
 
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
-      await signUpTeacher({ email, password });
-      router.replace('/onboarding');
+      const result = await signUpTeacher({ email, password });
+
+      if (result.session) {
+        router.replace('/onboarding');
+        return;
+      }
+
+      setSuccessMessage('Account created. Check your email to confirm, then sign in.');
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : 'Could not create account. Please try again.');
     } finally {
@@ -78,11 +86,20 @@ export default function SignupScreen() {
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
           <Pressable style={[styles.primaryButton, isLoading && styles.disabledButton]} onPress={handleSignup} disabled={isLoading}>
             {isLoading ? <ActivityIndicator color="white" /> : <MaterialCommunityIcons name="account-plus" size={19} color="white" />}
             <Text style={styles.primaryButtonText}>{isLoading ? 'Creating...' : 'Create Account'}</Text>
           </Pressable>
+
+          {successMessage ? (
+            <Link href="/auth/login" asChild>
+              <Pressable style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Go to Sign In</Text>
+              </Pressable>
+            </Link>
+          ) : null}
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
@@ -108,7 +125,10 @@ const styles = StyleSheet.create({
   inputWrap: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.background, paddingHorizontal: spacing.md },
   input: { flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
   errorText: { color: colors.danger, fontSize: 12, lineHeight: 18, fontWeight: '800' },
+  successText: { color: colors.success, fontSize: 12, lineHeight: 18, fontWeight: '800' },
   primaryButton: { height: 54, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   disabledButton: { opacity: 0.72 },
   primaryButtonText: { color: 'white', fontSize: 15, fontWeight: '900' },
+  secondaryButton: { height: 50, borderRadius: radius.lg, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  secondaryButtonText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
 });
