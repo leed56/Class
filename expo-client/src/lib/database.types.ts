@@ -4,6 +4,7 @@ export type Medium = 'English' | 'Sinhala' | 'Tamil';
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type AttendanceStatus = 'present' | 'late' | 'absent';
 export type PaymentMethod = 'cash' | 'bank' | 'online';
+export type WorkspaceRole = 'owner' | 'teacher' | 'admin';
 
 export type WorkspaceRow = {
   id: string;
@@ -11,6 +12,13 @@ export type WorkspaceRow = {
   name: string;
   plan: WorkspacePlan;
   default_language: LanguageCode;
+  created_at: string;
+};
+
+export type WorkspaceMemberRow = {
+  workspace_id: string;
+  user_id: string;
+  role: WorkspaceRole;
   created_at: string;
 };
 
