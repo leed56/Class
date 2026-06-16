@@ -73,7 +73,7 @@ export default function SignupScreen() {
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputWrap}>
               <MaterialCommunityIcons name="email-outline" size={19} color={colors.textSecondary} />
-              <TextInput value={email} onChangeText={setEmail} placeholder="teacher@classflow.lk" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
+              <TextInput value={email} onChangeText={setEmail} placeholder="teacher@classflow.lk" placeholderTextColor={colors.textSecondary} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
             </View>
           </View>
 
@@ -81,7 +81,7 @@ export default function SignupScreen() {
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputWrap}>
               <MaterialCommunityIcons name="lock-outline" size={19} color={colors.textSecondary} />
-              <TextInput value={password} onChangeText={setPassword} placeholder="Minimum 6 characters" placeholderTextColor={colors.textMuted} secureTextEntry style={styles.input} />
+              <TextInput value={password} onChangeText={setPassword} placeholder="Minimum 6 characters" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} />
             </View>
           </View>
 
