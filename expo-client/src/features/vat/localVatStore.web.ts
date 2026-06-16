@@ -1,4 +1,4 @@
-import type { VatStatus, VatSummary } from './localVatStore';
+import type { VatStatus, VatSummary } from './types';
 
 function getQuarterRange(date = new Date()) {
   const year = date.getFullYear();
