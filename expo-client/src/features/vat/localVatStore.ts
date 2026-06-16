@@ -1,24 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-export type VatStatus = 'ready' | 'review' | 'blocked';
-
-export type VatSummary = {
-  quarterLabel: string;
-  quarterStart: string;
-  quarterEnd: string;
-  outputVat: number;
-  inputVat: number;
-  netPayable: number;
-  taxableRevenue: number;
-  confirmedSupplierSpend: number;
-  confirmedSupplierBills: number;
-  pendingSupplierBills: number;
-  confidenceScore: number;
-  status: VatStatus;
-  statusLabel: string;
-  statusNote: string;
-  lastSyncedAt: string;
-};
+import { VatSummary } from './types';
 
 type VatSaleRow = {
   taxable_amount: number;
@@ -148,7 +130,7 @@ export async function getVatSummary(): Promise<VatSummary> {
   const inputVat = confirmedBills.reduce((sum, row) => sum + row.vat_amount, 0);
   const netPayable = Math.max(outputVat - inputVat, 0);
   const confidenceScore = pendingBills.length === 0 ? 96 : Math.max(72, 96 - pendingBills.length * 8);
-  const status: VatStatus = pendingBills.length === 0 ? 'ready' : 'review';
+  const status = pendingBills.length === 0 ? 'ready' : 'review';
 
   return {
     quarterLabel: range.quarterLabel,
@@ -168,3 +150,5 @@ export async function getVatSummary(): Promise<VatSummary> {
     lastSyncedAt: new Date().toISOString(),
   };
 }
+
+export type { VatStatus, VatSummary } from './types';
