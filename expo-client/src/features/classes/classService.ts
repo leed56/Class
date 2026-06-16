@@ -186,3 +186,50 @@ export async function createClass(input: ClassFormInput) {
   if (error) throw new Error(error.message);
   return mapClassRow(data as ClassRow);
 }
+
+export async function updateClass(classId: string, input: ClassFormInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before updating classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const subject = requireText(input.subject, 'Subject is required.');
+  const weekday = requireText(input.weekday, 'Class day is required.');
+  const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
+  const endTime = parseTimeToDb(input.endTime, 'End time is required.');
+
+  const { data, error } = await supabase
+    .from('classes')
+    .update({
+      subject,
+      grade: input.grade,
+      medium: input.medium,
+      hall: input.hall?.trim() || null,
+      weekday,
+      start_time: startTime,
+      end_time: endTime,
+      monthly_fee: Math.max(0, Math.round(input.monthlyFee || 0)),
+    })
+    .eq('workspace_id', workspace.id)
+    .eq('id', classId)
+    .eq('active', true)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Class not found.');
+
+  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+    getEnrollmentCountsByClass([data.id]),
+    getClassAttendanceAverages([data.id]),
+    getClassCollectionPercents([data.id]),
+  ]);
+
+  return mapClassRow(
+    data as ClassRow,
+    counts.get(data.id) ?? 0,
+    attendanceAverages.get(data.id) ?? 0,
+    collectionPercents.get(data.id) ?? 0,
+  );
+}

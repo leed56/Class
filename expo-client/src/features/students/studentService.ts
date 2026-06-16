@@ -148,3 +148,53 @@ export async function createStudent(input: StudentFormInput) {
   if (error) throw new Error(error.message);
   return mapStudentRow(data as StudentRow);
 }
+
+export async function updateStudent(studentId: string, input: StudentFormInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before updating students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const fullName = requireText(input.fullName, 'Student name is required.');
+  const parentPhone = requireText(input.parentPhone, 'Parent phone is required.');
+
+  if (!input.consentCaptured) {
+    throw new Error('Parent consent is required before saving a student record.');
+  }
+
+  const { data, error } = await supabase
+    .from('students')
+    .update({
+      full_name: fullName,
+      grade: input.grade,
+      medium: input.medium,
+      school: input.school?.trim() || null,
+      parent_name: input.parentName?.trim() || null,
+      parent_phone: parentPhone,
+      consent_captured: input.consentCaptured,
+    })
+    .eq('workspace_id', workspace.id)
+    .eq('id', studentId)
+    .eq('active', true)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Student not found.');
+
+  const [labels, attendancePercents, feeSummaries] = await Promise.all([
+    getClassLabelsByStudent([data.id]),
+    getStudentAttendancePercents([data.id]),
+    getStudentFeeSummaries([data.id]),
+  ]);
+  const fees = feeSummaries.get(data.id);
+  return mapStudentRow(
+    data as StudentRow,
+    labels.get(data.id) ?? 'No class yet',
+    attendancePercents.get(data.id) ?? 0,
+    fees?.feeStatus ?? 'pending',
+    fees?.monthlyFee ?? 0,
+    fees?.outstandingAmount ?? 0,
+  );
+}

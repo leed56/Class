@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Link, useFocusEffect, useLocalSearchParams, Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -114,9 +114,11 @@ export default function StudentProfileScreen() {
             <Text style={styles.title}>Student Profile</Text>
             <Text style={styles.subtitle}>Attendance, fees, parent communication and consent in one place.</Text>
           </View>
-          <View style={styles.iconButton}>
-            <MaterialCommunityIcons name="dots-horizontal" size={22} color={colors.textPrimary} />
-          </View>
+          <Link href={`/students/edit/${student.id}` as Href} asChild>
+            <Pressable style={styles.iconButton}>
+              <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>

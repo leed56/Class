@@ -111,6 +111,11 @@ export default function ClassDetailScreen() {
               Grade {tuitionClass.grade} • {tuitionClass.medium} • {tuitionClass.day}
             </Text>
           </View>
+          <Link href={`/classes/edit/${params.classId}` as Href} asChild>
+            <Pressable style={styles.iconButton}>
+              <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
