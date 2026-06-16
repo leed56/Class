@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -7,9 +7,10 @@ type Props = {
   label: string;
   options: string[];
   selected: string;
+  onSelect?: (value: string) => void;
 };
 
-export function ChoiceChipGroup({ label, options, selected }: Props) {
+export function ChoiceChipGroup({ label, options, selected, onSelect }: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
@@ -17,9 +18,9 @@ export function ChoiceChipGroup({ label, options, selected }: Props) {
         {options.map((option) => {
           const active = option === selected;
           return (
-            <View key={option} style={[styles.chip, active && styles.activeChip]}>
+            <Pressable key={option} style={[styles.chip, active && styles.activeChip]} onPress={() => onSelect?.(option)}>
               <Text style={[styles.chipText, active && styles.activeChipText]}>{option}</Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
