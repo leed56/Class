@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -14,6 +14,7 @@ import {
   getReportSummary,
   ReportSummary,
 } from '@/features/reports/reportsService';
+import { exportMonthlyReportCsv } from '@/features/reports/reportExport';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { Link, Href } from 'expo-router';
@@ -26,6 +27,7 @@ export default function ReportsScreen() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [classRows, setClassRows] = useState<ClassPerformanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
@@ -54,6 +56,22 @@ export default function ReportsScreen() {
   const defaulters = summary?.defaulterCount ?? 0;
   const outstanding = summary?.outstanding ?? 0;
 
+  async function handleExportCsv() {
+    if (!summary) return;
+
+    setIsExporting(true);
+    try {
+      await exportMonthlyReportCsv(summary, classRows);
+    } catch (exportError) {
+      Alert.alert(
+        'Export failed',
+        exportError instanceof Error ? exportError.message : 'Could not export the monthly report.',
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -67,9 +85,17 @@ export default function ReportsScreen() {
             <Text style={styles.title}>Reports</Text>
             <Text style={styles.subtitle}>Export-ready insights for attendance, fees and class performance.</Text>
           </View>
-          <View style={styles.iconButton}>
-            <MaterialCommunityIcons name="download-outline" size={22} color={colors.primary} />
-          </View>
+          <Pressable
+            style={styles.iconButton}
+            onPress={handleExportCsv}
+            disabled={isLoading || isExporting || !summary}
+          >
+            {isExporting ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <MaterialCommunityIcons name="download-outline" size={22} color={colors.primary} />
+            )}
+          </Pressable>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -139,7 +165,7 @@ export default function ReportsScreen() {
               <ReportTile title="VAT Quarter" subtitle="Output, input and net VAT" icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" />
               <ReportTile title="Fee Collection" subtitle="Paid, partial and outstanding fees" icon="cash-clock" color={colors.success} href="/(tabs)/fees" />
               <ReportTile title="Defaulter List" subtitle="Parents to follow up this month" icon="account-cancel-outline" color={colors.danger} href="/(tabs)/fees" />
-              <ReportTile title="Class Performance" subtitle="Attendance and collection by class" icon="chart-line" color={colors.warning} />
+              <ReportTile title="Class Performance" subtitle="Attendance and collection by class" icon="chart-line" color={colors.warning} onExport={handleExportCsv} />
             </View>
 
             <PremiumCard style={styles.performanceCard}>
@@ -148,7 +174,10 @@ export default function ReportsScreen() {
                   <Text style={styles.cardTitle}>Class performance snapshot</Text>
                   <Text style={styles.cardSubtitle}>Sorted by lowest collection this month</Text>
                 </View>
-                <MaterialCommunityIcons name="trending-up" size={24} color={colors.success} />
+                <Pressable style={styles.exportAction} onPress={handleExportCsv} disabled={isExporting}>
+                  <MaterialCommunityIcons name="file-delimited-outline" size={18} color={colors.primary} />
+                  <Text style={styles.exportActionText}>{isExporting ? 'Exporting…' : 'Export CSV'}</Text>
+                </Pressable>
               </View>
               {classRows.length === 0 ? (
                 <EmptyState
@@ -191,7 +220,21 @@ function InsightCard({ label, value, note, icon, color }: { label: string; value
   );
 }
 
-function ReportTile({ title, subtitle, icon, color, href }: { title: string; subtitle: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; href?: string }) {
+function ReportTile({
+  title,
+  subtitle,
+  icon,
+  color,
+  href,
+  onExport,
+}: {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  color: string;
+  href?: string;
+  onExport?: () => void;
+}) {
   const content = (
     <PremiumCard style={styles.reportTile}>
       <View style={[styles.tileIcon, { backgroundColor: `${color}1F` }]}>
@@ -201,16 +244,20 @@ function ReportTile({ title, subtitle, icon, color, href }: { title: string; sub
       <Text style={styles.tileSubtitle}>{subtitle}</Text>
       <View style={styles.exportPill}>
         <MaterialCommunityIcons name={href ? 'chevron-right' : 'file-export-outline'} size={13} color={colors.primary} />
-        <Text style={styles.exportPillText}>{href ? 'Open' : 'Soon'}</Text>
+        <Text style={styles.exportPillText}>{href ? 'Open' : 'Export'}</Text>
       </View>
     </PremiumCard>
   );
 
-  if (!href) return content;
+  if (href) {
+    return <NavPressable href={href as Href}>{content}</NavPressable>;
+  }
 
-  return (
-    <NavPressable href={href as Href}>{content}</NavPressable>
-  );
+  if (onExport) {
+    return <Pressable onPress={onExport}>{content}</Pressable>;
+  }
+
+  return content;
 }
 
 function PerformanceRow({ subject, attendance, collection }: { subject: string; attendance: string; collection: string }) {
@@ -274,6 +321,8 @@ const styles = StyleSheet.create({
   exportPillText: { color: colors.primary, fontSize: 10, fontWeight: '900' },
   performanceCard: { gap: spacing.sm },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.sm },
+  exportAction: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: colors.primarySoft },
+  exportActionText: { color: colors.primary, fontSize: 11, fontWeight: '900' },
   performanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   performanceSubjectBlock: { flex: 1 },
   performanceSubject: { color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
