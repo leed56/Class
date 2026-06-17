@@ -96,7 +96,9 @@ export default function ClassesScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Class schedule</Text>
-          <Text style={styles.sectionAction}>{classes.length ? 'Live data' : 'Empty'}</Text>
+          <NavPressable href="/settings/archived">
+            <Text style={styles.sectionAction}>Archived</Text>
+          </NavPressable>
         </View>
 
         {isLoading ? (

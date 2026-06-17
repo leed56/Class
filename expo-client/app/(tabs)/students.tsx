@@ -101,7 +101,9 @@ export default function StudentsScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent students</Text>
-          <Text style={styles.sectionAction}>{students.length ? 'Live data' : 'Empty'}</Text>
+          <NavPressable href="/settings/archived">
+            <Text style={styles.sectionAction}>Archived</Text>
+          </NavPressable>
         </View>
 
         {isLoading ? (

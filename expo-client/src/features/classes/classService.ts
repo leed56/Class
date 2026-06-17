@@ -254,3 +254,41 @@ export async function archiveClass(classId: string) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Class not found or already archived.');
 }
+
+export async function listArchivedClasses() {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before viewing archived classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('active', false)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => mapClassRow(row as ClassRow));
+}
+
+export async function restoreClass(classId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before restoring classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('classes')
+    .update({ active: true })
+    .eq('workspace_id', workspace.id)
+    .eq('id', classId)
+    .eq('active', false)
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Class not found or already active.');
+}

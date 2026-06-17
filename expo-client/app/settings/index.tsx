@@ -146,6 +146,21 @@ export default function SettingsScreen() {
           <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} />
         </View>
 
+        <Link href="/settings/archived" asChild>
+          <Pressable>
+            <PremiumCard style={styles.archiveCard}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.warningSoft }]}>
+                <MaterialCommunityIcons name="archive-outline" size={20} color={colors.warning} />
+              </View>
+              <View style={styles.settingCopy}>
+                <Text style={styles.cardTitle}>Archived records</Text>
+                <Text style={styles.cardSubtitle}>View and restore hidden students and classes</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
+            </PremiumCard>
+          </Pressable>
+        </Link>
+
         <PremiumCard style={styles.policyCard}>
           <View style={styles.policyIcon}>
             <MaterialCommunityIcons name="shield-check-outline" size={24} color={colors.primary} />
@@ -250,6 +265,7 @@ const styles = StyleSheet.create({
   setupIcon: { width: 46, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   setupTitle: { marginTop: spacing.md, color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
   setupSubtitle: { marginTop: spacing.xs, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  archiveCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.warningSoft },
   policyCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.primarySoft },
   policyIcon: { width: 46, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   policyCopy: { flex: 1 },

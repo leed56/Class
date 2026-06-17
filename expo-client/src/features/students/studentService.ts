@@ -219,3 +219,44 @@ export async function archiveStudent(studentId: string) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Student not found or already archived.');
 }
+
+export async function listArchivedStudents() {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before viewing archived students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('students')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('active', false)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as StudentRow[];
+  const studentIds = rows.map((row) => row.id);
+  const labels = studentIds.length ? await getClassLabelsByStudent(studentIds) : new Map<string, string>();
+  return rows.map((row) => mapStudentRow(row, labels.get(row.id) ?? 'No class yet'));
+}
+
+export async function restoreStudent(studentId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before restoring students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('students')
+    .update({ active: true })
+    .eq('workspace_id', workspace.id)
+    .eq('id', studentId)
+    .eq('active', false)
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Student not found or already active.');
+}
