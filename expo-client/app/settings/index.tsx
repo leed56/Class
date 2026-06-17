@@ -10,12 +10,14 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { useAuth } from '@/core/auth/AuthProvider';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teacherProfile';
+import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
 
   const displayName = getTeacherDisplayName(user);
@@ -30,6 +32,7 @@ export default function SettingsScreen() {
     try {
       const workspace = await getCurrentWorkspace();
       setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setDefaultLanguage(workspace?.default_language ?? 'en');
     } finally {
       setIsLoading(false);
     }
@@ -54,9 +57,11 @@ export default function SettingsScreen() {
             <Text style={styles.title}>Settings</Text>
             <Text style={styles.subtitle}>Teacher profile, language, receipts, subjects and communication controls.</Text>
           </View>
-          <View style={styles.iconButton}>
-            <MaterialCommunityIcons name="content-save-outline" size={22} color={colors.primary} />
-          </View>
+          <Link href="/settings/edit" asChild>
+            <Pressable style={styles.iconButton}>
+              <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -78,11 +83,23 @@ export default function SettingsScreen() {
             </View>
             <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.primary} />
           </View>
-          <SettingValue label="Display name" value={displayName} icon="account-outline" />
+          <Link href="/settings/edit" asChild>
+            <Pressable>
+              <SettingValue label="Display name" value={displayName} icon="account-outline" />
+            </Pressable>
+          </Link>
           <View style={styles.divider} />
-          <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
+          <Link href="/settings/edit" asChild>
+            <Pressable>
+              <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
+            </Pressable>
+          </Link>
           <View style={styles.divider} />
-          <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
+          <Link href="/settings/edit" asChild>
+            <Pressable>
+              <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
+            </Pressable>
+          </Link>
         </PremiumCard>
 
         <PremiumCard style={styles.languageCard}>
@@ -94,9 +111,9 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons name="translate" size={24} color={colors.primary} />
           </View>
           <View style={styles.languageRow}>
-            <LanguageChip label="English" active />
-            <LanguageChip label="සිංහල" />
-            <LanguageChip label="தமிழ்" />
+            <LanguageChip label="English" active={defaultLanguage === 'en'} />
+            <LanguageChip label="සිංහල" active={defaultLanguage === 'si'} />
+            <LanguageChip label="தமிழ்" active={defaultLanguage === 'ta'} />
           </View>
         </PremiumCard>
 

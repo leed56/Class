@@ -101,3 +101,77 @@ export async function getCurrentUserLanguage(): Promise<LanguageCode> {
   const workspace = await getCurrentWorkspace();
   return workspace?.default_language ?? 'en';
 }
+
+export type WorkspaceUpdateInput = {
+  name?: string;
+  defaultLanguage?: LanguageCode;
+};
+
+export type TeacherProfileUpdateInput = {
+  fullName?: string;
+  phone?: string;
+};
+
+export async function updateWorkspace(input: WorkspaceUpdateInput) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) throw userError;
+  if (!user) throw new Error('Please sign in before updating workspace settings.');
+
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Workspace not found.');
+
+  const updates: { name?: string; default_language?: LanguageCode } = {};
+  if (input.name !== undefined) {
+    const trimmed = input.name.trim();
+    if (!trimmed) throw new Error('Institute name is required.');
+    updates.name = trimmed;
+  }
+  if (input.defaultLanguage !== undefined) {
+    updates.default_language = input.defaultLanguage;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return workspace;
+  }
+
+  const { data, error } = await supabase
+    .from('workspaces')
+    .update(updates)
+    .eq('id', workspace.id)
+    .eq('owner_id', user.id)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as WorkspaceRow;
+}
+
+export async function updateTeacherProfile(input: TeacherProfileUpdateInput) {
+  const metadata: Record<string, string> = {};
+
+  if (input.fullName !== undefined) {
+    const trimmed = input.fullName.trim();
+    if (!trimmed) throw new Error('Display name is required.');
+    metadata.full_name = trimmed;
+  }
+
+  if (input.phone !== undefined) {
+    metadata.phone = input.phone.trim();
+  }
+
+  if (Object.keys(metadata).length === 0) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error('Please sign in before updating your profile.');
+    return user;
+  }
+
+  const { data, error } = await supabase.auth.updateUser({ data: metadata });
+  if (error) throw new Error(error.message);
+  return data.user;
+}

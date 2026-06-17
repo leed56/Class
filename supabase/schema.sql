@@ -146,6 +146,10 @@ create policy "Owners can read own workspaces" on public.workspaces
 create policy "Owners can create workspaces" on public.workspaces
   for insert with check (owner_id = auth.uid());
 
+create policy "Owners can update own workspaces" on public.workspaces
+  for update using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
 create policy "Members can read workspace members" on public.workspace_members
   for select using (public.is_workspace_member(workspace_id));
 
