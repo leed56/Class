@@ -2,13 +2,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
-import { getClassById } from '@/features/classes/classService';
+import { archiveClass, getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { EnrolledStudentRow } from '@/features/enrollment/components/EnrolledStudentRow';
 import { ClassRosterEntry, listClassRoster, unenrollStudentFromClass } from '@/features/enrollment/enrollmentService';
@@ -28,6 +28,7 @@ export default function ClassDetailScreen() {
   const [roster, setRoster] = useState<ClassRosterEntry[]>([]);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadClass = useCallback(async () => {
@@ -64,6 +65,32 @@ export default function ClassDetailScreen() {
       await loadClass();
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : 'Could not remove student.');
+    }
+  }
+
+  function confirmArchive() {
+    if (!tuitionClass) return;
+    Alert.alert(
+      'Archive class?',
+      `${tuitionClass.subject} G${tuitionClass.grade} will be hidden from active lists. History stays saved.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Archive', style: 'destructive', onPress: handleArchive },
+      ],
+    );
+  }
+
+  async function handleArchive() {
+    if (!params.classId) return;
+    setIsArchiving(true);
+    setError(null);
+    try {
+      await archiveClass(params.classId);
+      router.replace('/(tabs)/classes');
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : 'Could not archive class.');
+    } finally {
+      setIsArchiving(false);
     }
   }
 
@@ -210,6 +237,23 @@ export default function ClassDetailScreen() {
           <MaterialCommunityIcons name="account-plus-outline" size={18} color={colors.primary} />
           <Text style={styles.addStudentText}>Add a new student to registry</Text>
         </Pressable>
+
+        <PremiumCard style={styles.archiveCard}>
+          <View style={styles.archiveCopy}>
+            <Text style={styles.archiveTitle}>Archive class</Text>
+            <Text style={styles.archiveText}>Hide finished or inactive classes without deleting roster, attendance or fee history.</Text>
+          </View>
+          <Pressable style={[styles.archiveButton, isArchiving && styles.archiveButtonDisabled]} onPress={confirmArchive} disabled={isArchiving}>
+            {isArchiving ? (
+              <ActivityIndicator color={colors.danger} size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="archive-outline" size={18} color={colors.danger} />
+                <Text style={styles.archiveButtonText}>Archive</Text>
+              </>
+            )}
+          </Pressable>
+        </PremiumCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -262,6 +306,13 @@ const styles = StyleSheet.create({
   list: { gap: spacing.md },
   addStudentLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md },
   addStudentText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  archiveCard: { gap: spacing.lg, borderColor: colors.dangerSoft },
+  archiveCopy: { gap: spacing.xs },
+  archiveTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  archiveText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  archiveButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.dangerSoft, backgroundColor: colors.dangerSoft },
+  archiveButtonDisabled: { opacity: 0.7 },
+  archiveButtonText: { color: colors.danger, fontSize: 14, fontWeight: '900' },
   errorText: { color: colors.danger, fontSize: 14, fontWeight: '800', textAlign: 'center' },
   retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   retryText: { color: 'white', fontSize: 13, fontWeight: '900' },

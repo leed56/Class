@@ -95,6 +95,7 @@ export async function getStudentById(studentId: string) {
     .select('*')
     .eq('workspace_id', workspace.id)
     .eq('id', studentId)
+    .eq('active', true)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -197,4 +198,24 @@ export async function updateStudent(studentId: string, input: StudentFormInput) 
     fees?.monthlyFee ?? 0,
     fees?.outstandingAmount ?? 0,
   );
+}
+
+export async function archiveStudent(studentId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before archiving students.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('students')
+    .update({ active: false })
+    .eq('workspace_id', workspace.id)
+    .eq('id', studentId)
+    .eq('active', true)
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Student not found or already archived.');
 }

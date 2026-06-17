@@ -137,6 +137,7 @@ export async function getClassById(classId: string) {
     .select('*')
     .eq('workspace_id', workspace.id)
     .eq('id', classId)
+    .eq('active', true)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -232,4 +233,24 @@ export async function updateClass(classId: string, input: ClassFormInput) {
     attendanceAverages.get(data.id) ?? 0,
     collectionPercents.get(data.id) ?? 0,
   );
+}
+
+export async function archiveClass(classId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before archiving classes.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('classes')
+    .update({ active: false })
+    .eq('workspace_id', workspace.id)
+    .eq('id', classId)
+    .eq('active', true)
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Class not found or already archived.');
 }

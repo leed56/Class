@@ -1,8 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useFocusEffect, useLocalSearchParams, Href } from 'expo-router';
+import { Link, useFocusEffect, useLocalSearchParams, useRouter, Href } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
@@ -10,7 +10,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { EnrolledClassCard } from '@/features/enrollment/components/EnrolledClassCard';
 import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
-import { getStudentById } from '@/features/students/studentService';
+import { getStudentById, archiveStudent } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { buildFeeReminderMessage, buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
@@ -21,11 +21,13 @@ function formatLkr(amount: number) {
 }
 
 export default function StudentProfileScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [isLoading, setIsLoading] = useState(true);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadStudent = useCallback(async () => {
@@ -74,6 +76,32 @@ export default function StudentProfileScreen() {
           });
 
     await openWhatsAppChat(student.parentPhone, message);
+  }
+
+  function confirmArchive() {
+    if (!student) return;
+    Alert.alert(
+      'Archive student?',
+      `${student.name} will be hidden from active lists. Attendance, fees and receipts stay saved.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Archive', style: 'destructive', onPress: handleArchive },
+      ],
+    );
+  }
+
+  async function handleArchive() {
+    if (!student) return;
+    setIsArchiving(true);
+    setError(null);
+    try {
+      await archiveStudent(student.id);
+      router.replace('/(tabs)/students');
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : 'Could not archive student.');
+    } finally {
+      setIsArchiving(false);
+    }
   }
 
   if (isLoading) {
@@ -245,6 +273,23 @@ export default function StudentProfileScreen() {
             </View>
           </View>
         </PremiumCard>
+
+        <PremiumCard style={styles.archiveCard}>
+          <View style={styles.archiveCopy}>
+            <Text style={styles.archiveTitle}>Archive student</Text>
+            <Text style={styles.archiveText}>Hide graduated or inactive students without deleting attendance and payment history.</Text>
+          </View>
+          <Pressable style={[styles.archiveButton, isArchiving && styles.archiveButtonDisabled]} onPress={confirmArchive} disabled={isArchiving}>
+            {isArchiving ? (
+              <ActivityIndicator color={colors.danger} size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="archive-outline" size={18} color={colors.danger} />
+                <Text style={styles.archiveButtonText}>Archive</Text>
+              </>
+            )}
+          </Pressable>
+        </PremiumCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -342,6 +387,13 @@ const styles = StyleSheet.create({
   feeLabel: { color: colors.textSecondary, fontSize: 10, fontWeight: '800' },
   feeValue: { marginTop: 4, fontSize: 13, fontWeight: '900' },
   consentCard: { borderColor: colors.primarySoft },
+  archiveCard: { gap: spacing.lg, borderColor: colors.dangerSoft },
+  archiveCopy: { gap: spacing.xs },
+  archiveTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  archiveText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  archiveButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.dangerSoft, backgroundColor: colors.dangerSoft },
+  archiveButtonDisabled: { opacity: 0.7 },
+  archiveButtonText: { color: colors.danger, fontSize: 14, fontWeight: '900' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   sectionCount: { color: colors.primary, fontSize: 13, fontWeight: '900' },
