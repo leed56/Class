@@ -108,6 +108,8 @@ export type WorkspaceUpdateInput = {
   instituteType?: InstituteType;
   admissionFeeLkr?: number;
   proRataEnabled?: boolean;
+  minAttendanceForCertificate?: number;
+  requireFeesClearForCertificate?: boolean;
 };
 
 export type TeacherProfileUpdateInput = {
@@ -133,6 +135,8 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
     institute_type?: InstituteType;
     admission_fee_lkr?: number;
     pro_rata_enabled?: boolean;
+    min_attendance_for_certificate?: number;
+    require_fees_clear_for_certificate?: boolean;
   } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
@@ -150,6 +154,12 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.proRataEnabled !== undefined) {
     updates.pro_rata_enabled = input.proRataEnabled;
+  }
+  if (input.minAttendanceForCertificate !== undefined) {
+    updates.min_attendance_for_certificate = Math.min(100, Math.max(0, Math.round(input.minAttendanceForCertificate)));
+  }
+  if (input.requireFeesClearForCertificate !== undefined) {
+    updates.require_fees_clear_for_certificate = input.requireFeesClearForCertificate;
   }
 
   if (Object.keys(updates).length === 0) {

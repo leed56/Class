@@ -9,7 +9,9 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   CertificateType,
+  CertificateEligibility,
   formatCertificateDate,
+  getCertificateEligibilityForStudents,
   issueCertificate,
   listStudentCertificates,
   StudentCertificate,
@@ -34,6 +36,7 @@ export default function StudentCertificatesScreen() {
   const [certificateType, setCertificateType] = useState<CertificateType>('completion');
   const [title, setTitle] = useState('Course Completion Certificate');
   const [note, setNote] = useState('');
+  const [eligibility, setEligibility] = useState<CertificateEligibility | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isIssuing, setIsIssuing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,6 +59,12 @@ export default function StudentCertificatesScreen() {
       setStudent(nextStudent);
       setWorkspaceType(workspace?.institute_type ?? 'solo');
       setItems(certificates);
+      if ((workspace?.institute_type ?? 'solo') !== 'solo' && nextStudent?.id) {
+        const eligibilityMap = await getCertificateEligibilityForStudents([nextStudent.id]);
+        setEligibility(eligibilityMap.get(nextStudent.id) ?? null);
+      } else {
+        setEligibility(null);
+      }
       if (!nextStudent) setLoadError('Student not found.');
     } catch (loadError) {
       setLoadError(loadError instanceof Error ? loadError.message : 'Could not load certifications.');
@@ -98,6 +107,10 @@ export default function StudentCertificatesScreen() {
 
   function confirmIssue() {
     if (!student) return;
+    if (eligibility && !eligibility.eligible) {
+      setFormError(eligibility.blockers[0] ?? 'Student is not eligible for certification.');
+      return;
+    }
     Alert.alert(
       'Issue certificate?',
       `${certificateTypeLabel(certificateType)} for ${student.name} will be recorded now.`,
@@ -160,6 +173,38 @@ export default function StudentCertificatesScreen() {
           </PremiumCard>
         ) : (
           <>
+            {eligibility ? (
+              <PremiumCard style={styles.eligibilityCard}>
+                <Text style={styles.cardTitle}>Eligibility</Text>
+                <View style={styles.eligibilityRow}>
+                  <Text style={styles.eligibilityLabel}>Attendance</Text>
+                  <Text style={styles.eligibilityValue}>{eligibility.attendancePercent}%</Text>
+                </View>
+                <View style={styles.eligibilityRow}>
+                  <Text style={styles.eligibilityLabel}>Outstanding fees</Text>
+                  <Text style={styles.eligibilityValue}>LKR {eligibility.outstandingAmount.toLocaleString('en-LK')}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.eligibilityBadge,
+                    { backgroundColor: eligibility.eligible ? colors.successSoft : colors.dangerSoft },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.eligibilityBadgeText,
+                      { color: eligibility.eligible ? colors.success : colors.danger },
+                    ]}
+                  >
+                    {eligibility.eligible ? 'Eligible to certify' : 'Blocked by rules'}
+                  </Text>
+                </View>
+                {!eligibility.eligible ? (
+                  <Text style={styles.blockerText}>{eligibility.blockers[0]}</Text>
+                ) : null}
+              </PremiumCard>
+            ) : null}
+
             <PremiumCard style={styles.formCard}>
               <Text style={styles.cardTitle}>Issue certificate</Text>
               <ChoiceChipGroup
@@ -183,7 +228,11 @@ export default function StudentCertificatesScreen() {
                 onChangeText={setNote}
               />
               {formError ? <Text style={styles.formErrorText}>{formError}</Text> : null}
-              <Pressable style={[styles.issueButton, isIssuing && styles.issueButtonDisabled]} onPress={confirmIssue} disabled={isIssuing}>
+              <Pressable
+                style={[styles.issueButton, (isIssuing || (eligibility != null && !eligibility.eligible)) && styles.issueButtonDisabled]}
+                onPress={confirmIssue}
+                disabled={isIssuing || (eligibility != null && !eligibility.eligible)}
+              >
                 {isIssuing ? (
                   <ActivityIndicator color="white" size="small" />
                 ) : (
@@ -237,8 +286,15 @@ const styles = StyleSheet.create({
   headerCopy: { flex: 1 },
   title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
   subtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  eligibilityCard: { gap: spacing.sm },
   formCard: { gap: spacing.lg },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
+  eligibilityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  eligibilityLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '800' },
+  eligibilityValue: { color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
+  eligibilityBadge: { marginTop: 4, alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  eligibilityBadgeText: { fontSize: 11, fontWeight: '900' },
+  blockerText: { color: colors.danger, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   issueButton: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary },
   issueButtonDisabled: { opacity: 0.7 },
   issueButtonText: { color: 'white', fontSize: 14, fontWeight: '900' },

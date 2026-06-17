@@ -18,6 +18,8 @@ export type WorkspaceRow = {
   institute_type: InstituteType;
   admission_fee_lkr: number;
   pro_rata_enabled: boolean;
+  min_attendance_for_certificate: number;
+  require_fees_clear_for_certificate: boolean;
   created_at: string;
 };
 

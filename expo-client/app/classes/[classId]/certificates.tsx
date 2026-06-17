@@ -9,7 +9,12 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
-import { issueCertificatesBulk, CertificateType } from '@/features/certificates/certificateService';
+import {
+  issueCertificatesBulk,
+  CertificateType,
+  getCertificateEligibilityForStudents,
+  CertificateEligibility,
+} from '@/features/certificates/certificateService';
 import { listClassRoster, ClassRosterEntry } from '@/features/enrollment/enrollmentService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
@@ -29,6 +34,7 @@ export default function ClassCertificatesScreen() {
   const [certificateType, setCertificateType] = useState<CertificateType>('completion');
   const [title, setTitle] = useState('Class Completion Certificate');
   const [note, setNote] = useState('');
+  const [eligibilityByStudent, setEligibilityByStudent] = useState<Record<string, CertificateEligibility>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isIssuing, setIsIssuing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,6 +43,11 @@ export default function ClassCertificatesScreen() {
   const backHref = (`/classes/${params.classId}` as Href);
   const isEnabled = workspaceType !== 'solo';
   const typeChoice = useMemo(() => certificateTypeLabel(certificateType), [certificateType]);
+  const eligibleCount = useMemo(
+    () => roster.filter((entry) => eligibilityByStudent[entry.student.id]?.eligible).length,
+    [eligibilityByStudent, roster],
+  );
+  const blockedCount = Math.max(0, roster.length - eligibleCount);
 
   const load = useCallback(async () => {
     if (!params.classId) return;
@@ -51,6 +62,18 @@ export default function ClassCertificatesScreen() {
       setTuitionClass(nextClass);
       setRoster(nextRoster);
       setWorkspaceType(workspace?.institute_type ?? 'solo');
+      if ((workspace?.institute_type ?? 'solo') !== 'solo' && nextRoster.length > 0) {
+        const eligibilityMap = await getCertificateEligibilityForStudents(
+          nextRoster.map((entry) => entry.student.id),
+        );
+        const nextEligibility: Record<string, CertificateEligibility> = {};
+        for (const [studentId, eligibility] of eligibilityMap.entries()) {
+          nextEligibility[studentId] = eligibility;
+        }
+        setEligibilityByStudent(nextEligibility);
+      } else {
+        setEligibilityByStudent({});
+      }
       if (nextClass) {
         setTitle(`${nextClass.subject} Grade ${nextClass.grade} ${certificateTypeLabel(certificateType)} Certificate`);
       } else {
@@ -81,12 +104,16 @@ export default function ClassCertificatesScreen() {
     setIsIssuing(true);
     setFormError(null);
     try {
-      await issueCertificatesBulk({
+      const result = await issueCertificatesBulk({
         studentIds: roster.map((entry) => entry.student.id),
         certificateType,
         title,
         note,
       });
+      Alert.alert(
+        'Certificates issued',
+        `Issued ${result.issued.length} certificates. ${result.blocked.length > 0 ? `Blocked ${result.blocked.length} student${result.blocked.length === 1 ? '' : 's'} due to eligibility rules.` : 'All selected students were eligible.'}`,
+      );
       setNote('');
       await load();
     } catch (error) {
@@ -100,7 +127,7 @@ export default function ClassCertificatesScreen() {
     if (!tuitionClass) return;
     Alert.alert(
       'Issue certificates?',
-      `Issue ${certificateTypeLabel(certificateType)} certificates to ${roster.length} students in ${tuitionClass.subject} G${tuitionClass.grade}.`,
+      `Issue ${certificateTypeLabel(certificateType)} certificates for ${eligibleCount} eligible students in ${tuitionClass.subject} G${tuitionClass.grade}${blockedCount > 0 ? ` (${blockedCount} blocked)` : ''}.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Issue all', onPress: handleIssueAll },
@@ -192,12 +219,22 @@ export default function ClassCertificatesScreen() {
                 value={note}
                 onChangeText={setNote}
               />
-              <View style={styles.summaryPill}>
-                <MaterialCommunityIcons name="account-group-outline" size={16} color={colors.primary} />
-                <Text style={styles.summaryText}>{roster.length} students selected</Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryPill}>
+                  <MaterialCommunityIcons name="account-check-outline" size={16} color={colors.success} />
+                  <Text style={[styles.summaryText, { color: colors.success }]}>{eligibleCount} eligible</Text>
+                </View>
+                <View style={styles.summaryPill}>
+                  <MaterialCommunityIcons name="account-alert-outline" size={16} color={colors.danger} />
+                  <Text style={[styles.summaryText, { color: colors.danger }]}>{blockedCount} blocked</Text>
+                </View>
               </View>
               {formError ? <Text style={styles.formErrorText}>{formError}</Text> : null}
-              <Pressable style={[styles.issueButton, isIssuing && styles.issueButtonDisabled]} onPress={confirmIssueAll} disabled={isIssuing}>
+              <Pressable
+                style={[styles.issueButton, (isIssuing || eligibleCount === 0) && styles.issueButtonDisabled]}
+                onPress={confirmIssueAll}
+                disabled={isIssuing || eligibleCount === 0}
+              >
                 {isIssuing ? (
                   <ActivityIndicator color="white" size="small" />
                 ) : (
@@ -226,6 +263,38 @@ export default function ClassCertificatesScreen() {
                     <View style={styles.rowCopy}>
                       <Text style={styles.rowName}>{entry.student.name}</Text>
                       <Text style={styles.rowMeta}>Grade {entry.student.grade} • {entry.student.medium}</Text>
+                      {eligibilityByStudent[entry.student.id] ? (
+                        <>
+                          <View
+                            style={[
+                              styles.eligibilityBadge,
+                              {
+                                backgroundColor: eligibilityByStudent[entry.student.id].eligible
+                                  ? colors.successSoft
+                                  : colors.dangerSoft,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.eligibilityBadgeText,
+                                {
+                                  color: eligibilityByStudent[entry.student.id].eligible
+                                    ? colors.success
+                                    : colors.danger,
+                                },
+                              ]}
+                            >
+                              {eligibilityByStudent[entry.student.id].eligible ? 'Eligible' : 'Blocked'}
+                            </Text>
+                          </View>
+                          {!eligibilityByStudent[entry.student.id].eligible ? (
+                            <Text style={styles.blockerText}>
+                              {eligibilityByStudent[entry.student.id].blockers[0]}
+                            </Text>
+                          ) : null}
+                        </>
+                      ) : null}
                     </View>
                   </View>
                 ))}
@@ -249,8 +318,9 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '700' },
   formCard: { gap: spacing.lg },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
+  summaryRow: { flexDirection: 'row', gap: spacing.sm },
   summaryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 11, paddingVertical: 7 },
-  summaryText: { color: colors.primary, fontSize: 11, fontWeight: '900' },
+  summaryText: { fontSize: 11, fontWeight: '900' },
   formErrorText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
   issueButton: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary },
   issueButtonDisabled: { opacity: 0.7 },
@@ -263,6 +333,9 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1 },
   rowName: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
   rowMeta: { marginTop: 2, color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
+  eligibilityBadge: { marginTop: 6, alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  eligibilityBadgeText: { fontSize: 10, fontWeight: '900' },
+  blockerText: { marginTop: 5, color: colors.danger, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   errorText: { color: colors.danger, fontSize: 14, fontWeight: '800', textAlign: 'center' },
   retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   retryText: { color: 'white', fontSize: 13, fontWeight: '900' },

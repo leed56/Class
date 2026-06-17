@@ -48,6 +48,8 @@ export default function EditSettingsScreen() {
   const [instituteType, setInstituteType] = useState<InstituteType>('solo');
   const [admissionFeeLkr, setAdmissionFeeLkr] = useState('0');
   const [proRataEnabled, setProRataEnabled] = useState(true);
+  const [minAttendanceForCertificate, setMinAttendanceForCertificate] = useState('75');
+  const [requireFeesClearForCertificate, setRequireFeesClearForCertificate] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,6 +64,8 @@ export default function EditSettingsScreen() {
       setInstituteType(workspace?.institute_type ?? 'solo');
       setAdmissionFeeLkr(String(workspace?.admission_fee_lkr ?? 0));
       setProRataEnabled(workspace?.pro_rata_enabled ?? true);
+      setMinAttendanceForCertificate(String(workspace?.min_attendance_for_certificate ?? 75));
+      setRequireFeesClearForCertificate(workspace?.require_fees_clear_for_certificate ?? true);
       setDisplayName(
         typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : '',
       );
@@ -88,6 +92,8 @@ export default function EditSettingsScreen() {
           instituteType,
           admissionFeeLkr: Number(admissionFeeLkr.replace(/\D/g, '') || 0),
           proRataEnabled,
+          minAttendanceForCertificate: Number(minAttendanceForCertificate.replace(/\D/g, '') || 0),
+          requireFeesClearForCertificate,
         }),
         updateTeacherProfile({ fullName: displayName, phone }),
       ]);
@@ -189,6 +195,25 @@ export default function EditSettingsScreen() {
             options={['Enabled', 'Disabled']}
             onSelect={(label) => setProRataEnabled(label === 'Enabled')}
           />
+          {instituteType !== 'solo' ? (
+            <>
+              <FormTextField
+                label="Minimum attendance for certificates (%)"
+                placeholder="75"
+                icon="percent-outline"
+                keyboardType="number-pad"
+                value={minAttendanceForCertificate}
+                onChangeText={setMinAttendanceForCertificate}
+                helper="Students below this threshold are blocked from certification."
+              />
+              <ChoiceChipGroup
+                label="Require all fees cleared for certificates"
+                selected={requireFeesClearForCertificate ? 'Required' : 'Not required'}
+                options={['Required', 'Not required']}
+                onSelect={(label) => setRequireFeesClearForCertificate(label === 'Required')}
+              />
+            </>
+          ) : null}
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
