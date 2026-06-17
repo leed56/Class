@@ -110,6 +110,11 @@ export type WorkspaceUpdateInput = {
   proRataEnabled?: boolean;
   minAttendanceForCertificate?: number;
   requireFeesClearForCertificate?: boolean;
+  certificateSignatoryName?: string;
+  certificateSignatoryTitle?: string;
+  certificateCompletionBody?: string;
+  certificateAchievementBody?: string;
+  certificateFooterNote?: string;
 };
 
 export type TeacherProfileUpdateInput = {
@@ -137,6 +142,11 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
     pro_rata_enabled?: boolean;
     min_attendance_for_certificate?: number;
     require_fees_clear_for_certificate?: boolean;
+    certificate_signatory_name?: string;
+    certificate_signatory_title?: string;
+    certificate_completion_body?: string;
+    certificate_achievement_body?: string;
+    certificate_footer_note?: string;
   } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
@@ -160,6 +170,25 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.requireFeesClearForCertificate !== undefined) {
     updates.require_fees_clear_for_certificate = input.requireFeesClearForCertificate;
+  }
+  if (input.certificateSignatoryName !== undefined) {
+    updates.certificate_signatory_name = input.certificateSignatoryName.trim();
+  }
+  if (input.certificateSignatoryTitle !== undefined) {
+    updates.certificate_signatory_title = input.certificateSignatoryTitle.trim() || 'Director';
+  }
+  if (input.certificateCompletionBody !== undefined) {
+    const trimmed = input.certificateCompletionBody.trim();
+    if (!trimmed) throw new Error('Completion certificate wording is required.');
+    updates.certificate_completion_body = trimmed;
+  }
+  if (input.certificateAchievementBody !== undefined) {
+    const trimmed = input.certificateAchievementBody.trim();
+    if (!trimmed) throw new Error('Achievement certificate wording is required.');
+    updates.certificate_achievement_body = trimmed;
+  }
+  if (input.certificateFooterNote !== undefined) {
+    updates.certificate_footer_note = input.certificateFooterNote.trim();
   }
 
   if (Object.keys(updates).length === 0) {

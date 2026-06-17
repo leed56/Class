@@ -25,6 +25,7 @@
     "expo-splash-screen": "latest",
     "expo-sqlite": "^56.0.5",
     "expo-status-bar": "latest",
+    "jspdf": "^4.2.1",
     "react": "latest",
     "react-dom": "latest",
     "react-native": "latest",

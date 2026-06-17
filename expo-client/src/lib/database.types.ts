@@ -9,6 +9,8 @@ export type AttendanceStatus = 'present' | 'late' | 'absent';
 export type PaymentMethod = 'cash' | 'bank' | 'online';
 export type WorkspaceRole = 'owner' | 'teacher' | 'admin';
 
+export type CertificatePrintAction = 'download' | 'share' | 'reprint';
+
 export type WorkspaceRow = {
   id: string;
   owner_id: string;
@@ -20,6 +22,11 @@ export type WorkspaceRow = {
   pro_rata_enabled: boolean;
   min_attendance_for_certificate: number;
   require_fees_clear_for_certificate: boolean;
+  certificate_signatory_name: string;
+  certificate_signatory_title: string;
+  certificate_completion_body: string;
+  certificate_achievement_body: string;
+  certificate_footer_note: string;
   created_at: string;
 };
 
@@ -132,5 +139,16 @@ export type CertificateRow = {
   serial_no: string;
   issued_on: string;
   note: string | null;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  created_at: string;
+};
+
+export type CertificatePrintRow = {
+  id: string;
+  workspace_id: string;
+  certificate_id: string;
+  printed_by: string | null;
+  action: CertificatePrintAction;
   created_at: string;
 };

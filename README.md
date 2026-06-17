@@ -57,6 +57,7 @@ supabase/               # SQL migrations, seed data, Edge Functions later
 ## Documentation
 
 - [Phase Plan](docs/PHASE_PLAN.md)
+- [Sri Lanka Market Roadmap](docs/SL_MARKET_ROADMAP.md)
 - [Project Structure](docs/PROJECT_STRUCTURE.md)
 - [UI Screens](docs/UI_SCREENS.md)
 - [Design System](docs/DESIGN_SYSTEM.md)

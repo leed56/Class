@@ -1,10 +1,11 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getStudentAttendancePercents } from '@/features/attendance/attendanceService';
 import { getStudentFeeSummaries } from '@/features/fees/feeService';
-import { CertificateRow } from '@/lib/database.types';
+import { CertificatePrintRow, CertificateRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
 export type CertificateType = 'completion' | 'achievement';
+export type CertificatePrintAction = 'download' | 'share' | 'reprint';
 
 export type StudentCertificate = {
   id: string;
@@ -13,6 +14,22 @@ export type StudentCertificate = {
   serialNo: string;
   issuedOn: string;
   note: string | null;
+  revokedAt: string | null;
+  revokeReason: string | null;
+};
+
+export type CertificatePrint = {
+  id: string;
+  action: CertificatePrintAction;
+  createdAt: string;
+};
+
+export type CertificateTemplateSettings = {
+  signatoryName: string;
+  signatoryTitle: string;
+  completionBody: string;
+  achievementBody: string;
+  footerNote: string;
 };
 
 export type IssueCertificateInput = {
@@ -52,6 +69,44 @@ function mapCertificateRow(row: CertificateRow): StudentCertificate {
     serialNo: row.serial_no,
     issuedOn: row.issued_on,
     note: row.note,
+    revokedAt: row.revoked_at,
+    revokeReason: row.revoke_reason,
+  };
+}
+
+function mapCertificatePrintRow(row: CertificatePrintRow): CertificatePrint {
+  return {
+    id: row.id,
+    action: row.action as CertificatePrintAction,
+    createdAt: row.created_at,
+  };
+}
+
+export function isCertificateRevoked(certificate: Pick<StudentCertificate, 'revokedAt'>) {
+  return certificate.revokedAt != null;
+}
+
+export function getCertificateTemplateFromWorkspace(
+  workspace: {
+    name: string;
+    certificate_signatory_name?: string;
+    certificate_signatory_title?: string;
+    certificate_completion_body?: string;
+    certificate_achievement_body?: string;
+    certificate_footer_note?: string;
+  } | null,
+): CertificateTemplateSettings & { workspaceName: string } {
+  return {
+    workspaceName: workspace?.name ?? 'Your workspace',
+    signatoryName: workspace?.certificate_signatory_name ?? '',
+    signatoryTitle: workspace?.certificate_signatory_title ?? 'Director',
+    completionBody:
+      workspace?.certificate_completion_body ??
+      'This is to certify that {{student_name}} has successfully completed {{title}} at {{workspace_name}}.',
+    achievementBody:
+      workspace?.certificate_achievement_body ??
+      'This is to certify that {{student_name}} has demonstrated outstanding achievement in {{title}} at {{workspace_name}}.',
+    footerNote: workspace?.certificate_footer_note ?? 'Issued via ClassFlow',
   };
 }
 
@@ -276,4 +331,68 @@ export async function issueCertificatesBulk(input: IssueBulkCertificatesInput) {
     issued: (data ?? []).map((row) => mapCertificateRow(row as CertificateRow)),
     blocked,
   } satisfies IssueBulkCertificatesResult;
+}
+
+export async function listCertificatePrints(certificateId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('certificate_prints')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('certificate_id', certificateId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => mapCertificatePrintRow(row as CertificatePrintRow));
+}
+
+export async function logCertificatePrint(certificateId: string, action: CertificatePrintAction) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from('certificate_prints').insert({
+    workspace_id: workspace.id,
+    certificate_id: certificateId,
+    printed_by: user?.id ?? null,
+    action,
+  });
+
+  if (error) throw new Error(error.message);
+}
+
+export async function revokeCertificate(certificateId: string, reason?: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('certificates')
+    .update({
+      revoked_at: new Date().toISOString(),
+      revoke_reason: reason?.trim() || null,
+    })
+    .eq('workspace_id', workspace.id)
+    .eq('id', certificateId)
+    .is('revoked_at', null)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Certificate not found or already revoked.');
+  return mapCertificateRow(data as CertificateRow);
 }

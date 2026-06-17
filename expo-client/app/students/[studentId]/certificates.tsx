@@ -13,6 +13,7 @@ import {
   CertificateEligibility,
   formatCertificateDate,
   getCertificateEligibilityForStudents,
+  isCertificateRevoked,
   issueCertificate,
   listStudentCertificates,
   StudentCertificate,
@@ -264,7 +265,14 @@ export default function StudentCertificatesScreen() {
                         <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
                       </View>
                       <View style={styles.rowCopy}>
-                        <Text style={styles.rowTitle}>{item.title}</Text>
+                        <View style={styles.rowTitleRow}>
+                          <Text style={styles.rowTitle}>{item.title}</Text>
+                          {isCertificateRevoked(item) ? (
+                            <View style={styles.revokedBadge}>
+                              <Text style={styles.revokedBadgeText}>Revoked</Text>
+                            </View>
+                          ) : null}
+                        </View>
                         <Text style={styles.rowMeta}>
                           {certificateTypeLabel(item.certificateType)} • {item.serialNo} • {formatCertificateDate(item.issuedOn)}
                         </Text>
@@ -312,7 +320,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, borderRadius: radius.lg, padding: spacing.md, backgroundColor: colors.background },
   rowIcon: { width: 34, height: 34, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   rowCopy: { flex: 1 },
+  rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   rowTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
+  revokedBadge: { borderRadius: 999, backgroundColor: colors.dangerSoft, paddingHorizontal: 8, paddingVertical: 4 },
+  revokedBadgeText: { color: colors.danger, fontSize: 10, fontWeight: '900' },
   rowMeta: { marginTop: 3, color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   rowNote: { marginTop: 4, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   formErrorText: { color: colors.danger, fontSize: 12, fontWeight: '800' },

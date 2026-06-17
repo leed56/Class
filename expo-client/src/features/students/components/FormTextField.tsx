@@ -13,6 +13,7 @@ type Props = {
   value?: string;
   onChangeText?: (text: string) => void;
   secureTextEntry?: boolean;
+  multiline?: boolean;
 };
 
 export function FormTextField({
@@ -24,11 +25,12 @@ export function FormTextField({
   value,
   onChangeText,
   secureTextEntry,
+  multiline = false,
 }: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.field}>
+      <View style={[styles.field, multiline && styles.fieldMultiline]}>
         <MaterialCommunityIcons name={icon} size={20} color={colors.textSecondary} />
         <TextInput
           placeholder={placeholder}
@@ -37,7 +39,8 @@ export function FormTextField({
           secureTextEntry={secureTextEntry}
           value={value}
           onChangeText={onChangeText}
-          style={styles.input}
+          multiline={multiline}
+          style={[styles.input, multiline && styles.inputMultiline]}
         />
       </View>
       {helper ? <Text style={styles.helper}>{helper}</Text> : null}
@@ -65,11 +68,20 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  fieldMultiline: {
+    alignItems: 'flex-start',
+    paddingVertical: spacing.md,
+    minHeight: 110,
+  },
   input: {
     flex: 1,
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
+  },
+  inputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   helper: {
     color: colors.textSecondary,
