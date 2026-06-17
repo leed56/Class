@@ -23,7 +23,7 @@ type FilterMode = 'all' | 'unmarked' | 'fees';
 
 export default function ClassAttendanceScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ classId: string }>();
+  const params = useLocalSearchParams<{ classId: string; sessionDate?: string }>();
   const [session, setSession] = useState<AttendanceSessionRow | null>(null);
   const [sessionView, setSessionView] = useState<AttendanceSession | null>(null);
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
@@ -37,7 +37,7 @@ export default function ClassAttendanceScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const sheet = await loadAttendanceSheet(params.classId);
+      const sheet = await loadAttendanceSheet(params.classId, params.sessionDate);
       setSession(sheet.session);
       setSessionView(sheet.sessionView);
       setStudents(sheet.students);
@@ -46,7 +46,7 @@ export default function ClassAttendanceScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId]);
+  }, [params.classId, params.sessionDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -153,12 +153,16 @@ export default function ClassAttendanceScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Take Attendance</Text>
-            <Text style={styles.subtitle}>Tap each student to cycle Present → Late → Absent.</Text>
+            <Text style={styles.title}>{params.sessionDate ? 'Attendance Session' : 'Take Attendance'}</Text>
+            <Text style={styles.subtitle}>
+              {sessionView.date} • Tap each student to cycle Present → Late → Absent.
+            </Text>
           </View>
-          <View style={styles.iconButton}>
-            <MaterialCommunityIcons name="qrcode-scan" size={21} color={colors.textSecondary} />
-          </View>
+          <Link href={`/classes/${params.classId}/attendance-history` as Href} asChild>
+            <Pressable style={styles.iconButton}>
+              <MaterialCommunityIcons name="history" size={21} color={colors.primary} />
+            </Pressable>
+          </Link>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>

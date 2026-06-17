@@ -140,9 +140,9 @@ export default function ClassDetailScreen() {
         </LinearGradient>
 
         <View style={styles.actionRow}>
-          <NavPressable href={`/classes/${params.classId}/attendance` as Href} style={styles.primaryAction}>
-            <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-            <Text style={styles.primaryActionText}>Take Attendance</Text>
+          <NavPressable href={`/classes/${params.classId}/attendance-history` as Href} style={styles.secondaryAction}>
+            <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
+            <Text style={styles.secondaryActionText}>History</Text>
           </NavPressable>
           <Pressable
             style={styles.secondaryAction}
@@ -151,6 +151,13 @@ export default function ClassDetailScreen() {
             <MaterialCommunityIcons name="account-multiple-plus" size={18} color={colors.primary} />
             <Text style={styles.secondaryActionText}>Enroll Student</Text>
           </Pressable>
+        </View>
+
+        <View style={styles.primaryActionRow}>
+          <NavPressable href={`/classes/${params.classId}/attendance` as Href} style={styles.primaryActionFull}>
+            <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
+            <Text style={styles.primaryActionText}>Take Attendance</Text>
+          </NavPressable>
         </View>
 
         <PremiumCard>
@@ -237,6 +244,8 @@ const styles = StyleSheet.create({
   heroProgressFill: { height: '100%', borderRadius: 999, backgroundColor: 'white' },
   heroNote: { color: '#E7DEFF', fontSize: 13, fontWeight: '700' },
   actionRow: { flexDirection: 'row', gap: spacing.md },
+  primaryActionRow: { flexDirection: 'row' },
+  primaryActionFull: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryAction: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryActionText: { color: 'white', fontSize: 13, fontWeight: '900' },
   secondaryAction: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

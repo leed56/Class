@@ -140,8 +140,18 @@ export default function StudentProfileScreen() {
         </LinearGradient>
 
         <View style={styles.actionRow}>
-          <ProfileAction icon="clipboard-check-outline" label="Attendance" color={colors.primary} />
-          <ProfileAction icon="cash-plus" label="Payment" color={colors.success} />
+          <ProfileAction
+            icon="clipboard-check-outline"
+            label="Attendance"
+            color={colors.primary}
+            href={`/students/${student.id}/attendance` as Href}
+          />
+          <ProfileAction
+            icon="cash-plus"
+            label="Payment"
+            color={colors.success}
+            href={student.outstandingAmount > 0 ? ('/fees/record-payment' as Href) : undefined}
+          />
           <ProfileAction icon="whatsapp" label="Message" color={colors.warning} onPress={messageParent} />
         </View>
 
@@ -245,18 +255,34 @@ function ProfileAction({
   label,
   color,
   onPress,
+  href,
 }: {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
   color: string;
   onPress?: () => void;
+  href?: Href;
 }) {
-  return (
-    <Pressable style={styles.profileAction} onPress={onPress} disabled={!onPress}>
+  const content = (
+    <>
       <View style={[styles.profileActionIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={21} color={color} />
       </View>
       <Text style={styles.profileActionText}>{label}</Text>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} asChild>
+        <Pressable style={styles.profileAction}>{content}</Pressable>
+      </Link>
+    );
+  }
+
+  return (
+    <Pressable style={styles.profileAction} onPress={onPress} disabled={!onPress}>
+      {content}
     </Pressable>
   );
 }

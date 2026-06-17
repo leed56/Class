@@ -13,6 +13,27 @@ export type AttendanceSheet = {
   students: AttendanceStudent[];
 };
 
+export type AttendanceSessionSummary = {
+  id: string;
+  sessionDate: string;
+  displayDate: string;
+  status: AttendanceSessionRow['status'];
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  markedCount: number;
+};
+
+export type StudentAttendanceHistoryEntry = {
+  id: string;
+  sessionId: string;
+  sessionDate: string;
+  displayDate: string;
+  classId: string;
+  classLabel: string;
+  status: Exclude<AttendanceStatus, 'unmarked'>;
+};
+
 function formatLocalDate(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -351,4 +372,105 @@ export function getAttendanceTrend(percent: number): 'excellent' | 'watch' | 'ri
   if (percent >= 85) return 'excellent';
   if (percent >= 70) return 'watch';
   return 'risk';
+}
+
+function formatClassLabel(subject: string, grade: number) {
+  return `${subject} G${grade}`;
+}
+
+function summarizeSessionMarks(session: AttendanceSessionRow, marks: { status: DbAttendanceStatus }[]): AttendanceSessionSummary {
+  const presentCount = marks.filter((mark) => mark.status === 'present').length;
+  const lateCount = marks.filter((mark) => mark.status === 'late').length;
+  const absentCount = marks.filter((mark) => mark.status === 'absent').length;
+
+  return {
+    id: session.id,
+    sessionDate: session.session_date,
+    displayDate: formatDisplayDate(session.session_date),
+    status: session.status,
+    presentCount,
+    lateCount,
+    absentCount,
+    markedCount: marks.length,
+  };
+}
+
+export async function listClassAttendanceSessions(classId: string, limit = 40) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before viewing attendance history.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('attendance_sessions')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('class_id', classId)
+    .order('session_date', { ascending: false })
+    .limit(limit);
+
+  if (sessionsError) throw new Error(sessionsError.message);
+
+  const rows = (sessions ?? []) as AttendanceSessionRow[];
+  if (rows.length === 0) return [];
+
+  const sessionIds = rows.map((row) => row.id);
+  const { data: marks, error: marksError } = await supabase
+    .from('attendance_marks')
+    .select('session_id, status')
+    .eq('workspace_id', workspace.id)
+    .in('session_id', sessionIds);
+
+  if (marksError) throw new Error(marksError.message);
+
+  const marksBySession = new Map<string, { status: DbAttendanceStatus }[]>();
+  for (const mark of marks ?? []) {
+    const bucket = marksBySession.get(mark.session_id) ?? [];
+    bucket.push({ status: mark.status as DbAttendanceStatus });
+    marksBySession.set(mark.session_id, bucket);
+  }
+
+  return rows.map((session) => summarizeSessionMarks(session, marksBySession.get(session.id) ?? []));
+}
+
+export async function listStudentAttendanceHistory(studentId: string, limit = 40) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before viewing attendance history.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('attendance_marks')
+    .select('id, status, session_id, attendance_sessions(session_date, class_id, classes(subject, grade))')
+    .eq('workspace_id', workspace.id)
+    .eq('student_id', studentId)
+    .order('marked_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? [])
+    .map((row) => {
+      const session = unwrapRelation(
+        row.attendance_sessions as
+          | { session_date: string; class_id: string; classes: { subject: string; grade: number } | { subject: string; grade: number }[] | null }
+          | { session_date: string; class_id: string; classes: { subject: string; grade: number } | { subject: string; grade: number }[] | null }[]
+          | null,
+      );
+      const classInfo = session ? unwrapRelation(session.classes) : null;
+      if (!session || !classInfo) return null;
+
+      return {
+        id: row.id as string,
+        sessionId: row.session_id as string,
+        sessionDate: session.session_date,
+        displayDate: formatDisplayDate(session.session_date),
+        classId: session.class_id,
+        classLabel: formatClassLabel(classInfo.subject, classInfo.grade),
+        status: row.status as Exclude<AttendanceStatus, 'unmarked'>,
+      } satisfies StudentAttendanceHistoryEntry;
+    })
+    .filter((entry): entry is StudentAttendanceHistoryEntry => entry !== null);
 }
