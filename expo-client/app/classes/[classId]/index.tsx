@@ -171,6 +171,10 @@ export default function ClassDetailScreen() {
             <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
             <Text style={styles.secondaryActionText}>History</Text>
           </NavPressable>
+          <NavPressable href={`/classes/${params.classId}/certificates` as Href} style={styles.secondaryAction}>
+            <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
+            <Text style={styles.secondaryActionText}>Certificates</Text>
+          </NavPressable>
           <Pressable
             style={styles.secondaryAction}
             onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}
@@ -287,12 +291,12 @@ const styles = StyleSheet.create({
   heroProgressTrack: { height: 10, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
   heroProgressFill: { height: '100%', borderRadius: 999, backgroundColor: 'white' },
   heroNote: { color: '#E7DEFF', fontSize: 13, fontWeight: '700' },
-  actionRow: { flexDirection: 'row', gap: spacing.md },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   primaryActionRow: { flexDirection: 'row' },
   primaryActionFull: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryAction: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryActionText: { color: 'white', fontSize: 13, fontWeight: '900' },
-  secondaryAction: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  secondaryAction: { flex: 1, minWidth: 104, height: 52, borderRadius: radius.lg, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   secondaryActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900', marginBottom: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.sm },

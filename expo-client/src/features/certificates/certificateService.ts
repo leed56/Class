@@ -21,6 +21,14 @@ export type IssueCertificateInput = {
   issuedOn?: string;
 };
 
+export type IssueBulkCertificatesInput = {
+  studentIds: string[];
+  certificateType: CertificateType;
+  title: string;
+  note?: string;
+  issuedOn?: string;
+};
+
 function mapCertificateRow(row: CertificateRow): StudentCertificate {
   return {
     id: row.id,
@@ -44,7 +52,7 @@ export function formatCertificateDate(value: string) {
   return formatDate(value);
 }
 
-async function generateCertificateSerialNo(workspaceId: string) {
+async function getNextCertificateNumber(workspaceId: string) {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Supabase is not configured.');
 
@@ -63,7 +71,11 @@ async function generateCertificateSerialNo(workspaceId: string) {
     if (match) max = Math.max(max, Number(match[1]));
   }
 
-  return `CERT-${String(max + 1).padStart(4, '0')}`;
+  return max + 1;
+}
+
+function formatCertificateSerialNo(value: number) {
+  return `CERT-${String(value).padStart(4, '0')}`;
 }
 
 export async function listStudentCertificates(studentId: string) {
@@ -98,7 +110,7 @@ export async function issueCertificate(input: IssueCertificateInput) {
   const title = input.title.trim();
   if (!title) throw new Error('Certificate title is required.');
 
-  const serialNo = await generateCertificateSerialNo(workspace.id);
+  const serialNo = formatCertificateSerialNo(await getNextCertificateNumber(workspace.id));
 
   const { data, error } = await supabase
     .from('certificates')
@@ -116,4 +128,38 @@ export async function issueCertificate(input: IssueCertificateInput) {
 
   if (error) throw new Error(error.message);
   return mapCertificateRow(data as CertificateRow);
+}
+
+export async function issueCertificatesBulk(input: IssueBulkCertificatesInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (workspace.institute_type === 'solo') {
+    throw new Error('Certification is available for academy and institute workspaces.');
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const studentIds = [...new Set(input.studentIds)];
+  if (studentIds.length === 0) throw new Error('Select at least one student.');
+
+  const title = input.title.trim();
+  if (!title) throw new Error('Certificate title is required.');
+
+  const issuedOn = input.issuedOn ?? new Date().toISOString().slice(0, 10);
+  let nextNumber = await getNextCertificateNumber(workspace.id);
+
+  const rows = studentIds.map((studentId) => ({
+    workspace_id: workspace.id,
+    student_id: studentId,
+    certificate_type: input.certificateType,
+    title,
+    serial_no: formatCertificateSerialNo(nextNumber++),
+    issued_on: issuedOn,
+    note: input.note?.trim() || null,
+  }));
+
+  const { data, error } = await supabase.from('certificates').insert(rows).select('*');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => mapCertificateRow(row as CertificateRow));
 }
