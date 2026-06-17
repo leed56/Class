@@ -360,13 +360,12 @@ Sections:
 - Payroll reports
 - Online payment reconciliation
 
-## Phase 4 AI and BrainCoin screens
+## Phase 4 AI assistance screens
 
 - AI message assistant
 - Student summary generator
 - Progress note draft
-- BrainCoin pack assignment
-- Class content linking
+- Message review and edit sheet
 
 ## Premium dashboard mobile layout
 
