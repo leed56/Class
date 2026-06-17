@@ -89,6 +89,33 @@ export function buildReceiptMessage(params: {
   return lines.join('\n');
 }
 
+export function buildCertificateMessage(params: {
+  workspaceName: string;
+  studentName: string;
+  certificateType: string;
+  title: string;
+  serialNo: string;
+  issuedOn: string;
+  note?: string | null;
+}) {
+  const lines = [
+    `Certificate issued - ${params.workspaceName}`,
+    '',
+    `Student: ${params.studentName}`,
+    `Type: ${params.certificateType}`,
+    `Title: ${params.title}`,
+    `Serial: ${params.serialNo}`,
+    `Issued on: ${params.issuedOn}`,
+  ];
+
+  if (params.note) {
+    lines.push(`Note: ${params.note}`);
+  }
+
+  lines.push('', 'Congratulations and best wishes.');
+  return lines.join('\n');
+}
+
 export function buildFeeReminderMessage(params: {
   workspaceName: string;
   studentName: string;

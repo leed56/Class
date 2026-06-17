@@ -173,6 +173,26 @@ export async function listStudentCertificates(studentId: string) {
   return (data ?? []).map((row) => mapCertificateRow(row as CertificateRow));
 }
 
+export async function getStudentCertificateById(studentId: string, certificateId: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase
+    .from('certificates')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('student_id', studentId)
+    .eq('id', certificateId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return mapCertificateRow(data as CertificateRow);
+}
+
 export async function issueCertificate(input: IssueCertificateInput) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before managing certificates.');

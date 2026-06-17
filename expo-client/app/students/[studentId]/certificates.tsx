@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
@@ -254,7 +255,11 @@ export default function StudentCertificatesScreen() {
               ) : (
                 <View style={styles.list}>
                   {items.map((item) => (
-                    <View key={item.id} style={styles.row}>
+                    <NavPressable
+                      key={item.id}
+                      href={`/students/${params.studentId}/certificates/${item.id}` as Href}
+                      style={styles.row}
+                    >
                       <View style={styles.rowIcon}>
                         <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
                       </View>
@@ -265,7 +270,8 @@ export default function StudentCertificatesScreen() {
                         </Text>
                         {item.note ? <Text style={styles.rowNote}>{item.note}</Text> : null}
                       </View>
-                    </View>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+                    </NavPressable>
                   ))}
                 </View>
               )}
