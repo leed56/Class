@@ -55,8 +55,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const segment = segments[0] as string | undefined;
     const inAuthGroup = segment === 'auth';
     const inOnboarding = segment === 'onboarding';
+    const inParentPortal = segment === 'parent';
 
-    if (!session && !inAuthGroup) {
+    if (!session && !inAuthGroup && !inParentPortal) {
       router.replace('/auth/login' as Href);
       return;
     }

@@ -12,6 +12,7 @@ import {
   updateTeacherProfile,
   updateWorkspace,
 } from '@/features/auth/authService';
+import { getDefaultAbsenceAlertTemplate } from '@/features/communications/communicationService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { LanguageCode, InstituteType } from '@/lib/database.types';
@@ -50,6 +51,8 @@ export default function EditSettingsScreen() {
   const [proRataEnabled, setProRataEnabled] = useState(true);
   const [minAttendanceForCertificate, setMinAttendanceForCertificate] = useState('75');
   const [requireFeesClearForCertificate, setRequireFeesClearForCertificate] = useState(true);
+  const [absenceAlertsEnabled, setAbsenceAlertsEnabled] = useState(true);
+  const [absenceAlertTemplate, setAbsenceAlertTemplate] = useState(getDefaultAbsenceAlertTemplate());
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +69,8 @@ export default function EditSettingsScreen() {
       setProRataEnabled(workspace?.pro_rata_enabled ?? true);
       setMinAttendanceForCertificate(String(workspace?.min_attendance_for_certificate ?? 75));
       setRequireFeesClearForCertificate(workspace?.require_fees_clear_for_certificate ?? true);
+      setAbsenceAlertsEnabled(workspace?.absence_alerts_enabled ?? true);
+      setAbsenceAlertTemplate(workspace?.absence_alert_template ?? getDefaultAbsenceAlertTemplate());
       setDisplayName(
         typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : '',
       );
@@ -94,6 +99,8 @@ export default function EditSettingsScreen() {
           proRataEnabled,
           minAttendanceForCertificate: Number(minAttendanceForCertificate.replace(/\D/g, '') || 0),
           requireFeesClearForCertificate,
+          absenceAlertsEnabled,
+          absenceAlertTemplate,
         }),
         updateTeacherProfile({ fullName: displayName, phone }),
       ]);
@@ -214,6 +221,28 @@ export default function EditSettingsScreen() {
               />
             </>
           ) : null}
+        </PremiumCard>
+
+        <PremiumCard style={styles.card}>
+          <Text style={styles.cardTitle}>Absence alerts</Text>
+          <Text style={styles.cardHint}>
+            After saving attendance, open the message composer for absent students and send same-day parent WhatsApp alerts.
+          </Text>
+          <ChoiceChipGroup
+            label="Same-day absence alerts"
+            selected={absenceAlertsEnabled ? 'Enabled' : 'Disabled'}
+            options={['Enabled', 'Disabled']}
+            onSelect={(label) => setAbsenceAlertsEnabled(label === 'Enabled')}
+          />
+          <FormTextField
+            label="Absence alert template"
+            placeholder="Dear parent..."
+            icon="message-alert-outline"
+            value={absenceAlertTemplate}
+            onChangeText={setAbsenceAlertTemplate}
+            multiline
+            helper="Placeholders: {{student_name}}, {{class_name}}, {{session_date}}, {{workspace_name}}"
+          />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>

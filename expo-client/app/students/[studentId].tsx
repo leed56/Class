@@ -191,6 +191,12 @@ export default function StudentProfileScreen() {
             href={`/students/${student.id}/attendance` as Href}
           />
           <ProfileAction
+            icon="qrcode"
+            label="QR ID"
+            color={colors.info}
+            href={`/students/${student.id}/qr-card` as Href}
+          />
+          <ProfileAction
             icon="cash-plus"
             label="Payment"
             color={colors.success}

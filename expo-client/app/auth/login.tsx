@@ -101,6 +101,14 @@ export default function LoginScreen() {
             </Pressable>
           </Link>
         </View>
+
+        <Link href={'/parent/login' as Href} asChild>
+          <Pressable style={styles.parentLinkCard}>
+            <MaterialCommunityIcons name="account-child-outline" size={20} color={colors.primary} />
+            <Text style={styles.parentLinkText}>Parent? Open parent portal</Text>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+          </Pressable>
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );
@@ -139,4 +147,6 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
   footerText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
   footerLink: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  parentLinkCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: spacing.lg },
+  parentLinkText: { flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
 });

@@ -85,44 +85,44 @@ Strategic product roadmap aligned to the Sri Lankan tuition market: solo tutors,
 
 ---
 
-### Sprint 2 — Daily communication + offline
+### Sprint 2 — Daily communication + offline ✅ Shipped
 
 **Goal:** Absence and fee comms are auditable; classes run in poor-signal halls.
 
-| Item | Acceptance criteria |
-|------|---------------------|
-| Absence alerts | Same-day parent WhatsApp when student marked absent |
-| Offline attendance queue | Store marks offline; sync when online |
-| Message composer | Manual edit before send |
-| Delivery log | Sent / failed / retry per message |
+| Item | Status | Acceptance criteria |
+|------|--------|---------------------|
+| Absence alerts | ✅ | After save, composer opens for absent students; WhatsApp send with template |
+| Offline attendance queue | ✅ | Marks queue on offline/network failure; sync banner + Sync now |
+| Message composer | ✅ | Edit message before send; skip per student |
+| Delivery log | ✅ | `message_deliveries` table; sent/failed/skipped + retry |
 
 **Exit:** Teacher can mark attendance offline and parents get same-day absence notice.
 
 ---
 
-### Sprint 3 — Parent trust layer
+### Sprint 3 — Parent trust layer ✅ Shipped
 
 **Goal:** Parent self-service reduces front-desk load.
 
-| Item | Acceptance criteria |
-|------|---------------------|
-| Parent OTP login | Phone-based auth |
-| Child dashboard | Attendance %, fee status, due amount |
-| Receipt + certificate timeline | Historical payments and issued certs |
+| Item | Status | Acceptance criteria |
+|------|--------|---------------------|
+| Parent OTP login | ✅ | Phone OTP via RPC; pilot code shown until Notify.lk SMS |
+| Child dashboard | ✅ | Attendance %, fee status, outstanding amount |
+| Receipt + certificate timeline | ✅ | Combined timeline on parent child dashboard |
 
 **Exit:** Parent checks attendance and fees without calling the institute.
 
 ---
 
-### Sprint 4 — Fast attendance at scale
+### Sprint 4 — Fast attendance at scale ✅ Shipped
 
 **Goal:** Large classes mark attendance in under 3 minutes.
 
-| Item | Acceptance criteria |
-|------|---------------------|
-| QR student ID | Generate scannable payload per student |
-| Class scanner flow | Scan → mark present |
-| Fast check-in pipeline | Bulk present from scan session |
+| Item | Status | Acceptance criteria |
+|------|--------|---------------------|
+| QR student ID | ✅ | Per-student QR card at `/students/[id]/qr-card` |
+| Class scanner flow | ✅ | Camera scan at `/classes/[id]/scan` marks present |
+| Fast check-in pipeline | ✅ | Scan → validate roster → mark present + recent scan log |
 
 **Exit:** O/L/A/L size classes use QR instead of manual taps.
 

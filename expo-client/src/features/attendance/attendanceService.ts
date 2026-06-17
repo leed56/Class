@@ -3,8 +3,16 @@ import { getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { listClassRoster } from '@/features/enrollment/enrollmentService';
 import { AttendanceMarkRow, AttendanceSessionRow, AttendanceStatus as DbAttendanceStatus } from '@/lib/database.types';
+import { isLikelyNetworkError, isOnline } from '@/lib/network';
 import { getSupabase } from '@/lib/supabase';
 
+import {
+  countPendingAttendanceMarks,
+  enqueueAttendanceMark,
+  listPendingAttendanceMarks,
+  mergePendingMarks,
+  removeAttendanceMarks,
+} from './offlineAttendanceStore';
 import { AttendanceSession, AttendanceStatus, AttendanceStudent } from './models';
 
 export type AttendanceSheet = {
@@ -196,24 +204,32 @@ export async function loadAttendanceSheet(classId: string, sessionDate = formatL
       grade: entry.student.grade,
       medium: entry.student.medium,
       parentPhone: entry.student.parentPhone,
+      consentCaptured: entry.student.consentCaptured,
       feeStatus: entry.student.feeStatus,
       attendanceStatus: toUiStatus(mark?.status),
       lastSeen: formatLastSeen(lastMarks.get(entry.student.id) ?? null),
     };
   });
 
+  const pending = await listPendingAttendanceMarks(workspace.id, session.id);
+
   return {
     session,
     sessionView: mapSession(tuitionClass, session),
     tuitionClass,
-    students,
-  } satisfies AttendanceSheet & { sessionView: AttendanceSession };
+    students: mergePendingMarks(students, pending),
+    pendingSyncCount: pending.length,
+  } satisfies AttendanceSheet & { sessionView: AttendanceSession; pendingSyncCount: number };
 }
 
-export async function setStudentAttendance(sessionId: string, studentId: string, status: AttendanceStatus) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before taking attendance.');
-
+async function persistStudentAttendance(
+  workspaceId: string,
+  sessionId: string,
+  classId: string,
+  sessionDate: string,
+  studentId: string,
+  status: AttendanceStatus,
+) {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Supabase is not configured.');
 
@@ -221,16 +237,16 @@ export async function setStudentAttendance(sessionId: string, studentId: string,
     const { error } = await supabase
       .from('attendance_marks')
       .delete()
-      .eq('workspace_id', workspace.id)
+      .eq('workspace_id', workspaceId)
       .eq('session_id', sessionId)
       .eq('student_id', studentId);
-    if (error) throw new Error(error.message);
+    if (error) throw error;
     return;
   }
 
   const { error } = await supabase.from('attendance_marks').upsert(
     {
-      workspace_id: workspace.id,
+      workspace_id: workspaceId,
       session_id: sessionId,
       student_id: studentId,
       status: status as DbAttendanceStatus,
@@ -239,17 +255,145 @@ export async function setStudentAttendance(sessionId: string, studentId: string,
     { onConflict: 'session_id,student_id' },
   );
 
-  if (error) throw new Error(error.message);
+  if (error) throw error;
 }
 
-export async function cycleStudentAttendance(sessionId: string, studentId: string, current: AttendanceStatus) {
+export async function syncOfflineAttendanceForSession(sessionId: string, classId: string, sessionDate: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before syncing attendance.');
+
+  const pending = await listPendingAttendanceMarks(workspace.id, sessionId);
+  if (pending.length === 0) return { synced: 0, failed: 0 };
+
+  const syncedIds: string[] = [];
+  let failed = 0;
+
+  for (const item of pending) {
+    try {
+      await persistStudentAttendance(
+        workspace.id,
+        sessionId,
+        classId,
+        sessionDate,
+        item.studentId,
+        item.status,
+      );
+      syncedIds.push(item.id);
+    } catch {
+      failed += 1;
+    }
+  }
+
+  await removeAttendanceMarks(syncedIds);
+
+  if (syncedIds.length > 0) {
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase
+        .from('attendance_sessions')
+        .update({ status: 'synced' })
+        .eq('workspace_id', workspace.id)
+        .eq('id', sessionId);
+    }
+  }
+
+  return { synced: syncedIds.length, failed };
+}
+
+export async function getPendingAttendanceSyncCount(sessionId?: string) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) return 0;
+  return countPendingAttendanceMarks(workspace.id, sessionId);
+}
+
+export async function markStudentPresent(
+  sessionId: string,
+  studentId: string,
+  context: { classId: string; sessionDate: string },
+) {
+  await setStudentAttendance(sessionId, studentId, 'present', context);
+}
+
+export async function setStudentAttendance(
+  sessionId: string,
+  studentId: string,
+  status: AttendanceStatus,
+  context?: { classId: string; sessionDate: string },
+) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before taking attendance.');
+
+  if (!isOnline()) {
+    if (!context) throw new Error('Offline attendance requires class context.');
+    await enqueueAttendanceMark({
+      workspaceId: workspace.id,
+      sessionId,
+      classId: context.classId,
+      sessionDate: context.sessionDate,
+      studentId,
+      status,
+    });
+    return;
+  }
+
+  try {
+    await persistStudentAttendance(
+      workspace.id,
+      sessionId,
+      context?.classId ?? '',
+      context?.sessionDate ?? '',
+      studentId,
+      status,
+    );
+  } catch (error) {
+    if (!context || !isLikelyNetworkError(error)) {
+      throw error instanceof Error ? error : new Error('Could not update attendance.');
+    }
+    await enqueueAttendanceMark({
+      workspaceId: workspace.id,
+      sessionId,
+      classId: context.classId,
+      sessionDate: context.sessionDate,
+      studentId,
+      status,
+    });
+  }
+}
+
+export async function cycleStudentAttendance(
+  sessionId: string,
+  studentId: string,
+  current: AttendanceStatus,
+  context?: { classId: string; sessionDate: string },
+) {
   const next = nextStatus(current);
-  await setStudentAttendance(sessionId, studentId, next);
+  await setStudentAttendance(sessionId, studentId, next, context);
   return next;
 }
 
-export async function markAllPresent(sessionId: string, studentIds: string[]) {
+export async function markAllPresent(
+  sessionId: string,
+  studentIds: string[],
+  context?: { classId: string; sessionDate: string },
+) {
   if (studentIds.length === 0) return;
+
+  if (!isOnline()) {
+    const workspace = await getCurrentWorkspace();
+    if (!workspace) throw new Error('Create your workspace before taking attendance.');
+    if (!context) throw new Error('Offline attendance requires class context.');
+    for (const studentId of studentIds) {
+      await enqueueAttendanceMark({
+        workspaceId: workspace.id,
+        sessionId,
+        classId: context.classId,
+        sessionDate: context.sessionDate,
+        studentId,
+        status: 'present',
+      });
+    }
+    return;
+  }
 
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before taking attendance.');
@@ -265,13 +409,31 @@ export async function markAllPresent(sessionId: string, studentIds: string[]) {
     marked_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase.from('attendance_marks').upsert(rows, { onConflict: 'session_id,student_id' });
-  if (error) throw new Error(error.message);
+  try {
+    const { error } = await supabase.from('attendance_marks').upsert(rows, { onConflict: 'session_id,student_id' });
+    if (error) throw error;
+  } catch (error) {
+    if (!context || !isLikelyNetworkError(error)) {
+      throw error instanceof Error ? error : new Error('Could not mark all present.');
+    }
+    for (const studentId of studentIds) {
+      await enqueueAttendanceMark({
+        workspaceId: workspace.id,
+        sessionId,
+        classId: context.classId,
+        sessionDate: context.sessionDate,
+        studentId,
+        status: 'present',
+      });
+    }
+  }
 }
 
-export async function saveAttendanceSession(sessionId: string) {
+export async function saveAttendanceSession(sessionId: string, classId: string, sessionDate: string) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before saving attendance.');
+
+  await syncOfflineAttendanceForSession(sessionId, classId, sessionDate);
 
   const supabase = getSupabase();
   if (!supabase) throw new Error('Supabase is not configured.');

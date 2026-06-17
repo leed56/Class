@@ -3,13 +3,22 @@ export type LanguageCode = 'en' | 'si' | 'ta';
 export type InstituteType = 'solo' | 'academy' | 'institute';
 export type InvoiceType = 'monthly' | 'admission' | 'material' | 'exam';
 export type CertificateType = 'completion' | 'achievement';
+export type CertificatePrintAction = 'download' | 'share' | 'reprint';
 export type Medium = 'English' | 'Sinhala' | 'Tamil';
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type AttendanceStatus = 'present' | 'late' | 'absent';
 export type PaymentMethod = 'cash' | 'bank' | 'online';
 export type WorkspaceRole = 'owner' | 'teacher' | 'admin';
 
-export type CertificatePrintAction = 'download' | 'share' | 'reprint';
+export type MessageDeliveryStatus = 'draft' | 'sent' | 'failed' | 'skipped';
+export type MessageDeliveryType =
+  | 'absence_alert'
+  | 'fee_reminder'
+  | 'certificate'
+  | 'receipt'
+  | 'announcement'
+  | 'custom';
+export type MessageDeliveryChannel = 'whatsapp' | 'sms';
 
 export type WorkspaceRow = {
   id: string;
@@ -27,6 +36,8 @@ export type WorkspaceRow = {
   certificate_completion_body: string;
   certificate_achievement_body: string;
   certificate_footer_note: string;
+  absence_alerts_enabled: boolean;
+  absence_alert_template: string;
   created_at: string;
 };
 
@@ -150,5 +161,20 @@ export type CertificatePrintRow = {
   certificate_id: string;
   printed_by: string | null;
   action: CertificatePrintAction;
+  created_at: string;
+};
+
+export type MessageDeliveryRow = {
+  id: string;
+  workspace_id: string;
+  student_id: string | null;
+  session_id: string | null;
+  parent_phone: string;
+  message_type: MessageDeliveryType;
+  channel: MessageDeliveryChannel;
+  body: string;
+  status: MessageDeliveryStatus;
+  error_message: string | null;
+  sent_at: string | null;
   created_at: string;
 };

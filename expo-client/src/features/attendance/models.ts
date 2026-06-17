@@ -6,6 +6,7 @@ export type AttendanceStudent = {
   grade: number;
   medium: string;
   parentPhone: string;
+  consentCaptured: boolean;
   feeStatus: 'paid' | 'partial' | 'pending' | 'overdue';
   attendanceStatus: AttendanceStatus;
   lastSeen?: string;

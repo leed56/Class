@@ -25,7 +25,9 @@
     "expo-splash-screen": "latest",
     "expo-sqlite": "^56.0.5",
     "expo-status-bar": "latest",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
+    "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
     "react-native": "latest",
@@ -37,6 +39,7 @@
     "react-native-web": "latest"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "@types/react": "latest",
     "typescript": "latest"
   }

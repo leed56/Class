@@ -172,3 +172,25 @@ export function buildParentMessage(params: {
     'Please let us know if you have any questions.',
   ].join('\n');
 }
+
+export function buildAbsenceAlertMessage(params: {
+  workspaceName: string;
+  studentName: string;
+  className: string;
+  sessionDate: string;
+  template?: string;
+}) {
+  const template =
+    params.template?.trim() ||
+    `Dear parent,
+
+{{student_name}} was marked absent from {{class_name}} on {{session_date}} at {{workspace_name}}.
+
+Please contact the teacher if there is a concern. Thank you.`;
+
+  return template
+    .replaceAll('{{student_name}}', params.studentName)
+    .replaceAll('{{class_name}}', params.className)
+    .replaceAll('{{session_date}}', params.sessionDate)
+    .replaceAll('{{workspace_name}}', params.workspaceName);
+}

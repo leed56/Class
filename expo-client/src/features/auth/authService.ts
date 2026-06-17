@@ -115,6 +115,8 @@ export type WorkspaceUpdateInput = {
   certificateCompletionBody?: string;
   certificateAchievementBody?: string;
   certificateFooterNote?: string;
+  absenceAlertsEnabled?: boolean;
+  absenceAlertTemplate?: string;
 };
 
 export type TeacherProfileUpdateInput = {
@@ -147,6 +149,8 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
     certificate_completion_body?: string;
     certificate_achievement_body?: string;
     certificate_footer_note?: string;
+    absence_alerts_enabled?: boolean;
+    absence_alert_template?: string;
   } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
@@ -189,6 +193,14 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.certificateFooterNote !== undefined) {
     updates.certificate_footer_note = input.certificateFooterNote.trim();
+  }
+  if (input.absenceAlertsEnabled !== undefined) {
+    updates.absence_alerts_enabled = input.absenceAlertsEnabled;
+  }
+  if (input.absenceAlertTemplate !== undefined) {
+    const trimmed = input.absenceAlertTemplate.trim();
+    if (!trimmed) throw new Error('Absence alert template is required.');
+    updates.absence_alert_template = trimmed;
   }
 
   if (Object.keys(updates).length === 0) {

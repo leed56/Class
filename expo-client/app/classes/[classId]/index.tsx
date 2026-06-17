@@ -189,6 +189,10 @@ export default function ClassDetailScreen() {
             <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
             <Text style={styles.primaryActionText}>Take Attendance</Text>
           </NavPressable>
+          <NavPressable href={`/classes/${params.classId}/scan` as Href} style={styles.qrAction}>
+            <MaterialCommunityIcons name="qrcode-scan" size={18} color={colors.primary} />
+            <Text style={styles.qrActionText}>QR Scan</Text>
+          </NavPressable>
         </View>
 
         <PremiumCard>
@@ -292,8 +296,10 @@ const styles = StyleSheet.create({
   heroProgressFill: { height: '100%', borderRadius: 999, backgroundColor: 'white' },
   heroNote: { color: '#E7DEFF', fontSize: 13, fontWeight: '700' },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  primaryActionRow: { flexDirection: 'row' },
+  primaryActionRow: { flexDirection: 'row', gap: spacing.sm },
   primaryActionFull: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  qrAction: { height: 52, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg },
+  qrActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   primaryAction: { flex: 1, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryActionText: { color: 'white', fontSize: 13, fontWeight: '900' },
   secondaryAction: { flex: 1, minWidth: 104, height: 52, borderRadius: radius.lg, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

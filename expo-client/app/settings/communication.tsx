@@ -1,17 +1,34 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { getCommunicationStats } from '@/features/communications/communicationService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const templateCount = 4;
-const consentReadyPercent = 82;
-
 export default function CommunicationSetupScreen() {
+  const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0, skipped: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const nextStats = await getCommunicationStats();
+      setStats(nextStats);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -35,15 +52,21 @@ export default function CommunicationSetupScreen() {
             <MaterialCommunityIcons name="whatsapp" size={31} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>ReachWA-ready setup</Text>
-            <Text style={styles.heroTitle}>Parent communication hub</Text>
-            <Text style={styles.heroNote}>{templateCount} templates prepared • {consentReadyPercent}% consent-ready parents</Text>
+            <Text style={styles.heroLabel}>Parent communication</Text>
+            <Text style={styles.heroTitle}>WhatsApp-first alerts</Text>
+            <Text style={styles.heroNote}>
+              {isLoading ? 'Loading delivery stats…' : `${stats.sent} sent • ${stats.failed} failed • ${stats.skipped} skipped`}
+            </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.statusRow}>
-          <StatusCard label="WhatsApp" value="Phase 2" icon="whatsapp" color={colors.success} />
-          <StatusCard label="SMS fallback" value="Later" icon="message-processing-outline" color={colors.info} />
+          <StatusCard label="WhatsApp" value="Active" icon="whatsapp" color={colors.success} />
+          <Link href="/settings/delivery-log" asChild>
+            <Pressable style={styles.statusCardPressable}>
+              <StatusCard label="Delivery log" value={`${stats.total}`} icon="message-text-clock-outline" color={colors.info} />
+            </Pressable>
+          </Link>
         </View>
 
         <PremiumCard style={styles.integrationCard}>
@@ -53,12 +76,14 @@ export default function CommunicationSetupScreen() {
               <Text style={styles.cardSubtitle}>Designed for ReachWA first, then SMS fallback if parents are offline.</Text>
             </View>
             <View style={styles.phasePill}>
-              <Text style={styles.phasePillText}>Phase 2</Text>
+              <Text style={styles.phasePillText}>Live</Text>
             </View>
           </View>
-          <IntegrationStep title="Connect ReachWA account" state="Planned" icon="link-variant" />
+          <IntegrationStep title="Absence alert composer" state="Active" icon="account-alert-outline" />
           <View style={styles.divider} />
-          <IntegrationStep title="Verify teacher sender profile" state="Required" icon="shield-account-outline" />
+          <IntegrationStep title="Delivery log with retry" state="Active" icon="message-text-clock-outline" />
+          <View style={styles.divider} />
+          <IntegrationStep title="Offline attendance queue" state="Active" icon="cloud-sync-outline" />
           <View style={styles.divider} />
           <IntegrationStep title="Enable SMS fallback" state="Later" icon="cellphone-message" />
         </PremiumCard>
@@ -70,7 +95,7 @@ export default function CommunicationSetupScreen() {
 
         <View style={styles.templateList}>
           <TemplateCard title="Fee reminder" subtitle="Polite pending-fee reminder with class and month" icon="cash-clock" color={colors.danger} sample="Dear parent, June class fee is still pending for Kavindu. Thank you." />
-          <TemplateCard title="Absence alert" subtitle="Send when a student is absent from a session" icon="account-alert-outline" color={colors.warning} sample="Your child was absent today. Please contact the teacher if needed." />
+          <TemplateCard title="Absence alert" subtitle="Sent after attendance save for absent students" icon="account-alert-outline" color={colors.warning} sample="Dear parent, your child was marked absent from today's class." />
           <TemplateCard title="Class announcement" subtitle="Schedule change, holiday or extra class message" icon="bullhorn-outline" color={colors.primary} sample="Tomorrow's class will start at 10:30 AM in Hall A." />
           <TemplateCard title="Receipt message" subtitle="Share receipt number and amount after payment" icon="receipt-text-check-outline" color={colors.success} sample="Payment received. Receipt RCPT-0004 has been generated." />
         </View>
@@ -84,7 +109,7 @@ export default function CommunicationSetupScreen() {
             <Text style={styles.cardSubtitle}>Only parents with captured communication consent should receive automated messages in production.</Text>
           </View>
           <View style={styles.consentBadge}>
-            <Text style={styles.consentBadgeText}>{consentReadyPercent}%</Text>
+            <Text style={styles.consentBadgeText}>{stats.sent}</Text>
           </View>
         </PremiumCard>
 
@@ -175,6 +200,7 @@ const styles = StyleSheet.create({
   heroTitle: { marginTop: 4, color: 'white', fontSize: 24, lineHeight: 29, fontWeight: '900' },
   heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 12, lineHeight: 18, fontWeight: '700' },
   statusRow: { flexDirection: 'row', gap: spacing.md },
+  statusCardPressable: { flex: 1 },
   statusCard: { flex: 1, padding: spacing.lg, gap: spacing.xs },
   statusIcon: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   statusLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },

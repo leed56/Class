@@ -7,12 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { AttendanceStudentRow } from '@/features/attendance/components/AttendanceStudentRow';
 import {
   cycleStudentAttendance,
   loadAttendanceSheet,
   markAllPresent,
   saveAttendanceSession,
+  syncOfflineAttendanceForSession,
 } from '@/features/attendance/attendanceService';
 import { AttendanceSession, AttendanceStatus, AttendanceStudent } from '@/features/attendance/models';
 import { AttendanceSessionRow } from '@/lib/database.types';
@@ -30,7 +32,14 @@ export default function ClassAttendanceScreen() {
   const [filter, setFilter] = useState<FilterMode>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  const attendanceContext = useMemo(() => {
+    if (!params.classId || !session?.session_date) return undefined;
+    return { classId: params.classId, sessionDate: session.session_date };
+  }, [params.classId, session?.session_date]);
 
   const loadSheet = useCallback(async () => {
     if (!params.classId) return;
@@ -41,6 +50,7 @@ export default function ClassAttendanceScreen() {
       setSession(sheet.session);
       setSessionView(sheet.sessionView);
       setStudents(sheet.students);
+      setPendingSyncCount(sheet.pendingSyncCount);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load attendance.');
     } finally {
@@ -68,36 +78,62 @@ export default function ClassAttendanceScreen() {
   const isSaved = session?.status === 'saved' || session?.status === 'synced';
 
   async function handleStatusPress(studentId: string, current: AttendanceStatus) {
-    if (!session) return;
+    if (!session || !attendanceContext) return;
     try {
-      const next = await cycleStudentAttendance(session.id, studentId, current);
+      const next = await cycleStudentAttendance(session.id, studentId, current, attendanceContext);
       setStudents((currentStudents) =>
         currentStudents.map((student) =>
           student.id === studentId ? { ...student, attendanceStatus: next } : student,
         ),
       );
+      const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
+      setPendingSyncCount(sheet.pendingSyncCount);
     } catch (markError) {
       setError(markError instanceof Error ? markError.message : 'Could not update attendance.');
     }
   }
 
   async function handleBulkPresent() {
-    if (!session || students.length === 0) return;
+    if (!session || students.length === 0 || !attendanceContext) return;
     try {
       await markAllPresent(
         session.id,
         students.map((student) => student.id),
+        attendanceContext,
       );
       setStudents((currentStudents) =>
         currentStudents.map((student) => ({ ...student, attendanceStatus: 'present' as AttendanceStatus })),
       );
+      const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
+      setPendingSyncCount(sheet.pendingSyncCount);
     } catch (bulkError) {
       setError(bulkError instanceof Error ? bulkError.message : 'Could not mark all present.');
     }
   }
 
+  async function handleSync() {
+    if (!session || !attendanceContext) return;
+    setIsSyncing(true);
+    setError(null);
+    try {
+      const result = await syncOfflineAttendanceForSession(
+        session.id,
+        attendanceContext.classId,
+        attendanceContext.sessionDate,
+      );
+      await loadSheet();
+      if (result.failed > 0) {
+        setError(`${result.synced} marks synced. ${result.failed} still waiting.`);
+      }
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : 'Could not sync attendance.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
   async function handleSave() {
-    if (!session) return;
+    if (!session || !attendanceContext) return;
     if (markedCount === 0) {
       Alert.alert('Nothing to save', 'Mark at least one student before saving this session.');
       return;
@@ -106,8 +142,26 @@ export default function ClassAttendanceScreen() {
     setIsSaving(true);
     setError(null);
     try {
-      await saveAttendanceSession(session.id);
+      await saveAttendanceSession(session.id, attendanceContext.classId, attendanceContext.sessionDate);
       setSession((current) => (current ? { ...current, status: 'saved' } : current));
+      setPendingSyncCount(0);
+
+      const absentStudents = students.filter((student) => student.attendanceStatus === 'absent');
+      const workspace = await getCurrentWorkspace();
+      if (absentStudents.length > 0 && workspace?.absence_alerts_enabled) {
+        router.replace({
+          pathname: '/communications/compose',
+          params: {
+            flow: 'absence_batch',
+            sessionId: session.id,
+            classId: attendanceContext.classId,
+            sessionDate: attendanceContext.sessionDate,
+            studentIds: absentStudents.map((student) => student.id).join(','),
+          },
+        });
+        return;
+      }
+
       router.back();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Could not save attendance.');
@@ -158,11 +212,26 @@ export default function ClassAttendanceScreen() {
               {sessionView.date} • Tap each student to cycle Present → Late → Absent.
             </Text>
           </View>
-          <Link href={`/classes/${params.classId}/attendance-history` as Href} asChild>
-            <Pressable style={styles.iconButton}>
-              <MaterialCommunityIcons name="history" size={21} color={colors.primary} />
-            </Pressable>
-          </Link>
+          <View style={styles.headerActions}>
+            <Link
+              href={
+                {
+                  pathname: '/classes/[classId]/scan',
+                  params: { classId: params.classId, sessionDate: params.sessionDate ?? session?.session_date },
+                } as Href
+              }
+              asChild
+            >
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="qrcode-scan" size={21} color={colors.primary} />
+              </Pressable>
+            </Link>
+            <Link href={`/classes/${params.classId}/attendance-history` as Href} asChild>
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="history" size={21} color={colors.primary} />
+              </Pressable>
+            </Link>
+          </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -197,6 +266,24 @@ export default function ClassAttendanceScreen() {
               <SummaryBox label="Late" value={`${lateCount}`} color={colors.warning} />
               <SummaryBox label="Absent" value={`${absentCount}`} color={colors.danger} />
             </View>
+
+            {pendingSyncCount > 0 ? (
+              <PremiumCard style={styles.syncCard}>
+                <View style={styles.syncCopy}>
+                  <Text style={styles.cardTitle}>Offline queue</Text>
+                  <Text style={styles.cardSubtitle}>
+                    {pendingSyncCount} attendance mark{pendingSyncCount === 1 ? '' : 's'} waiting to sync.
+                  </Text>
+                </View>
+                <Pressable style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]} onPress={handleSync} disabled={isSyncing}>
+                  {isSyncing ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={styles.syncButtonText}>Sync now</Text>
+                  )}
+                </Pressable>
+              </PremiumCard>
+            ) : null}
 
             <PremiumCard style={styles.progressCard}>
               <View style={styles.progressTopRow}>
@@ -293,6 +380,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   content: { padding: spacing.lg, paddingBottom: 116, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   headerCopy: { flex: 1 },
   title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
@@ -304,6 +392,11 @@ const styles = StyleSheet.create({
   heroTitle: { marginTop: 4, color: 'white', fontSize: 24, lineHeight: 29, fontWeight: '900' },
   heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 12, lineHeight: 18, fontWeight: '700' },
   summaryRow: { flexDirection: 'row', gap: spacing.md },
+  syncCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, borderColor: colors.warningSoft },
+  syncCopy: { flex: 1 },
+  syncButton: { borderRadius: radius.lg, backgroundColor: colors.warning, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  syncButtonDisabled: { opacity: 0.7 },
+  syncButtonText: { color: 'white', fontSize: 12, fontWeight: '900' },
   summaryBox: { flex: 1, padding: spacing.lg },
   summaryLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   summaryValue: { marginTop: 5, fontSize: 24, fontWeight: '900' },
