@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import { Link, Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -137,13 +137,17 @@ export default function SettingsScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Academic setup</Text>
-          <Text style={styles.sectionAction}>Manage</Text>
+          <Link href="/settings/subjects" asChild>
+            <Pressable>
+              <Text style={styles.sectionAction}>Manage</Text>
+            </Pressable>
+          </Link>
         </View>
         <View style={styles.grid}>
-          <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} />
-          <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} />
-          <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} />
-          <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} />
+          <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
+          <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
+          <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
+          <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} href="/reports" />
         </View>
 
         <Link href="/settings/archived" asChild>
@@ -209,8 +213,20 @@ function LanguageChip({ label, active = false }: { label: string; active?: boole
   );
 }
 
-function SetupTile({ title, subtitle, icon, color }: { title: string; subtitle: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string }) {
-  return (
+function SetupTile({
+  title,
+  subtitle,
+  icon,
+  color,
+  href,
+}: {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  color: string;
+  href?: Href;
+}) {
+  const tile = (
     <PremiumCard style={styles.setupTile}>
       <View style={[styles.setupIcon, { backgroundColor: `${color}1F` }]}>
         <MaterialCommunityIcons name={icon} size={24} color={color} />
@@ -218,6 +234,14 @@ function SetupTile({ title, subtitle, icon, color }: { title: string; subtitle: 
       <Text style={styles.setupTitle}>{title}</Text>
       <Text style={styles.setupSubtitle}>{subtitle}</Text>
     </PremiumCard>
+  );
+
+  if (!href) return tile;
+
+  return (
+    <Link href={href} asChild>
+      <Pressable style={styles.setupTilePressable}>{tile}</Pressable>
+    </Link>
   );
 }
 
@@ -261,7 +285,8 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   sectionAction: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  setupTile: { width: '48%', minHeight: 142, justifyContent: 'space-between', padding: spacing.lg },
+  setupTilePressable: { width: '48%' },
+  setupTile: { width: '100%', minHeight: 142, justifyContent: 'space-between', padding: spacing.lg },
   setupIcon: { width: 46, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   setupTitle: { marginTop: spacing.md, color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
   setupSubtitle: { marginTop: spacing.xs, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },

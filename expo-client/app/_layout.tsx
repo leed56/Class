@@ -18,8 +18,8 @@ function RootNavigator() {
 
   return (
     <>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
     </>
   );
 }
