@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -13,6 +13,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
 import { PaymentRow } from '@/features/fees/components/PaymentRow';
 import { FeeSummary, getFeeSummaryForMonth, listOutstandingInvoices, listRecentPayments } from '@/features/fees/feeService';
+import { exportDefaulterCsv } from '@/features/fees/feeExport';
 import { FeeInvoice, PaymentRecord } from '@/features/fees/models';
 import { buildFeeReminderMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
@@ -28,6 +29,7 @@ export default function FeesScreen() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadFees = useCallback(async () => {
@@ -82,6 +84,20 @@ export default function FeesScreen() {
   const outstanding = summary?.outstanding ?? 0;
   const collectionPercent = summary?.collectionPercent ?? 0;
   const defaulterCount = summary?.defaulterCount ?? 0;
+
+  const handleExportDefaulters = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      await exportDefaulterCsv(monthLabel, workspaceName, invoices);
+    } catch (exportError) {
+      Alert.alert(
+        'Export failed',
+        exportError instanceof Error ? exportError.message : 'Could not export the defaulter list.',
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [invoices, monthLabel, workspaceName]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -141,26 +157,44 @@ export default function FeesScreen() {
               <MetricCard label="Defaulters" value={`${defaulterCount}`} icon="account-alert" tone={colors.warning} />
             </View>
 
-            <View style={styles.actionRow}>
+            <View style={styles.actionColumn}>
               <NavPressable href="/fees/record-payment" style={styles.primaryAction}>
                 <MaterialCommunityIcons name="cash-register" size={19} color="white" />
                 <Text style={styles.primaryActionText}>Record Payment</Text>
               </NavPressable>
-              <Pressable style={styles.secondaryAction} onPress={sendTopReminder} disabled={defaulterCount === 0}>
-                <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
-                <Text style={styles.secondaryActionText}>Send Reminders</Text>
-              </Pressable>
+              <View style={styles.actionRow}>
+                <Pressable style={styles.secondaryAction} onPress={sendTopReminder} disabled={defaulterCount === 0}>
+                  <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
+                  <Text style={styles.secondaryActionText}>Remind</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.exportAction}
+                  onPress={handleExportDefaulters}
+                  disabled={invoices.length === 0 || isExporting}
+                >
+                  {isExporting ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="file-delimited-outline" size={19} color={colors.primary} />
+                      <Text style={styles.exportActionText}>Export CSV</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             </View>
 
             {defaulterCount > 0 ? (
-              <Pressable onPress={sendTopReminder}>
+              <Pressable onPress={handleExportDefaulters} disabled={isExporting}>
                 <PremiumCard style={styles.alertCard}>
                   <View style={styles.alertIcon}>
                     <MaterialCommunityIcons name="bell-ring-outline" size={22} color={colors.danger} />
                   </View>
                   <View style={styles.alertTextBlock}>
-                    <Text style={styles.alertTitle}>Highest-value follow-up</Text>
-                    <Text style={styles.alertCopy}>{defaulterCount} parents can receive a WhatsApp fee reminder today.</Text>
+                    <Text style={styles.alertTitle}>Defaulter follow-up</Text>
+                    <Text style={styles.alertCopy}>
+                      {defaulterCount} open invoices • export CSV or send WhatsApp reminders.
+                    </Text>
                   </View>
                   <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
                 </PremiumCard>
@@ -240,11 +274,14 @@ const styles = StyleSheet.create({
   retryButton: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
   metricsRow: { flexDirection: 'row', gap: spacing.md },
+  actionColumn: { gap: spacing.md },
   actionRow: { flexDirection: 'row', gap: spacing.md },
-  primaryAction: { flex: 1, minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  primaryAction: { minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryActionText: { color: 'white', fontSize: 13, fontWeight: '900' },
   secondaryAction: { flex: 1, minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.successSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   secondaryActionText: { color: colors.success, fontSize: 13, fontWeight: '900' },
+  exportAction: { flex: 1, minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  exportActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   alertCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.dangerSoft },
   alertIcon: { width: 44, height: 44, borderRadius: radius.lg, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
   alertTextBlock: { flex: 1 },
