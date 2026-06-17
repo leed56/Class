@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setLoading(false);
       return;
     }
 

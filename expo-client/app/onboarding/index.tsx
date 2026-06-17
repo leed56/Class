@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,17 +19,24 @@ const languageOptions: { label: string; value: LanguageCode; helper: string }[] 
   { label: 'தமிழ்', value: 'ta', helper: 'Tamil ready' },
 ];
 
+function suggestWorkspaceName(user: Parameters<typeof getTeacherDisplayName>[0]) {
+  const teacherName = getTeacherDisplayName(user);
+  return teacherName === 'Teacher' ? '' : `${teacherName} Classes`;
+}
+
 export default function OnboardingScreen() {
   const { user } = useAuth();
-  const [workspaceName, setWorkspaceName] = useState('');
+  const [workspaceName, setWorkspaceName] = useState(() => suggestWorkspaceName(user));
+  const [suggestedForUser, setSuggestedForUser] = useState(user);
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const teacherName = getTeacherDisplayName(user);
-    setWorkspaceName(teacherName === 'Teacher' ? '' : `${teacherName} Classes`);
-  }, [user]);
+  // Refresh the suggested workspace name when the signed-in teacher resolves/changes.
+  if (user !== suggestedForUser) {
+    setSuggestedForUser(user);
+    setWorkspaceName(suggestWorkspaceName(user));
+  }
 
   async function handleCreateWorkspace() {
     if (!workspaceName.trim()) {
