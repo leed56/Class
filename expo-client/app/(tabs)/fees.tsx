@@ -196,6 +196,10 @@ export default function FeesScreen() {
                 <Text style={styles.primaryActionText}>Record Payment</Text>
               </NavPressable>
               <View style={styles.actionRow}>
+                <NavPressable href="/fees/charge" style={styles.chargeAction}>
+                  <MaterialCommunityIcons name="file-document-plus-outline" size={19} color={colors.warning} />
+                  <Text style={styles.chargeActionText}>Issue charge</Text>
+                </NavPressable>
                 <Pressable
                   style={styles.secondaryAction}
                   onPress={showRemindOptions}
@@ -318,7 +322,9 @@ const styles = StyleSheet.create({
   retryText: { color: 'white', fontSize: 13, fontWeight: '900' },
   metricsRow: { flexDirection: 'row', gap: spacing.md },
   actionColumn: { gap: spacing.md },
-  actionRow: { flexDirection: 'row', gap: spacing.md },
+  actionRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  chargeAction: { flex: 1, minWidth: 100, minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.warningSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  chargeActionText: { color: colors.warning, fontSize: 13, fontWeight: '900' },
   primaryAction: { minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   primaryActionText: { color: 'white', fontSize: 13, fontWeight: '900' },
   secondaryAction: { flex: 1, minHeight: 52, borderRadius: radius.lg, backgroundColor: colors.successSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

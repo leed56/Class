@@ -37,7 +37,11 @@ export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
           <Text style={styles.meta} numberOfLines={1}>
             {invoice.invoiceType === 'admission'
               ? `Admission • Grade ${invoice.grade} • ${invoice.medium}`
-              : `Grade ${invoice.grade} • ${invoice.medium} • ${invoice.className}`}
+              : invoice.invoiceType === 'material'
+                ? `Material • ${invoice.className}`
+                : invoice.invoiceType === 'exam'
+                  ? `Exam • ${invoice.className}`
+                  : `Grade ${invoice.grade} • ${invoice.medium} • ${invoice.className}`}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.background }]}>

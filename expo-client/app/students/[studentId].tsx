@@ -260,7 +260,7 @@ export default function StudentProfileScreen() {
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>Fee ledger</Text>
-              <Text style={styles.cardSubtitle}>Open invoices for this month and admission</Text>
+              <Text style={styles.cardSubtitle}>Open invoices including admission, material and exam charges</Text>
             </View>
             <FeeStatusBadge status={student.feeStatus} />
           </View>
@@ -283,12 +283,18 @@ export default function StudentProfileScreen() {
             </View>
           )}
 
-          {openInvoices.length > 0 ? (
-            <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
-              <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
-              <Text style={styles.ledgerActionText}>Record split payment</Text>
+          <View style={styles.ledgerActions}>
+            <NavPressable href={`/fees/charge?studentId=${student.id}` as Href} style={styles.ledgerActionSecondary}>
+              <MaterialCommunityIcons name="file-document-plus-outline" size={18} color={colors.warning} />
+              <Text style={styles.ledgerActionSecondaryText}>Issue charge</Text>
             </NavPressable>
-          ) : null}
+            {openInvoices.length > 0 ? (
+              <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
+                <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
+                <Text style={styles.ledgerActionText}>Record payment</Text>
+              </NavPressable>
+            ) : null}
+          </View>
         </PremiumCard>
 
         <PremiumCard style={styles.consentCard}>
@@ -413,8 +419,11 @@ const styles = StyleSheet.create({
   ledgerTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
   ledgerMeta: { marginTop: 3, color: colors.textSecondary, fontSize: 10, fontWeight: '700' },
   ledgerDue: { color: colors.danger, fontSize: 14, fontWeight: '900' },
-  ledgerAction: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primarySoft, backgroundColor: colors.primarySoft },
+  ledgerAction: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primarySoft, backgroundColor: colors.primarySoft },
   ledgerActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  ledgerActions: { flexDirection: 'row', gap: spacing.sm },
+  ledgerActionSecondary: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.warningSoft, backgroundColor: colors.warningSoft },
+  ledgerActionSecondaryText: { color: colors.warning, fontSize: 13, fontWeight: '900' },
   consentCard: { borderColor: colors.primarySoft },
   archiveCard: { gap: spacing.lg, borderColor: colors.dangerSoft },
   archiveCopy: { gap: spacing.xs },

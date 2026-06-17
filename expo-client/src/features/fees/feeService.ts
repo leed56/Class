@@ -89,7 +89,11 @@ function mapInvoiceRow(
       : row.description ?? 'Admission fee';
   const monthKey = row.month ?? '';
   const monthLabel =
-    row.month != null ? formatMonthLabel(row.month) : invoiceType === 'admission' ? 'One-time' : '—';
+    row.month != null
+      ? formatMonthLabel(row.month)
+      : invoiceType === 'monthly'
+        ? '—'
+        : 'One-time';
 
   return {
     id: row.id,
@@ -293,6 +297,48 @@ export async function ensureAdmissionInvoice(studentId: string) {
   return data.id as string;
 }
 
+export type CreateOneOffInvoiceInput = {
+  studentId: string;
+  invoiceType: 'material' | 'exam';
+  description: string;
+  amountLkr: number;
+  classId?: string | null;
+};
+
+export async function createOneOffInvoice(input: CreateOneOffInvoiceInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before managing fees.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const description = input.description.trim();
+  if (!description) throw new Error('Add a description for this charge.');
+
+  const amount = Math.round(input.amountLkr);
+  if (amount <= 0) throw new Error('Enter an amount greater than zero.');
+
+  const { data, error } = await supabase
+    .from('fee_invoices')
+    .insert({
+      workspace_id: workspace.id,
+      student_id: input.studentId,
+      class_id: input.classId ?? null,
+      month: null,
+      invoice_type: input.invoiceType,
+      description,
+      monthly_fee: amount,
+      paid_amount: 0,
+      status: 'pending',
+      due_date: null,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data.id as string;
+}
+
 export async function ensureEnrollmentInvoice(classId: string, studentId: string, enrolledAt = new Date()) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before managing fees.');
@@ -365,7 +411,7 @@ async function refreshInvoiceStatuses(monthKey = getCurrentMonthKey()) {
     .from('fee_invoices')
     .select('*')
     .eq('workspace_id', workspace.id)
-    .or(`month.eq.${monthKey},invoice_type.eq.admission`);
+    .or(`month.eq.${monthKey},invoice_type.eq.admission,invoice_type.eq.material,invoice_type.eq.exam`);
 
   if (error) throw new Error(error.message);
 
@@ -391,7 +437,7 @@ export async function listInvoicesForMonth(monthKey = getCurrentMonthKey()) {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Supabase is not configured.');
 
-  const [monthlyResult, admissionResult] = await Promise.all([
+  const [monthlyResult, admissionResult, oneOffResult] = await Promise.all([
     supabase
       .from('fee_invoices')
       .select('*, students(*), classes(*)')
@@ -405,12 +451,19 @@ export async function listInvoicesForMonth(monthKey = getCurrentMonthKey()) {
       .eq('workspace_id', workspace.id)
       .eq('invoice_type', 'admission')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('fee_invoices')
+      .select('*, students(*), classes(*)')
+      .eq('workspace_id', workspace.id)
+      .in('invoice_type', ['material', 'exam'])
+      .order('created_at', { ascending: false }),
   ]);
 
   if (monthlyResult.error) throw new Error(monthlyResult.error.message);
   if (admissionResult.error) throw new Error(admissionResult.error.message);
+  if (oneOffResult.error) throw new Error(oneOffResult.error.message);
 
-  const rows = [...(monthlyResult.data ?? []), ...(admissionResult.data ?? [])];
+  const rows = [...(monthlyResult.data ?? []), ...(admissionResult.data ?? []), ...(oneOffResult.data ?? [])];
 
   return rows
     .map((row) => {
@@ -435,8 +488,13 @@ export async function listStudentOpenInvoices(studentId: string, monthKey = getC
   return invoices
     .filter((invoice) => invoice.studentId === studentId && invoice.outstandingAmount > 0)
     .sort((a, b) => {
-      if (a.invoiceType === 'admission' && b.invoiceType !== 'admission') return -1;
-      if (b.invoiceType === 'admission' && a.invoiceType !== 'admission') return 1;
+      const typeOrder = (type: FeeInvoice['invoiceType']) => {
+        if (type === 'admission') return 0;
+        if (type === 'material' || type === 'exam') return 1;
+        return 2;
+      };
+      const orderDiff = typeOrder(a.invoiceType) - typeOrder(b.invoiceType);
+      if (orderDiff !== 0) return orderDiff;
       return b.outstandingAmount - a.outstandingAmount;
     });
 }
@@ -693,7 +751,7 @@ export async function getStudentFeeSummaries(studentIds: string[], monthKey = ge
     .select('*')
     .eq('workspace_id', workspace.id)
     .in('student_id', studentIds)
-    .or(`month.eq.${monthKey},invoice_type.eq.admission`);
+    .or(`month.eq.${monthKey},invoice_type.eq.admission,invoice_type.eq.material,invoice_type.eq.exam`);
 
   if (error) throw new Error(error.message);
 
