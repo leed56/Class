@@ -15,6 +15,7 @@ import { FeeInvoice } from '@/features/fees/models';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById, archiveStudent } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { InstituteType } from '@/lib/database.types';
 import { buildFeeReminderMessage, buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -37,6 +38,7 @@ export default function StudentProfileScreen() {
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
   const [openInvoices, setOpenInvoices] = useState<FeeInvoice[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export default function StudentProfileScreen() {
       setEnrollments(nextEnrollments);
       setOpenInvoices(invoices);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceType(workspace?.institute_type ?? 'solo');
       if (!nextStudent) setError('Student not found.');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
@@ -297,6 +300,22 @@ export default function StudentProfileScreen() {
           </View>
         </PremiumCard>
 
+        {workspaceType !== 'solo' ? (
+          <PremiumCard style={styles.certificateCard}>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Certifications</Text>
+                <Text style={styles.cardSubtitle}>Issue completion and achievement certificates</Text>
+              </View>
+              <MaterialCommunityIcons name="certificate-outline" size={24} color={colors.primary} />
+            </View>
+            <NavPressable href={`/students/${student.id}/certificates` as Href} style={styles.certificateAction}>
+              <MaterialCommunityIcons name="certificate" size={18} color={colors.primary} />
+              <Text style={styles.certificateActionText}>Open certifications</Text>
+            </NavPressable>
+          </PremiumCard>
+        ) : null}
+
         <PremiumCard style={styles.consentCard}>
           <View style={styles.parentRow}>
             <View style={[styles.parentIcon, { backgroundColor: student.consentCaptured ? colors.successSoft : colors.warningSoft }]}>
@@ -424,6 +443,9 @@ const styles = StyleSheet.create({
   ledgerActions: { flexDirection: 'row', gap: spacing.sm },
   ledgerActionSecondary: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.warningSoft, backgroundColor: colors.warningSoft },
   ledgerActionSecondaryText: { color: colors.warning, fontSize: 13, fontWeight: '900' },
+  certificateCard: { gap: spacing.lg },
+  certificateAction: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primarySoft, backgroundColor: colors.primarySoft },
+  certificateActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   consentCard: { borderColor: colors.primarySoft },
   archiveCard: { gap: spacing.lg, borderColor: colors.dangerSoft },
   archiveCopy: { gap: spacing.xs },

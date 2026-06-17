@@ -2,6 +2,7 @@ export type WorkspacePlan = 'free' | 'starter' | 'institute';
 export type LanguageCode = 'en' | 'si' | 'ta';
 export type InstituteType = 'solo' | 'academy' | 'institute';
 export type InvoiceType = 'monthly' | 'admission' | 'material' | 'exam';
+export type CertificateType = 'completion' | 'achievement';
 export type Medium = 'English' | 'Sinhala' | 'Tamil';
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type AttendanceStatus = 'present' | 'late' | 'absent';
@@ -117,5 +118,17 @@ export type PaymentAllocationRow = {
   payment_id: string;
   invoice_id: string;
   amount: number;
+  created_at: string;
+};
+
+export type CertificateRow = {
+  id: string;
+  workspace_id: string;
+  student_id: string;
+  certificate_type: CertificateType;
+  title: string;
+  serial_no: string;
+  issued_on: string;
+  note: string | null;
   created_at: string;
 };
