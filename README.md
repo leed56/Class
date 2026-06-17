@@ -56,6 +56,7 @@ supabase/               # SQL migrations, seed data, Edge Functions later
 
 ## Documentation
 
+- [Roadmap](docs/ROADMAP.md)
 - [Phase Plan](docs/PHASE_PLAN.md)
 - [Project Structure](docs/PROJECT_STRUCTURE.md)
 - [UI Screens](docs/UI_SCREENS.md)
