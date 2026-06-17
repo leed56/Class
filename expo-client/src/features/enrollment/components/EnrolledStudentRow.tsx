@@ -6,7 +6,7 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { FeeStatus } from '@/lib/database.types';
 import { Student } from '@/features/students/types';
 import { colors } from '@/theme/colors';
-import { radius, spacing } from '@/theme/spacing';
+import { spacing } from '@/theme/spacing';
 
 type EnrolledStudentRowProps = {
   student: Student;

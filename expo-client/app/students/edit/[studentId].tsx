@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,33 +31,36 @@ export default function EditStudentScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadStudent = useCallback(async () => {
-    if (!params.studentId) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const student = await getStudentById(params.studentId);
-      if (!student) {
-        setError('Student not found.');
-        return;
-      }
-      setFullName(student.name);
-      setSchool(displayValue(student.school, 'School not set'));
-      setGrade(String(student.grade));
-      setMedium(student.medium);
-      setParentName(displayValue(student.parentName, 'Parent not set'));
-      setParentPhone(student.parentPhone);
-      setConsentCaptured(student.consentCaptured);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [params.studentId]);
-
   useEffect(() => {
-    loadStudent();
-  }, [loadStudent]);
+    if (!params.studentId) return;
+    let active = true;
+
+    getStudentById(params.studentId)
+      .then((student) => {
+        if (!active) return;
+        if (!student) {
+          setError('Student not found.');
+          return;
+        }
+        setFullName(student.name);
+        setSchool(displayValue(student.school, 'School not set'));
+        setGrade(String(student.grade));
+        setMedium(student.medium);
+        setParentName(displayValue(student.parentName, 'Parent not set'));
+        setParentPhone(student.parentPhone);
+        setConsentCaptured(student.consentCaptured);
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [params.studentId]);
 
   async function handleSave() {
     if (!params.studentId) return;

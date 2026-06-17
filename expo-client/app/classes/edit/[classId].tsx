@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,34 +28,37 @@ export default function EditClassScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadClass = useCallback(async () => {
-    if (!params.classId) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const tuitionClass = await getClassById(params.classId);
-      if (!tuitionClass) {
-        setError('Class not found.');
-        return;
-      }
-      setSubject(tuitionClass.subject);
-      setGrade(String(tuitionClass.grade));
-      setMedium(tuitionClass.medium);
-      setHall(tuitionClass.hall === 'Hall not set' ? '' : tuitionClass.hall);
-      setWeekday(tuitionClass.day);
-      setStartTime(tuitionClass.startTime);
-      setEndTime(tuitionClass.endTime);
-      setMonthlyFee(String(tuitionClass.monthlyFee));
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load class.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [params.classId]);
-
   useEffect(() => {
-    loadClass();
-  }, [loadClass]);
+    if (!params.classId) return;
+    let active = true;
+
+    getClassById(params.classId)
+      .then((tuitionClass) => {
+        if (!active) return;
+        if (!tuitionClass) {
+          setError('Class not found.');
+          return;
+        }
+        setSubject(tuitionClass.subject);
+        setGrade(String(tuitionClass.grade));
+        setMedium(tuitionClass.medium);
+        setHall(tuitionClass.hall === 'Hall not set' ? '' : tuitionClass.hall);
+        setWeekday(tuitionClass.day);
+        setStartTime(tuitionClass.startTime);
+        setEndTime(tuitionClass.endTime);
+        setMonthlyFee(String(tuitionClass.monthlyFee));
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Could not load class.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [params.classId]);
 
   async function handleSave() {
     if (!params.classId) return;

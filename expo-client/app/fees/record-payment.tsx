@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,34 +33,38 @@ export default function RecordPaymentScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadScreen = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      if (params.invoiceId) {
-        const nextInvoice = await getInvoiceById(params.invoiceId);
-        if (!nextInvoice) {
-          setError('Invoice not found.');
-          setInvoice(null);
-          return;
-        }
-        setInvoice(nextInvoice);
-        setAmount(String(nextInvoice.outstandingAmount));
-      } else {
-        const outstanding = await listOutstandingInvoices();
-        setPickerInvoices(outstanding);
-        setInvoice(null);
-      }
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load invoice.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [params.invoiceId]);
-
   useEffect(() => {
-    loadScreen();
-  }, [loadScreen]);
+    let active = true;
+
+    const request = params.invoiceId
+      ? getInvoiceById(params.invoiceId).then((nextInvoice) => {
+          if (!active) return;
+          if (!nextInvoice) {
+            setError('Invoice not found.');
+            setInvoice(null);
+            return;
+          }
+          setInvoice(nextInvoice);
+          setAmount(String(nextInvoice.outstandingAmount));
+        })
+      : listOutstandingInvoices().then((outstanding) => {
+          if (!active) return;
+          setPickerInvoices(outstanding);
+          setInvoice(null);
+        });
+
+    request
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Could not load invoice.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [params.invoiceId]);
 
   async function handleRecord() {
     if (!invoice) return;
