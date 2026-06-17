@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -16,21 +15,21 @@ function formatLkr(amount: number) {
 
 export function PaymentRow({ payment }: PaymentRowProps) {
   return (
-    <Link href={`/fees/receipt/${payment.id}` as never} asChild>
-      <Pressable style={styles.row}>
-        <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name="cash-check" size={20} color={colors.success} />
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{payment.studentName}</Text>
-          <Text style={styles.meta} numberOfLines={1}>{payment.className} • {payment.receiptNo}</Text>
-        </View>
-        <View style={styles.amountBlock}>
-          <Text style={styles.amount}>{formatLkr(payment.amount)}</Text>
-          <Text style={styles.date}>{payment.paidAt}</Text>
-        </View>
-      </Pressable>
-    </Link>
+    <View style={styles.row}>
+      <View style={styles.iconWrap}>
+        <MaterialCommunityIcons name="cash-check" size={20} color={colors.success} />
+      </View>
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>{payment.studentName}</Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {payment.allocations.length > 1 ? `Split payment • ${payment.receiptNo}` : `${payment.className} • ${payment.receiptNo}`}
+        </Text>
+      </View>
+      <View style={styles.amountBlock}>
+        <Text style={styles.amount}>{formatLkr(payment.amount)}</Text>
+        <Text style={styles.date}>{payment.paidAt}</Text>
+      </View>
+    </View>
   );
 }
 

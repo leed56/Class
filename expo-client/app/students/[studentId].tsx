@@ -5,10 +5,13 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { EnrolledClassCard } from '@/features/enrollment/components/EnrolledClassCard';
 import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
+import { listStudentOpenInvoices } from '@/features/fees/feeService';
+import { FeeInvoice } from '@/features/fees/models';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById, archiveStudent } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
@@ -20,11 +23,19 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
+function invoiceLedgerLabel(invoice: FeeInvoice) {
+  if (invoice.invoiceType === 'admission') return 'Admission fee';
+  if (invoice.invoiceType === 'material') return 'Material fee';
+  if (invoice.invoiceType === 'exam') return 'Exam fee';
+  return `${invoice.className} • ${invoice.month}`;
+}
+
 export default function StudentProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
+  const [openInvoices, setOpenInvoices] = useState<FeeInvoice[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -35,13 +46,15 @@ export default function StudentProfileScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const [nextStudent, nextEnrollments, workspace] = await Promise.all([
+      const [nextStudent, nextEnrollments, workspace, invoices] = await Promise.all([
         getStudentById(params.studentId),
         listStudentEnrollments(params.studentId),
         getCurrentWorkspace(),
+        listStudentOpenInvoices(params.studentId),
       ]);
       setStudent(nextStudent);
       setEnrollments(nextEnrollments);
+      setOpenInvoices(invoices);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
       if (!nextStudent) setError('Student not found.');
     } catch (loadError) {
@@ -178,7 +191,7 @@ export default function StudentProfileScreen() {
             icon="cash-plus"
             label="Payment"
             color={colors.success}
-            href={student.outstandingAmount > 0 ? ('/fees/record-payment' as Href) : undefined}
+            href={openInvoices.length > 0 ? (`/fees/record-payment?studentId=${student.id}` as Href) : undefined}
           />
           <ProfileAction icon="whatsapp" label="Message" color={colors.warning} onPress={messageParent} />
         </View>
@@ -246,16 +259,36 @@ export default function StudentProfileScreen() {
         <PremiumCard style={styles.invoiceCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Current fee status</Text>
-              <Text style={styles.cardSubtitle}>Cash-first tuition payment tracking</Text>
+              <Text style={styles.cardTitle}>Fee ledger</Text>
+              <Text style={styles.cardSubtitle}>Open invoices for this month and admission</Text>
             </View>
             <FeeStatusBadge status={student.feeStatus} />
           </View>
-          <View style={styles.invoiceRow}>
-            <FeeFigure label="Monthly fee" value={formatLkr(student.monthlyFee)} />
-            <FeeFigure label="Paid" value={formatLkr(Math.max(0, student.monthlyFee - student.outstandingAmount))} />
-            <FeeFigure label="Pending" value={formatLkr(student.outstandingAmount)} danger={student.outstandingAmount > 0} />
-          </View>
+
+          {openInvoices.length === 0 ? (
+            <Text style={styles.ledgerEmpty}>No outstanding invoices — fees are up to date.</Text>
+          ) : (
+            <View style={styles.ledgerList}>
+              {openInvoices.map((invoice) => (
+                <View key={invoice.id} style={styles.ledgerRow}>
+                  <View style={styles.ledgerCopy}>
+                    <Text style={styles.ledgerTitle}>{invoiceLedgerLabel(invoice)}</Text>
+                    <Text style={styles.ledgerMeta}>
+                      Paid {formatLkr(invoice.paidAmount)} of {formatLkr(invoice.monthlyFee)}
+                    </Text>
+                  </View>
+                  <Text style={styles.ledgerDue}>{formatLkr(invoice.outstandingAmount)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {openInvoices.length > 0 ? (
+            <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
+              <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
+              <Text style={styles.ledgerActionText}>Record split payment</Text>
+            </NavPressable>
+          ) : null}
         </PremiumCard>
 
         <PremiumCard style={styles.consentCard}>
@@ -332,15 +365,6 @@ function ProfileAction({
   );
 }
 
-function FeeFigure({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <View style={styles.feeFigure}>
-      <Text style={styles.feeLabel}>{label}</Text>
-      <Text style={[styles.feeValue, { color: danger ? colors.danger : colors.textPrimary }]}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
@@ -382,10 +406,15 @@ const styles = StyleSheet.create({
   whatsappPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: colors.successSoft, paddingHorizontal: 9, paddingVertical: 6 },
   whatsappText: { color: colors.success, fontSize: 10, fontWeight: '900' },
   invoiceCard: { gap: spacing.lg },
-  invoiceRow: { flexDirection: 'row', gap: spacing.sm },
-  feeFigure: { flex: 1, borderRadius: radius.lg, padding: spacing.md, backgroundColor: colors.background },
-  feeLabel: { color: colors.textSecondary, fontSize: 10, fontWeight: '800' },
-  feeValue: { marginTop: 4, fontSize: 13, fontWeight: '900' },
+  ledgerEmpty: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  ledgerList: { gap: spacing.sm },
+  ledgerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, borderRadius: radius.lg, padding: spacing.md, backgroundColor: colors.background },
+  ledgerCopy: { flex: 1, minWidth: 0 },
+  ledgerTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
+  ledgerMeta: { marginTop: 3, color: colors.textSecondary, fontSize: 10, fontWeight: '700' },
+  ledgerDue: { color: colors.danger, fontSize: 14, fontWeight: '900' },
+  ledgerAction: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primarySoft, backgroundColor: colors.primarySoft },
+  ledgerActionText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   consentCard: { borderColor: colors.primarySoft },
   archiveCard: { gap: spacing.lg, borderColor: colors.dangerSoft },
   archiveCopy: { gap: spacing.xs },

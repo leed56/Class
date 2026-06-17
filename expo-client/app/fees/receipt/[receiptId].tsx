@@ -60,6 +60,7 @@ export default function ReceiptDetailScreen() {
       receiptNo: payment.receiptNo,
       paidAt: payment.paidAt,
       method: payment.method,
+      allocations: payment.allocations,
     });
 
     await openWhatsAppChat(payment.parentPhone, message);
@@ -142,7 +143,19 @@ export default function ReceiptDetailScreen() {
 
           <View style={styles.detailsBox}>
             <ReceiptLine label="Student" value={payment.studentName} />
-            <ReceiptLine label="Class" value={payment.className} />
+            {payment.allocations.length > 1 ? (
+              <View style={styles.allocationBlock}>
+                <Text style={styles.allocationTitle}>Applied to</Text>
+                {payment.allocations.map((line, index) => (
+                  <View key={`${line.label}-${index}`} style={styles.allocationRow}>
+                    <Text style={styles.allocationLabel}>{line.label}</Text>
+                    <Text style={styles.allocationValue}>{formatLkr(line.amount)}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <ReceiptLine label="Class" value={payment.className} />
+            )}
             <ReceiptLine label="Receipt no" value={payment.receiptNo} />
             <ReceiptLine label="Paid date" value={payment.paidAt} />
             <ReceiptLine label="Method" value={payment.method.toUpperCase()} />
@@ -224,6 +237,11 @@ const styles = StyleSheet.create({
   receiptLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.lg },
   receiptLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '800' },
   receiptValue: { flex: 1, textAlign: 'right', color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
+  allocationBlock: { gap: spacing.sm, paddingTop: spacing.xs },
+  allocationTitle: { color: colors.textSecondary, fontSize: 12, fontWeight: '800' },
+  allocationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  allocationLabel: { flex: 1, color: colors.textPrimary, fontSize: 12, fontWeight: '800' },
+  allocationValue: { color: colors.success, fontSize: 12, fontWeight: '900' },
   footerNote: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.primarySoft },
   footerNoteText: { flex: 1, color: colors.primary, fontSize: 11, lineHeight: 16, fontWeight: '800' },
   shareCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.successSoft },

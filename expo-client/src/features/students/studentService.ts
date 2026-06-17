@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { ensureAdmissionInvoice } from '@/features/fees/feeService';
 import { getAttendanceTrend, getStudentAttendancePercents } from '@/features/attendance/attendanceService';
 import { getStudentFeeSummaries } from '@/features/fees/feeService';
 import { getClassLabelsByStudent } from '@/features/enrollment/enrollmentService';
@@ -147,6 +148,7 @@ export async function createStudent(input: StudentFormInput) {
     .single();
 
   if (error) throw new Error(error.message);
+  await ensureAdmissionInvoice(data.id);
   return mapStudentRow(data as StudentRow);
 }
 

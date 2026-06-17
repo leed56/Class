@@ -14,7 +14,7 @@ import {
 } from '@/features/auth/authService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { LanguageCode } from '@/lib/database.types';
+import { LanguageCode, InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -28,6 +28,16 @@ function getLanguageLabel(value: LanguageCode) {
   return languageOptions.find((option) => option.value === value)?.label ?? 'English';
 }
 
+const instituteTypeOptions: { label: string; value: InstituteType }[] = [
+  { label: 'Solo tutor', value: 'solo' },
+  { label: 'Academy', value: 'academy' },
+  { label: 'Institute', value: 'institute' },
+];
+
+function getInstituteTypeLabel(value: InstituteType) {
+  return instituteTypeOptions.find((option) => option.value === value)?.label ?? 'Solo tutor';
+}
+
 export default function EditSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -35,6 +45,9 @@ export default function EditSettingsScreen() {
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
+  const [instituteType, setInstituteType] = useState<InstituteType>('solo');
+  const [admissionFeeLkr, setAdmissionFeeLkr] = useState('0');
+  const [proRataEnabled, setProRataEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -46,6 +59,9 @@ export default function EditSettingsScreen() {
       const workspace = await getCurrentWorkspace();
       setWorkspaceName(workspace?.name ?? '');
       setDefaultLanguage(workspace?.default_language ?? 'en');
+      setInstituteType(workspace?.institute_type ?? 'solo');
+      setAdmissionFeeLkr(String(workspace?.admission_fee_lkr ?? 0));
+      setProRataEnabled(workspace?.pro_rata_enabled ?? true);
       setDisplayName(
         typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : '',
       );
@@ -66,7 +82,13 @@ export default function EditSettingsScreen() {
     setIsSaving(true);
     try {
       await Promise.all([
-        updateWorkspace({ name: workspaceName, defaultLanguage }),
+        updateWorkspace({
+          name: workspaceName,
+          defaultLanguage,
+          instituteType,
+          admissionFeeLkr: Number(admissionFeeLkr.replace(/\D/g, '') || 0),
+          proRataEnabled,
+        }),
         updateTeacherProfile({ fullName: displayName, phone }),
       ]);
       router.back();
@@ -139,6 +161,37 @@ export default function EditSettingsScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
+          <Text style={styles.cardTitle}>Institute type & fees</Text>
+          <Text style={styles.cardHint}>
+            Academies can charge a one-time admission fee. Pro-rata applies half-month rules for mid-month enrollments.
+          </Text>
+          <ChoiceChipGroup
+            label="Institute type"
+            selected={getInstituteTypeLabel(instituteType)}
+            options={instituteTypeOptions.map((option) => option.label)}
+            onSelect={(label) => {
+              const match = instituteTypeOptions.find((option) => option.label === label);
+              if (match) setInstituteType(match.value);
+            }}
+          />
+          <FormTextField
+            label="Admission fee (LKR)"
+            placeholder="0"
+            icon="cash-plus"
+            keyboardType="number-pad"
+            value={admissionFeeLkr}
+            onChangeText={setAdmissionFeeLkr}
+            helper="One-time per student. Set 0 for solo tutors with no registration fee."
+          />
+          <ChoiceChipGroup
+            label="Mid-month pro-rata"
+            selected={proRataEnabled ? 'Enabled' : 'Disabled'}
+            options={['Enabled', 'Disabled']}
+            onSelect={(label) => setProRataEnabled(label === 'Enabled')}
+          />
+        </PremiumCard>
+
+        <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Default language</Text>
           <ChoiceChipGroup
             label="Language"
@@ -186,6 +239,7 @@ const styles = StyleSheet.create({
   heroNote: { marginTop: 6, color: '#E7DEFF', fontSize: 12, lineHeight: 18, fontWeight: '700' },
   card: { gap: spacing.lg },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
+  cardHint: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   errorText: { color: colors.danger, fontSize: 12, fontWeight: '800', textAlign: 'center' },
   saveBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveNote: { flex: 1, color: colors.textSecondary, fontSize: 12, fontWeight: '700' },

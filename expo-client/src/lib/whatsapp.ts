@@ -59,21 +59,34 @@ export function buildReceiptMessage(params: {
   receiptNo: string;
   paidAt: string;
   method: string;
+  allocations?: { label: string; amount: number }[];
 }) {
   const amount = `LKR ${params.amount.toLocaleString('en-LK')}`;
-
-  return [
+  const lines = [
     `Payment received - ${params.workspaceName}`,
     '',
     `Student: ${params.studentName}`,
-    `Class: ${params.className}`,
+  ];
+
+  if (params.allocations && params.allocations.length > 1) {
+    lines.push('Applied to:');
+    for (const line of params.allocations) {
+      lines.push(`- ${line.label}: LKR ${line.amount.toLocaleString('en-LK')}`);
+    }
+  } else {
+    lines.push(`Class: ${params.className}`);
+  }
+
+  lines.push(
     `Amount: ${amount}`,
     `Receipt: ${params.receiptNo}`,
     `Date: ${params.paidAt}`,
     `Method: ${params.method.toUpperCase()}`,
     '',
     'Thank you for your payment.',
-  ].join('\n');
+  );
+
+  return lines.join('\n');
 }
 
 export function buildFeeReminderMessage(params: {

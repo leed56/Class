@@ -1,3 +1,4 @@
+import { ensureCatalogForClass } from '@/features/catalog/catalogService';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassAttendanceAverages } from '@/features/attendance/attendanceService';
 import { getClassCollectionPercents } from '@/features/fees/feeService';
@@ -185,6 +186,7 @@ export async function createClass(input: ClassFormInput) {
     .single();
 
   if (error) throw new Error(error.message);
+  await ensureCatalogForClass(data as ClassRow);
   return mapClassRow(data as ClassRow);
 }
 

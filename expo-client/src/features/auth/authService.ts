@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { LanguageCode, WorkspaceRow } from '@/lib/database.types';
+import { LanguageCode, InstituteType, WorkspaceRow } from '@/lib/database.types';
 
 type AuthCredentials = {
   email: string;
@@ -105,6 +105,9 @@ export async function getCurrentUserLanguage(): Promise<LanguageCode> {
 export type WorkspaceUpdateInput = {
   name?: string;
   defaultLanguage?: LanguageCode;
+  instituteType?: InstituteType;
+  admissionFeeLkr?: number;
+  proRataEnabled?: boolean;
 };
 
 export type TeacherProfileUpdateInput = {
@@ -124,7 +127,13 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Workspace not found.');
 
-  const updates: { name?: string; default_language?: LanguageCode } = {};
+  const updates: {
+    name?: string;
+    default_language?: LanguageCode;
+    institute_type?: InstituteType;
+    admission_fee_lkr?: number;
+    pro_rata_enabled?: boolean;
+  } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
     if (!trimmed) throw new Error('Institute name is required.');
@@ -132,6 +141,15 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.defaultLanguage !== undefined) {
     updates.default_language = input.defaultLanguage;
+  }
+  if (input.instituteType !== undefined) {
+    updates.institute_type = input.instituteType;
+  }
+  if (input.admissionFeeLkr !== undefined) {
+    updates.admission_fee_lkr = Math.max(0, Math.round(input.admissionFeeLkr));
+  }
+  if (input.proRataEnabled !== undefined) {
+    updates.pro_rata_enabled = input.proRataEnabled;
   }
 
   if (Object.keys(updates).length === 0) {

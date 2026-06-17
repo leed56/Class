@@ -145,6 +145,7 @@ export default function SettingsScreen() {
         </View>
         <View style={styles.grid}>
           <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
+          <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
           <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
           <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
           <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} href="/reports" />

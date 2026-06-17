@@ -1,10 +1,13 @@
+import { InvoiceType } from '@/lib/database.types';
+
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type PaymentMethod = 'cash' | 'bank' | 'online';
 
 export type FeeInvoice = {
   id: string;
   studentId: string;
-  classId: string;
+  classId: string | null;
+  invoiceType: InvoiceType;
   studentName: string;
   grade: number;
   medium: string;
@@ -19,9 +22,14 @@ export type FeeInvoice = {
   dueDays: number;
 };
 
+export type PaymentAllocation = {
+  label: string;
+  amount: number;
+};
+
 export type PaymentRecord = {
   id: string;
-  invoiceId: string;
+  invoiceId: string | null;
   studentName: string;
   className: string;
   amount: number;
@@ -30,4 +38,5 @@ export type PaymentRecord = {
   receiptNo: string;
   parentPhone: string;
   note?: string | null;
+  allocations: PaymentAllocation[];
 };

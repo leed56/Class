@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { ensureEnrollmentInvoice } from '@/features/fees/feeService';
 import { ScheduleState, TuitionClass } from '@/features/classes/models';
 import { Student } from '@/features/students/types';
 import { ClassEnrollmentRow, ClassRow, StudentRow } from '@/lib/database.types';
@@ -259,6 +260,8 @@ export async function enrollStudentInClass(classId: string, studentId: string) {
     }
     throw new Error(error.message);
   }
+
+  await ensureEnrollmentInvoice(classId, studentId, new Date(data.enrolled_at));
 
   return data as ClassEnrollmentRow;
 }

@@ -2,14 +2,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
-import { getInvoiceById, listOutstandingInvoices, recordPayment } from '@/features/fees/feeService';
+import { getInvoiceById, listOutstandingInvoices, listStudentOpenInvoices, recordPayment, recordSplitPayment } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { PaymentMethod } from '@/lib/database.types';
@@ -20,11 +20,27 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
+function invoiceLineLabel(invoice: FeeInvoice) {
+  if (invoice.invoiceType === 'admission') return 'Admission fee';
+  if (invoice.invoiceType === 'material') return 'Material fee';
+  if (invoice.invoiceType === 'exam') return 'Exam fee';
+  return `${invoice.className} • ${invoice.month}`;
+}
+
+function computeSplitTotals(selectedLines: Record<string, { included: boolean; amount: string }>) {
+  const active = Object.values(selectedLines).filter((line) => line.included && Number(line.amount) > 0);
+  const total = active.reduce((sum, line) => sum + Number(line.amount), 0);
+  return { total, count: active.length };
+}
+
 export default function RecordPaymentScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ invoiceId?: string }>();
+  const params = useLocalSearchParams<{ invoiceId?: string; studentId?: string }>();
   const [invoice, setInvoice] = useState<FeeInvoice | null>(null);
   const [pickerInvoices, setPickerInvoices] = useState<FeeInvoice[]>([]);
+  const [splitInvoices, setSplitInvoices] = useState<FeeInvoice[]>([]);
+  const [splitStudentName, setSplitStudentName] = useState('');
+  const [selectedLines, setSelectedLines] = useState<Record<string, { included: boolean; amount: string }>>({});
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [note, setNote] = useState('');
@@ -37,6 +53,20 @@ export default function RecordPaymentScreen() {
     setIsLoading(true);
     setError(null);
     try {
+      if (params.studentId) {
+        const open = await listStudentOpenInvoices(params.studentId);
+        setSplitInvoices(open);
+        setSplitStudentName(open[0]?.studentName ?? 'Student');
+        const initial: Record<string, { included: boolean; amount: string }> = {};
+        for (const item of open) {
+          const preselect = params.invoiceId ? item.id === params.invoiceId : true;
+          initial[item.id] = { included: preselect, amount: String(item.outstandingAmount) };
+        }
+        setSelectedLines(initial);
+        setInvoice(null);
+        return;
+      }
+
       if (params.invoiceId) {
         const nextInvoice = await getInvoiceById(params.invoiceId);
         if (!nextInvoice) {
@@ -56,11 +86,56 @@ export default function RecordPaymentScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [params.invoiceId]);
+  }, [params.invoiceId, params.studentId]);
 
   useEffect(() => {
     loadScreen();
   }, [loadScreen]);
+
+  async function handleSplitRecord() {
+    if (!params.studentId) return;
+
+    const lines = Object.entries(selectedLines)
+      .filter(([, value]) => value.included)
+      .map(([invoiceId, value]) => ({
+        invoiceId,
+        amount: Number(value.amount),
+      }))
+      .filter((line) => line.amount > 0);
+
+    if (lines.length === 0) {
+      setError('Select at least one invoice with an amount.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await recordSplitPayment({
+        studentId: params.studentId,
+        lines,
+        method,
+        note,
+      });
+      router.replace(`/fees/receipt/${result.receiptNo}` as Href);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not record payment.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function confirmSplitRecord() {
+    const { total, count } = computeSplitTotals(selectedLines);
+    Alert.alert(
+      'Record split payment?',
+      `Save ${formatLkr(total)} across ${count} invoice${count === 1 ? '' : 's'} for ${splitStudentName}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Record', onPress: handleSplitRecord },
+      ],
+    );
+  }
 
   async function handleRecord() {
     if (!invoice) return;
@@ -105,7 +180,151 @@ export default function RecordPaymentScreen() {
     );
   }
 
-  if (!params.invoiceId) {
+  if (params.studentId) {
+    const { total: splitTotal, count: splitLineCount } = computeSplitTotals(selectedLines);
+    const backHref = params.invoiceId
+      ? (`/fees/record-payment?invoiceId=${params.invoiceId}` as Href)
+      : (`/students/${params.studentId}` as Href);
+
+    if (splitInvoices.length === 0) {
+      return (
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.header}>
+              <Link href={backHref} asChild>
+                <Pressable style={styles.iconButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textPrimary} />
+                </Pressable>
+              </Link>
+              <View style={styles.headerCopy}>
+                <Text style={styles.title}>Split Payment</Text>
+                <Text style={styles.subtitle}>No open invoices for {splitStudentName}.</Text>
+              </View>
+            </View>
+            <PremiumCard>
+              <EmptyState
+                icon="cash-check"
+                title="All paid up"
+                message="This student has no outstanding invoices this month."
+                actionLabel="Back to student"
+                actionHref={backHref}
+              />
+            </PremiumCard>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Link href={backHref} asChild>
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textPrimary} />
+              </Pressable>
+            </Link>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title}>Split Payment</Text>
+              <Text style={styles.subtitle}>Allocate one receipt across admission, monthly and other open invoices.</Text>
+            </View>
+          </View>
+
+          <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+            <View style={styles.heroIcon}>
+              <MaterialCommunityIcons name="cash-multiple" size={30} color="white" />
+            </View>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroLabel}>Student</Text>
+              <Text style={styles.heroTitle}>{splitStudentName}</Text>
+              <Text style={styles.heroNote}>{splitInvoices.length} open invoice{splitInvoices.length === 1 ? '' : 's'}</Text>
+            </View>
+          </LinearGradient>
+
+          <PremiumCard style={styles.formCard}>
+            <Text style={styles.cardTitle}>Select invoices</Text>
+            <Text style={styles.cardSubtitle}>Toggle lines and adjust amounts for partial payments.</Text>
+            <View style={styles.splitList}>
+              {splitInvoices.map((item) => {
+                const line = selectedLines[item.id] ?? { included: false, amount: '0' };
+                return (
+                  <View key={item.id} style={[styles.splitLine, line.included && styles.splitLineActive]}>
+                    <Pressable
+                      style={[styles.splitCheckbox, line.included && styles.splitCheckboxActive]}
+                      onPress={() =>
+                        setSelectedLines((prev) => ({
+                          ...prev,
+                          [item.id]: { ...line, included: !line.included },
+                        }))
+                      }
+                    >
+                      {line.included ? <MaterialCommunityIcons name="check" size={14} color="white" /> : null}
+                    </Pressable>
+                    <View style={styles.splitLineCopy}>
+                      <Text style={styles.splitLineTitle}>{invoiceLineLabel(item)}</Text>
+                      <Text style={styles.splitLineMeta}>Due {formatLkr(item.outstandingAmount)}</Text>
+                    </View>
+                    <TextInput
+                      placeholder={`${item.outstandingAmount}`}
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="number-pad"
+                      value={line.amount}
+                      onChangeText={(text) =>
+                        setSelectedLines((prev) => ({
+                          ...prev,
+                          [item.id]: { ...line, amount: text, included: true },
+                        }))
+                      }
+                      style={styles.splitAmountInput}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          </PremiumCard>
+
+          <PremiumCard style={styles.formCard}>
+            <Text style={styles.cardTitle}>Payment details</Text>
+            <View style={styles.methodBlock}>
+              <Text style={styles.inputLabel}>Payment method</Text>
+              <View style={styles.methodRow}>
+                <MethodChip label="Cash" icon="cash" active={method === 'cash'} onPress={() => setMethod('cash')} />
+                <MethodChip label="Bank" icon="bank-outline" active={method === 'bank'} onPress={() => setMethod('bank')} />
+                <MethodChip label="Online" icon="credit-card-outline" active={method === 'online'} onPress={() => setMethod('online')} />
+              </View>
+            </View>
+            <FormTextField label="Note" placeholder="Optional payment note" icon="note-text-outline" value={note} onChangeText={setNote} />
+          </PremiumCard>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </ScrollView>
+
+        <View style={styles.saveBar}>
+          <View>
+            <Text style={styles.saveLabel}>Split total</Text>
+            <Text style={styles.saveValue}>{formatLkr(splitTotal)}</Text>
+            <Text style={styles.saveMeta}>{splitLineCount} line{splitLineCount === 1 ? '' : 's'} selected</Text>
+          </View>
+          <Pressable
+            style={[styles.saveButton, (isSaving || splitLineCount === 0) && styles.saveButtonDisabled]}
+            onPress={confirmSplitRecord}
+            disabled={isSaving || splitLineCount === 0}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="receipt-text-check" size={18} color="white" />
+                <Text style={styles.saveButtonText}>Record split</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!params.invoiceId && !params.studentId) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -368,6 +587,16 @@ const styles = StyleSheet.create({
   saveBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   saveValue: { marginTop: 3, color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
+  saveMeta: { marginTop: 2, color: colors.textSecondary, fontSize: 10, fontWeight: '700' },
+  splitList: { gap: spacing.sm },
+  splitLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: spacing.sm },
+  splitLineActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  splitCheckbox: { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  splitCheckboxActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+  splitLineCopy: { flex: 1, minWidth: 0 },
+  splitLineTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
+  splitLineMeta: { marginTop: 2, color: colors.textSecondary, fontSize: 10, fontWeight: '700' },
+  splitAmountInput: { width: 88, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, color: colors.textPrimary, fontSize: 13, fontWeight: '900', textAlign: 'right' },
   saveButton: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.primary, paddingHorizontal: spacing.xl },
   saveButtonDisabled: { opacity: 0.7 },
   saveButtonText: { color: 'white', fontSize: 14, fontWeight: '900' },

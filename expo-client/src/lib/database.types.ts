@@ -1,5 +1,7 @@
 export type WorkspacePlan = 'free' | 'starter' | 'institute';
 export type LanguageCode = 'en' | 'si' | 'ta';
+export type InstituteType = 'solo' | 'academy' | 'institute';
+export type InvoiceType = 'monthly' | 'admission' | 'material' | 'exam';
 export type Medium = 'English' | 'Sinhala' | 'Tamil';
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type AttendanceStatus = 'present' | 'late' | 'absent';
@@ -12,6 +14,9 @@ export type WorkspaceRow = {
   name: string;
   plan: WorkspacePlan;
   default_language: LanguageCode;
+  institute_type: InstituteType;
+  admission_fee_lkr: number;
+  pro_rata_enabled: boolean;
   created_at: string;
 };
 
@@ -48,6 +53,7 @@ export type ClassRow = {
   end_time: string;
   monthly_fee: number;
   active: boolean;
+  offering_id: string | null;
   created_at: string;
 };
 
@@ -63,8 +69,10 @@ export type FeeInvoiceRow = {
   id: string;
   workspace_id: string;
   student_id: string;
-  class_id: string;
-  month: string;
+  class_id: string | null;
+  month: string | null;
+  invoice_type: InvoiceType;
+  description: string | null;
   monthly_fee: number;
   paid_amount: number;
   status: FeeStatus;
@@ -94,11 +102,20 @@ export type AttendanceMarkRow = {
 export type PaymentRow = {
   id: string;
   workspace_id: string;
-  invoice_id: string;
+  invoice_id: string | null;
   student_id: string;
   amount: number;
   method: PaymentMethod;
   receipt_no: string;
   paid_at: string;
   note: string | null;
+};
+
+export type PaymentAllocationRow = {
+  id: string;
+  workspace_id: string;
+  payment_id: string;
+  invoice_id: string;
+  amount: number;
+  created_at: string;
 };
