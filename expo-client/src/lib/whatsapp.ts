@@ -95,6 +95,30 @@ export function buildFeeReminderMessage(params: {
   ].join('\n');
 }
 
+export function buildCombinedFeeReminderMessage(params: {
+  workspaceName: string;
+  month: string;
+  items: { studentName: string; className: string; outstandingAmount: number }[];
+}) {
+  const total = params.items.reduce((sum, item) => sum + item.outstandingAmount, 0);
+  const lines = params.items.map(
+    (item) =>
+      `- ${item.studentName} (${item.className}): LKR ${item.outstandingAmount.toLocaleString('en-LK')}`,
+  );
+
+  return [
+    `Fee reminder - ${params.workspaceName}`,
+    '',
+    'Dear parent,',
+    `Outstanding tuition fees for ${params.month}:`,
+    ...lines,
+    '',
+    `Total outstanding: LKR ${total.toLocaleString('en-LK')}`,
+    '',
+    'Please settle at your earliest convenience. Thank you.',
+  ].join('\n');
+}
+
 export function buildParentMessage(params: {
   workspaceName: string;
   studentName: string;

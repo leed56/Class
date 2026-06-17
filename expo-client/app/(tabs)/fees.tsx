@@ -14,6 +14,7 @@ import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
 import { PaymentRow } from '@/features/fees/components/PaymentRow';
 import { FeeSummary, getFeeSummaryForMonth, listOutstandingInvoices, listRecentPayments } from '@/features/fees/feeService';
 import { exportDefaulterCsv } from '@/features/fees/feeExport';
+import { groupDefaulterReminders, runBulkDefaulterReminders, showBulkReminderSummary } from '@/features/fees/bulkReminders';
 import { FeeInvoice, PaymentRecord } from '@/features/fees/models';
 import { buildFeeReminderMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
@@ -30,6 +31,7 @@ export default function FeesScreen() {
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkReminding, setIsBulkReminding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadFees = useCallback(async () => {
@@ -84,6 +86,37 @@ export default function FeesScreen() {
   const outstanding = summary?.outstanding ?? 0;
   const collectionPercent = summary?.collectionPercent ?? 0;
   const defaulterCount = summary?.defaulterCount ?? 0;
+  const parentReminderCount = groupDefaulterReminders(invoices).length;
+
+  const sendAllReminders = useCallback(async () => {
+    if (invoices.length === 0) return;
+    setIsBulkReminding(true);
+    try {
+      const result = await runBulkDefaulterReminders(invoices, workspaceName);
+      showBulkReminderSummary(result);
+    } finally {
+      setIsBulkReminding(false);
+    }
+  }, [invoices, workspaceName]);
+
+  const showRemindOptions = useCallback(() => {
+    if (invoices.length === 0) return;
+
+    if (parentReminderCount <= 1) {
+      void sendTopReminder();
+      return;
+    }
+
+    Alert.alert(
+      'WhatsApp reminders',
+      `${defaulterCount} open invoice${defaulterCount === 1 ? '' : 's'} • ${parentReminderCount} parent${parentReminderCount === 1 ? '' : 's'}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Top defaulter', onPress: () => void sendTopReminder() },
+        { text: `All (${parentReminderCount})`, onPress: () => void sendAllReminders() },
+      ],
+    );
+  }, [defaulterCount, invoices.length, parentReminderCount, sendAllReminders, sendTopReminder]);
 
   const handleExportDefaulters = useCallback(async () => {
     setIsExporting(true);
@@ -163,9 +196,19 @@ export default function FeesScreen() {
                 <Text style={styles.primaryActionText}>Record Payment</Text>
               </NavPressable>
               <View style={styles.actionRow}>
-                <Pressable style={styles.secondaryAction} onPress={sendTopReminder} disabled={defaulterCount === 0}>
-                  <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
-                  <Text style={styles.secondaryActionText}>Remind</Text>
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={showRemindOptions}
+                  disabled={invoices.length === 0 || isBulkReminding}
+                >
+                  {isBulkReminding ? (
+                    <ActivityIndicator color={colors.success} size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
+                      <Text style={styles.secondaryActionText}>Remind</Text>
+                    </>
+                  )}
                 </Pressable>
                 <Pressable
                   style={styles.exportAction}
@@ -185,7 +228,7 @@ export default function FeesScreen() {
             </View>
 
             {defaulterCount > 0 ? (
-              <Pressable onPress={handleExportDefaulters} disabled={isExporting}>
+              <Pressable onPress={showRemindOptions} disabled={isBulkReminding}>
                 <PremiumCard style={styles.alertCard}>
                   <View style={styles.alertIcon}>
                     <MaterialCommunityIcons name="bell-ring-outline" size={22} color={colors.danger} />
@@ -193,7 +236,7 @@ export default function FeesScreen() {
                   <View style={styles.alertTextBlock}>
                     <Text style={styles.alertTitle}>Defaulter follow-up</Text>
                     <Text style={styles.alertCopy}>
-                      {defaulterCount} open invoices • export CSV or send WhatsApp reminders.
+                      {defaulterCount} open invoices • remind all {parentReminderCount} parents or export CSV.
                     </Text>
                   </View>
                   <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
