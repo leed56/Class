@@ -33,7 +33,7 @@ function getLanguageLabel(value: LanguageCode) {
 const instituteTypeOptions: { label: string; value: InstituteType }[] = [
   { label: 'Solo tutor', value: 'solo' },
   { label: 'Academy', value: 'academy' },
-  { label: 'Institute', value: 'institute' },
+  { label: 'Tuition building', value: 'institute' },
 ];
 
 function getInstituteTypeLabel(value: InstituteType) {

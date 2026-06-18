@@ -18,6 +18,12 @@ import {
   seedAcademyDemoData,
 } from '@/features/auth/demoSetupService';
 import { getTeacherDisplayName } from '@/features/auth/teacherProfile';
+import {
+  ACADEMY_SECTORS,
+  AcademySector,
+  DEFAULT_ACADEMY_SECTOR,
+  getSectorInfo,
+} from '@/features/courses/slCourseModel';
 import { InstituteType, LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -37,19 +43,19 @@ const workspaceTypeOptions: {
   {
     value: 'solo',
     label: 'Solo tutor',
-    subtitle: 'One teacher, simple fees and attendance',
+    subtitle: 'You teach, you collect — home or own class',
     icon: 'account-outline',
   },
   {
     value: 'academy',
     label: 'Academy',
-    subtitle: 'Catalog, admission fee, certificates',
+    subtitle: 'Your brand: A/L & O/L courses, admission, certificates',
     icon: 'school-outline',
   },
   {
     value: 'institute',
-    label: 'Institute',
-    subtitle: 'Staff roles, branches and hall reports',
+    label: 'Tuition building',
+    subtitle: 'You own halls — teachers rent slots, students pay teachers',
     icon: 'office-building-outline',
   },
 ];
@@ -65,6 +71,7 @@ export default function OnboardingScreen() {
 
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceType, setWorkspaceType] = useState<InstituteType>(presetMode);
+  const [academySector, setAcademySector] = useState<AcademySector>(DEFAULT_ACADEMY_SECTOR);
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,15 +94,15 @@ export default function OnboardingScreen() {
     if (workspaceType === 'academy') {
       return {
         label: isAcademyPreset ? 'Sample academy onboarding' : 'Academy setup',
-        title: 'Launch your tuition academy workspace.',
-        note: 'Set up programs, theory + revision classes, admission fees, and term certificates in one place.',
+        title: 'Launch your tuition academy.',
+        note: 'Courses are A/L theory, O/L revision, paper classes — not school grades. Parents pay your academy.',
       };
     }
     if (workspaceType === 'institute') {
       return {
-        label: 'Institute setup',
-        title: 'Create your multi-branch institute workspace.',
-        note: 'Add staff roles, branches, halls, and branch collection reports after setup.',
+        label: 'Tuition building setup',
+        title: 'Set up your tuition building.',
+        note: 'You provide halls and timetable. Visiting teachers rent slots and collect their own student fees.',
       };
     }
     return {
@@ -108,7 +115,7 @@ export default function OnboardingScreen() {
   const checklist = useMemo(() => {
     if (workspaceType === 'academy') {
       return [
-        { icon: 'book-open-page-variant' as const, title: 'Catalog', copy: 'Programs, batches, theory and revision offerings' },
+        { icon: 'book-open-page-variant' as const, title: 'Course catalog', copy: 'A/L & O/L theory, revision, paper — not school grades' },
         { icon: 'cash-plus' as const, title: 'Admission + monthly', copy: 'LKR 2,500 admission and pro-rata monthly billing' },
         { icon: 'certificate-outline' as const, title: 'Certificates', copy: 'PDF completion certs with attendance and fee rules' },
         { icon: 'account-child-outline' as const, title: 'Parent portal', copy: 'Parents check attendance, fees and receipts by phone OTP' },
@@ -116,10 +123,10 @@ export default function OnboardingScreen() {
     }
     if (workspaceType === 'institute') {
       return [
-        { icon: 'account-group-outline' as const, title: 'Staff roles', copy: 'Owner, admin, teacher and front-desk permissions' },
-        { icon: 'source-branch' as const, title: 'Branches & halls', copy: 'Multi-location timetable and conflict warnings' },
-        { icon: 'file-chart-outline' as const, title: 'Branch reports', copy: 'Collection and attendance by branch each month' },
-        { icon: 'certificate-outline' as const, title: 'Certificates', copy: 'Official PDF certificates for parents' },
+        { icon: 'office-building-outline' as const, title: 'Halls & timetable', copy: 'Branches, halls, slot booking and conflict warnings' },
+        { icon: 'account-group-outline' as const, title: 'Visiting teachers', copy: 'Each teacher runs their own courses and student fees' },
+        { icon: 'cash-multiple' as const, title: 'Hall rent', copy: 'Track what teachers owe the building — separate from tuition' },
+        { icon: 'file-chart-outline' as const, title: 'Occupancy reports', copy: 'Hall usage and rent collection by branch' },
       ];
     }
     return [
@@ -140,7 +147,8 @@ export default function OnboardingScreen() {
 
     try {
       await createTeacherWorkspace({ name: workspaceName, defaultLanguage });
-      await applyWorkspaceTypeSettings(workspaceType);
+      const sectorForWorkspace = workspaceType === 'academy' ? academySector : 'school_tuition';
+      await applyWorkspaceTypeSettings(workspaceType, sectorForWorkspace);
 
       const shouldSeedAcademy =
         workspaceType === 'academy' &&
@@ -148,7 +156,7 @@ export default function OnboardingScreen() {
         (isAcademyPreset || (await isDemoAcademyAccountEmail(user?.email)));
 
       if (shouldSeedAcademy) {
-        await seedAcademyDemoData();
+        await seedAcademyDemoData(sectorForWorkspace);
       }
 
       router.replace('/(tabs)');
@@ -181,7 +189,9 @@ export default function OnboardingScreen() {
           <View style={styles.presetBanner}>
             <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
             <Text style={styles.presetBannerText}>
-              Sample academy flow — finish setup to load demo students, theory + revision classes, and parent portal data.
+              {academySector === 'maritime'
+                ? 'Maritime academy demo — finish setup to load STCW & pre-sea rating sample courses.'
+                : 'Sample academy flow — finish setup to load demo students, theory + revision classes, and parent portal data.'}
             </Text>
           </View>
         ) : null}
@@ -219,6 +229,41 @@ export default function OnboardingScreen() {
             })}
           </View>
         </PremiumCard>
+
+        {workspaceType === 'academy' ? (
+          <PremiumCard style={styles.card}>
+            <View>
+              <Text style={styles.cardTitle}>What does your academy teach?</Text>
+              <Text style={styles.cardSubtitle}>
+                School tuition is only one sector. IT, maritime, gemology, counselling, NVQ and more each work differently.
+              </Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorScroll}>
+              {ACADEMY_SECTORS.map((item) => {
+                const active = academySector === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.sectorCard, active && styles.sectorCardActive]}
+                    onPress={() => setAcademySector(item.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                      size={18}
+                      color={active ? colors.primary : colors.textSecondary}
+                    />
+                    <Text style={[styles.sectorLabel, active && styles.sectorLabelActive]} numberOfLines={2}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            {getSectorInfo(academySector) ? (
+              <Text style={styles.sectorHint}>e.g. {getSectorInfo(academySector)?.examples}</Text>
+            ) : null}
+          </PremiumCard>
+        ) : null}
 
         <PremiumCard style={styles.card}>
           <View>
@@ -273,7 +318,7 @@ export default function OnboardingScreen() {
         <View>
           <Text style={styles.saveLabel}>Plan</Text>
           <Text style={styles.saveValue}>
-            {workspaceType === 'academy' ? 'Academy workspace' : workspaceType === 'institute' ? 'Institute workspace' : 'Free workspace'}
+            {workspaceType === 'academy' ? 'Academy workspace' : workspaceType === 'institute' ? 'Tuition building' : 'Free workspace'}
           </Text>
         </View>
         <Pressable
@@ -370,6 +415,22 @@ const styles = StyleSheet.create({
   typeLabel: { color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
   typeLabelActive: { color: colors.primary },
   typeSubtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  sectorScroll: { gap: spacing.sm, paddingVertical: spacing.xs },
+  sectorCard: {
+    width: 148,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+  },
+  sectorCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  sectorLabel: { flex: 1, color: colors.textPrimary, fontSize: 11, fontWeight: '800' },
+  sectorLabelActive: { color: colors.primary },
+  sectorHint: { color: colors.textMuted, fontSize: 10, fontWeight: '700', fontStyle: 'italic' },
   inputWrap: {
     minHeight: 54,
     flexDirection: 'row',

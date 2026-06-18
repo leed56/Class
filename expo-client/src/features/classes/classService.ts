@@ -19,6 +19,10 @@ export type ClassFormInput = {
   startTime: string;
   endTime: string;
   monthlyFee: number;
+  sector?: string | null;
+  sessionType?: string | null;
+  qualificationLevel?: string | null;
+  intakeLabel?: string | null;
 };
 
 function requireText(value: string, message: string) {
@@ -223,6 +227,10 @@ export async function createClass(input: ClassFormInput) {
       start_time: startTime,
       end_time: endTime,
       monthly_fee: Math.max(0, Math.round(input.monthlyFee || 0)),
+      sector: input.sector ?? 'school_tuition',
+      session_type: input.sessionType ?? 'theory',
+      qualification_level: input.qualificationLevel ?? 'school_session',
+      intake_label: input.intakeLabel ?? null,
       active: true,
     })
     .select('*')
@@ -259,6 +267,10 @@ export async function updateClass(classId: string, input: ClassFormInput) {
       start_time: startTime,
       end_time: endTime,
       monthly_fee: Math.max(0, Math.round(input.monthlyFee || 0)),
+      ...(input.sector !== undefined ? { sector: input.sector } : {}),
+      ...(input.sessionType !== undefined ? { session_type: input.sessionType } : {}),
+      ...(input.qualificationLevel !== undefined ? { qualification_level: input.qualificationLevel } : {}),
+      ...(input.intakeLabel !== undefined ? { intake_label: input.intakeLabel } : {}),
     })
     .eq('workspace_id', workspace.id)
     .eq('id', classId)

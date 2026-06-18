@@ -10,12 +10,13 @@ import {
 } from '@/features/auth/demoAuth';
 import { createOffering, listCatalogTree } from '@/features/catalog/catalogService';
 import { createClass, listClasses } from '@/features/classes/classService';
+import { AcademySector } from '@/features/courses/slCourseModel';
 import { enrollStudentInClass } from '@/features/enrollment/enrollmentService';
 import { ensureDefaultLocationSetup, listHalls } from '@/features/locations/branchService';
 import { createStudent, listStudents } from '@/features/students/studentService';
 import { InstituteType } from '@/lib/database.types';
 
-const DEMO_INSTITUTE_WORKSPACE_NAME = 'ClassFlow Demo Institute';
+const DEMO_INSTITUTE_WORKSPACE_NAME = 'Nugegoda Tuition Tower';
 
 export async function ensureDemoWorkspace() {
   let workspace = await getCurrentWorkspace();
@@ -35,9 +36,10 @@ export async function ensureDemoWorkspace() {
   return getCurrentWorkspace();
 }
 
-export async function seedAcademyDemoData() {
+export async function seedAcademyDemoData(academySector: AcademySector = 'school_tuition') {
   await updateWorkspace({
     instituteType: 'academy',
+    academySector,
     admissionFeeLkr: 2500,
     proRataEnabled: true,
     minAttendanceForCertificate: 75,
@@ -51,7 +53,11 @@ export async function seedAcademyDemoData() {
   const todayWeekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const demoStudents = students.length > 0 ? students : await createDemoStudents();
   const demoClasses =
-    classes.length > 0 ? classes : await createAcademyDemoClasses(todayWeekday);
+    classes.length > 0
+      ? classes
+      : academySector === 'maritime'
+        ? await createMaritimeAcademyDemoClasses(todayWeekday)
+        : await createAcademyDemoClasses(todayWeekday);
 
   if (demoStudents.length > 0 && demoClasses.length > 0) {
     await Promise.all(
@@ -108,24 +114,30 @@ async function createDemoStudents() {
 async function createInstituteDemoClasses(weekday: string, hallId: string | null) {
   const classSeeds = [
     {
-      subject: 'Combined Maths',
-      grade: 11,
+      subject: 'Combined Maths — Theory',
+      grade: 13,
       medium: 'Sinhala' as const,
       hallId,
       weekday,
       startTime: '4:00 PM',
       endTime: '6:00 PM',
       monthlyFee: 4500,
+      sector: 'school_tuition',
+      sessionType: 'theory',
+      qualificationLevel: 'school_session',
     },
     {
-      subject: 'Physics',
-      grade: 11,
+      subject: 'Physics — Theory',
+      grade: 13,
       medium: 'Sinhala' as const,
       hallId,
       weekday: weekday === 'Saturday' ? 'Sunday' : 'Saturday',
       startTime: '8:00 AM',
       endTime: '10:00 AM',
-      monthlyFee: 3500,
+      monthlyFee: 4000,
+      sector: 'school_tuition',
+      sessionType: 'theory',
+      qualificationLevel: 'school_session',
     },
   ];
 
@@ -134,14 +146,17 @@ async function createInstituteDemoClasses(weekday: string, hallId: string | null
 
 async function createAcademyDemoClasses(weekday: string) {
   const theoryClass = await createClass({
-    subject: 'Combined Maths',
-    grade: 11,
+    subject: 'Combined Maths — Theory',
+    grade: 13,
     medium: 'Sinhala',
     hallId: null,
     weekday,
     startTime: '4:00 PM',
     endTime: '6:00 PM',
     monthlyFee: 4500,
+    sector: 'school_tuition',
+    sessionType: 'theory',
+    qualificationLevel: 'school_session',
   });
 
   const tree = await listCatalogTree();
@@ -156,17 +171,54 @@ async function createAcademyDemoClasses(weekday: string) {
   }
 
   const revisionClass = await createClass({
-    subject: 'Combined Maths Revision',
-    grade: 11,
+    subject: 'Combined Maths — Revision',
+    grade: 13,
     medium: 'Sinhala',
     hallId: null,
     weekday: weekday === 'Saturday' ? 'Sunday' : 'Saturday',
     startTime: '8:00 AM',
     endTime: '10:30 AM',
     monthlyFee: 3000,
+    sector: 'school_tuition',
+    sessionType: 'revision',
+    qualificationLevel: 'school_session',
   });
 
   return [theoryClass, revisionClass];
+}
+
+async function createMaritimeAcademyDemoClasses(weekday: string) {
+  const stcwClass = await createClass({
+    subject: 'STCW Basic Safety Training (full package)',
+    grade: 12,
+    medium: 'English',
+    hallId: null,
+    weekday,
+    startTime: '8:00 AM',
+    endTime: '4:00 PM',
+    monthlyFee: 85000,
+    sector: 'maritime',
+    sessionType: 'practical',
+    qualificationLevel: 'short_course',
+    intakeLabel: '2026 Intake',
+  });
+
+  const ratingClass = await createClass({
+    subject: 'Pre-Sea Training — Deck Rating',
+    grade: 11,
+    medium: 'English',
+    hallId: null,
+    weekday: weekday === 'Saturday' ? 'Sunday' : 'Saturday',
+    startTime: '8:00 AM',
+    endTime: '12:00 PM',
+    monthlyFee: 95000,
+    sector: 'maritime',
+    sessionType: 'practical',
+    qualificationLevel: 'certificate',
+    intakeLabel: '2026 Intake',
+  });
+
+  return [stcwClass, ratingClass];
 }
 
 export async function isDemoAccountEmail(email: string | undefined | null) {
@@ -190,10 +242,13 @@ export function getAcademyPresetWorkspaceName() {
   return DEMO_ACADEMY_WORKSPACE_NAME;
 }
 
-export async function applyWorkspaceTypeSettings(type: InstituteType) {
+export async function applyWorkspaceTypeSettings(type: InstituteType, academySector?: AcademySector) {
+  const resolvedSector = type === 'institute' || type === 'solo' ? 'school_tuition' : academySector ?? 'school_tuition';
+
   if (type === 'solo') {
     await updateWorkspace({
       instituteType: 'solo',
+      academySector: resolvedSector,
       admissionFeeLkr: 0,
       proRataEnabled: true,
       absenceAlertsEnabled: true,
@@ -204,6 +259,7 @@ export async function applyWorkspaceTypeSettings(type: InstituteType) {
   if (type === 'academy') {
     await updateWorkspace({
       instituteType: 'academy',
+      academySector: resolvedSector,
       admissionFeeLkr: 2500,
       proRataEnabled: true,
       minAttendanceForCertificate: 75,
@@ -215,6 +271,7 @@ export async function applyWorkspaceTypeSettings(type: InstituteType) {
 
   await updateWorkspace({
     instituteType: 'institute',
+    academySector: resolvedSector,
     admissionFeeLkr: 2500,
     proRataEnabled: true,
     minAttendanceForCertificate: 75,

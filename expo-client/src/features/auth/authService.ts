@@ -106,6 +106,7 @@ export type WorkspaceUpdateInput = {
   name?: string;
   defaultLanguage?: LanguageCode;
   instituteType?: InstituteType;
+  academySector?: string;
   admissionFeeLkr?: number;
   proRataEnabled?: boolean;
   minAttendanceForCertificate?: number;
@@ -140,6 +141,7 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
     name?: string;
     default_language?: LanguageCode;
     institute_type?: InstituteType;
+    academy_sector?: string;
     admission_fee_lkr?: number;
     pro_rata_enabled?: boolean;
     min_attendance_for_certificate?: number;
@@ -162,6 +164,9 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.instituteType !== undefined) {
     updates.institute_type = input.instituteType;
+  }
+  if (input.academySector !== undefined) {
+    updates.academy_sector = input.academySector;
   }
   if (input.admissionFeeLkr !== undefined) {
     updates.admission_fee_lkr = Math.max(0, Math.round(input.admissionFeeLkr));

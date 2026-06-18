@@ -27,6 +27,7 @@ export type WorkspaceRow = {
   plan: WorkspacePlan;
   default_language: LanguageCode;
   institute_type: InstituteType;
+  academy_sector: string | null;
   admission_fee_lkr: number;
   pro_rata_enabled: boolean;
   min_attendance_for_certificate: number;
@@ -76,6 +77,10 @@ export type ClassRow = {
   monthly_fee: number;
   active: boolean;
   offering_id: string | null;
+  sector: string | null;
+  session_type: string | null;
+  qualification_level: string | null;
+  intake_label: string | null;
   created_at: string;
 };
 

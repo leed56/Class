@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { formatClassMeta } from '@/features/courses/slCourseModel';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { TuitionClass } from '../models';
@@ -37,7 +38,7 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
         </View>
         <View style={styles.titleBlock}>
           <Text style={styles.subject}>{item.subject}</Text>
-          <Text style={styles.meta}>Grade {item.grade} • {item.medium} Medium</Text>
+          <Text style={styles.meta}>{formatClassMeta(item.subject, item.grade, item.medium)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.background }]}>
           <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>

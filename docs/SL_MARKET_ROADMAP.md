@@ -16,7 +16,19 @@ Strategic product roadmap aligned to the Sri Lankan tuition market: solo tutors,
 | **Mid institute** | 800–2,500 | Multiple halls, front desk, branches, term exams | Staff workflows + branch reports + roles | Partial (Sprint 5–6) |
 | **Large institute brand** | 2,500+ | Enterprise process, brand reputation, optional online pay later | Dashboard + integrations | Future (Phase 3+) |
 
-**Product truth:** One codebase, three modes — solo (simple), academy (catalog + certs), institute (staff + branches).
+**Product truth:** One codebase, three modes — solo (simple), academy (owned brand + courses), tuition building (halls + visiting teachers).
+
+See [SL_TUITION_OPERATING_MODEL.md](./SL_TUITION_OPERATING_MODEL.md) for course naming and the two money flows (tuition vs hall rent).
+
+---
+
+See [SL_EDUCATION_SECTORS.md](./SL_EDUCATION_SECTORS.md) for the full sector map (IT, maritime, gemology, counselling, NVQ, etc.).
+
+---
+
+## 1b. Sri Lankan course model
+
+Classes are **A/L Combined Maths — Theory**, not "Grade 11 Maths". Tuition buildings: students pay **teachers**, teachers pay **building admin** for hall slots.
 
 ---
 
@@ -166,6 +178,48 @@ Strategic product roadmap aligned to the Sri Lankan tuition market: solo tutors,
 | AI message assistant | Trilingual draft behind feature flag |
 
 **Exit:** Online pay path documented; AI pilot optional.
+
+---
+
+### Sprint 8 — SL course model + teacher scope
+
+**Goal:** Classes match how Sri Lankan teachers actually name courses.
+
+| Item | Acceptance criteria |
+|------|---------------------|
+| Course templates | A/L, O/L, scholarship presets in create-course UI |
+| `exam_level` + `session_type` columns | Migrate off grade-as-class-identity |
+| Teacher-scoped data (building mode) | Teachers see only their students/fees in institute workspace |
+
+**Exit:** Institute building demo shows visiting-teacher courses, not "Grade 11".
+
+---
+
+### Sprint 9 — Hall rent ledger
+
+**Goal:** Building admin tracks teacher slot fees separately from tuition.
+
+| Item | Acceptance criteria |
+|------|---------------------|
+| Hall bookings | Teacher claims weekday slot in a hall |
+| Rent invoices | Monthly hall rent due from each teacher |
+| Admin rent dashboard | Occupancy + rent collection vs tuition (hidden from admin by default) |
+
+**Exit:** Building owner sees who owes hall rent; teachers still own student fee books.
+
+---
+
+### Sprint 10 — Building timetable board
+
+**Goal:** Beautiful hall-grid home for tuition buildings.
+
+| Item | Acceptance criteria |
+|------|---------------------|
+| Timetable board | Hall × time grid with teacher + course names |
+| Conflict resolution | Admin resolves double-booked slots |
+| Teacher invite flow | Visiting teacher onboarding in 5 minutes |
+
+**Exit:** Matches physical notice-board at a Colombo tuition tower.
 
 ---
 
