@@ -3,21 +3,26 @@ import {
   getCurrentWorkspace,
   updateWorkspace,
 } from '@/features/auth/authService';
-import { DEMO_PARENT_PHONE } from '@/features/auth/demoAuth';
-import { createClass } from '@/features/classes/classService';
-import { listClasses } from '@/features/classes/classService';
+import {
+  DEMO_ACADEMY_WORKSPACE_NAME,
+  DEMO_PARENT_PHONE,
+  DEMO_TEACHER_EMAIL,
+} from '@/features/auth/demoAuth';
+import { createOffering, listCatalogTree } from '@/features/catalog/catalogService';
+import { createClass, listClasses } from '@/features/classes/classService';
 import { enrollStudentInClass } from '@/features/enrollment/enrollmentService';
 import { ensureDefaultLocationSetup, listHalls } from '@/features/locations/branchService';
 import { createStudent, listStudents } from '@/features/students/studentService';
+import { InstituteType } from '@/lib/database.types';
 
-const DEMO_WORKSPACE_NAME = 'ClassFlow Demo Institute';
+const DEMO_INSTITUTE_WORKSPACE_NAME = 'ClassFlow Demo Institute';
 
 export async function ensureDemoWorkspace() {
   let workspace = await getCurrentWorkspace();
 
   if (!workspace) {
     workspace = await createTeacherWorkspace({
-      name: DEMO_WORKSPACE_NAME,
+      name: DEMO_INSTITUTE_WORKSPACE_NAME,
       defaultLanguage: 'en',
     });
     await updateWorkspace({
@@ -26,11 +31,36 @@ export async function ensureDemoWorkspace() {
     });
   }
 
-  await seedDemoDataIfNeeded();
+  await seedInstituteDemoDataIfNeeded();
   return getCurrentWorkspace();
 }
 
-async function seedDemoDataIfNeeded() {
+export async function seedAcademyDemoData() {
+  await updateWorkspace({
+    instituteType: 'academy',
+    admissionFeeLkr: 2500,
+    proRataEnabled: true,
+    minAttendanceForCertificate: 75,
+    requireFeesClearForCertificate: true,
+    absenceAlertsEnabled: true,
+  });
+
+  const [classes, students] = await Promise.all([listClasses(), listStudents()]);
+  if (classes.length > 0 && students.length > 0) return;
+
+  const todayWeekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const demoStudents = students.length > 0 ? students : await createDemoStudents();
+  const demoClasses =
+    classes.length > 0 ? classes : await createAcademyDemoClasses(todayWeekday);
+
+  if (demoStudents.length > 0 && demoClasses.length > 0) {
+    await Promise.all(
+      demoStudents.map((student) => enrollStudentInClass(demoClasses[0].id, student.id)),
+    );
+  }
+}
+
+async function seedInstituteDemoDataIfNeeded() {
   const [classes, students] = await Promise.all([listClasses(), listStudents()]);
   if (classes.length > 0 && students.length > 0) return;
 
@@ -40,7 +70,8 @@ async function seedDemoDataIfNeeded() {
   const todayWeekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
   const demoStudents = students.length > 0 ? students : await createDemoStudents();
-  const demoClasses = classes.length > 0 ? classes : await createDemoClasses(todayWeekday, hall?.id ?? null);
+  const demoClasses =
+    classes.length > 0 ? classes : await createInstituteDemoClasses(todayWeekday, hall?.id ?? null);
 
   if (demoStudents.length > 0 && demoClasses.length > 0) {
     await Promise.all(
@@ -74,7 +105,7 @@ async function createDemoStudents() {
   return Promise.all(seeds.map((seed) => createStudent(seed)));
 }
 
-async function createDemoClasses(weekday: string, hallId: string | null) {
+async function createInstituteDemoClasses(weekday: string, hallId: string | null) {
   const classSeeds = [
     {
       subject: 'Combined Maths',
@@ -101,11 +132,93 @@ async function createDemoClasses(weekday: string, hallId: string | null) {
   return Promise.all(classSeeds.map((seed) => createClass(seed)));
 }
 
+async function createAcademyDemoClasses(weekday: string) {
+  const theoryClass = await createClass({
+    subject: 'Combined Maths',
+    grade: 11,
+    medium: 'Sinhala',
+    hallId: null,
+    weekday,
+    startTime: '4:00 PM',
+    endTime: '6:00 PM',
+    monthlyFee: 4500,
+  });
+
+  const tree = await listCatalogTree();
+  const batchId = tree[0]?.batches[0]?.id;
+  if (batchId) {
+    await createOffering({
+      batchId,
+      offeringType: 'revision',
+      name: 'Combined Maths — Revision',
+      defaultMonthlyFee: 3000,
+    });
+  }
+
+  const revisionClass = await createClass({
+    subject: 'Combined Maths Revision',
+    grade: 11,
+    medium: 'Sinhala',
+    hallId: null,
+    weekday: weekday === 'Saturday' ? 'Sunday' : 'Saturday',
+    startTime: '8:00 AM',
+    endTime: '10:30 AM',
+    monthlyFee: 3000,
+  });
+
+  return [theoryClass, revisionClass];
+}
+
 export async function isDemoAccountEmail(email: string | undefined | null) {
   const normalized = email?.trim().toLowerCase();
   if (!normalized) return false;
 
-  const demoEmail =
-    process.env.EXPO_PUBLIC_DEMO_TEACHER_EMAIL?.trim().toLowerCase() || 'demo@classflow.lk';
+  const demoEmail = DEMO_TEACHER_EMAIL.trim().toLowerCase();
   return normalized === demoEmail;
+}
+
+export async function isDemoAcademyAccountEmail(email: string | undefined | null) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const demoEmail =
+    process.env.EXPO_PUBLIC_DEMO_ACADEMY_EMAIL?.trim().toLowerCase() || 'academy@classflow.lk';
+  return normalized === demoEmail;
+}
+
+export function getAcademyPresetWorkspaceName() {
+  return DEMO_ACADEMY_WORKSPACE_NAME;
+}
+
+export async function applyWorkspaceTypeSettings(type: InstituteType) {
+  if (type === 'solo') {
+    await updateWorkspace({
+      instituteType: 'solo',
+      admissionFeeLkr: 0,
+      proRataEnabled: true,
+      absenceAlertsEnabled: true,
+    });
+    return;
+  }
+
+  if (type === 'academy') {
+    await updateWorkspace({
+      instituteType: 'academy',
+      admissionFeeLkr: 2500,
+      proRataEnabled: true,
+      minAttendanceForCertificate: 75,
+      requireFeesClearForCertificate: true,
+      absenceAlertsEnabled: true,
+    });
+    return;
+  }
+
+  await updateWorkspace({
+    instituteType: 'institute',
+    admissionFeeLkr: 2500,
+    proRataEnabled: true,
+    minAttendanceForCertificate: 75,
+    requireFeesClearForCertificate: true,
+    absenceAlertsEnabled: true,
+  });
 }

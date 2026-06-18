@@ -7,11 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/core/auth/AuthProvider';
 import {
+  DEMO_ACADEMY_EMAIL,
+  DEMO_ACADEMY_PASSWORD,
   DEMO_TEACHER_EMAIL,
   DEMO_TEACHER_PASSWORD,
   isPilotDemoAuthEnabled,
 } from '@/features/auth/demoAuth';
-import { ensureDemoWorkspace, isDemoAccountEmail } from '@/features/auth/demoSetupService';
+import { ensureDemoWorkspace, isDemoAccountEmail, isDemoAcademyAccountEmail } from '@/features/auth/demoSetupService';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -27,11 +29,19 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   async function routeAfterTeacherLogin(signedInEmail?: string) {
+    const loginEmail = signedInEmail ?? email;
     let workspace = await getCurrentWorkspace();
-    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoAccountEmail(signedInEmail ?? email))) {
+
+    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoAcademyAccountEmail(loginEmail))) {
+      router.replace('/onboarding?preset=academy' as Href);
+      return;
+    }
+
+    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoAccountEmail(loginEmail))) {
       await ensureDemoWorkspace();
       workspace = await getCurrentWorkspace();
     }
+
     router.replace((workspace ? '/(tabs)' : '/onboarding') as Href);
   }
 
@@ -114,6 +124,54 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleDemoAcademyLogin() {
+    setError(null);
+    setEmail(DEMO_ACADEMY_EMAIL);
+    setPassword(DEMO_ACADEMY_PASSWORD);
+
+    if (demoMode) {
+      router.replace('/onboarding?preset=academy' as Href);
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured yet.');
+      return;
+    }
+
+    setSubmitting(true);
+    const signInResult = await supabase.auth.signInWithPassword({
+      email: DEMO_ACADEMY_EMAIL,
+      password: DEMO_ACADEMY_PASSWORD,
+    });
+
+    if (signInResult.error) {
+      const signUpResult = await supabase.auth.signUp({
+        email: DEMO_ACADEMY_EMAIL,
+        password: DEMO_ACADEMY_PASSWORD,
+      });
+      if (signUpResult.error) {
+        setSubmitting(false);
+        setError(signUpResult.error.message);
+        return;
+      }
+      if (!signUpResult.data.session) {
+        setSubmitting(false);
+        setError('Demo academy account created. Confirm the email in Supabase Auth, then retry.');
+        return;
+      }
+    }
+
+    try {
+      await routeAfterTeacherLogin(DEMO_ACADEMY_EMAIL);
+    } catch (routeError) {
+      setError(routeError instanceof Error ? routeError.message : 'Could not finish academy demo sign in.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -129,9 +187,12 @@ export default function LoginScreen() {
           <View style={styles.pilotBanner}>
             <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
             <View style={styles.pilotCopy}>
-              <Text style={styles.pilotTitle}>Pilot demo admin</Text>
+              <Text style={styles.pilotTitle}>Pilot demos</Text>
               <Text style={styles.pilotText}>
-                {DEMO_TEACHER_EMAIL} / {DEMO_TEACHER_PASSWORD}
+                Institute: {DEMO_TEACHER_EMAIL} / {DEMO_TEACHER_PASSWORD}
+              </Text>
+              <Text style={styles.pilotText}>
+                Academy: {DEMO_ACADEMY_EMAIL} / {DEMO_ACADEMY_PASSWORD}
               </Text>
             </View>
           </View>
@@ -173,9 +234,14 @@ export default function LoginScreen() {
             )}
           </Pressable>
           {isPilotDemoAuthEnabled() && isSupabaseConfigured ? (
-            <Pressable style={styles.secondaryButton} onPress={handleDemoAdminLogin} disabled={submitting}>
-              <Text style={styles.secondaryButtonText}>Quick demo admin login</Text>
-            </Pressable>
+            <>
+              <Pressable style={styles.secondaryButton} onPress={handleDemoAcademyLogin} disabled={submitting}>
+                <Text style={styles.secondaryButtonText}>Try sample academy onboarding</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryButton} onPress={handleDemoAdminLogin} disabled={submitting}>
+                <Text style={styles.secondaryButtonText}>Quick demo institute login</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
 
