@@ -6,12 +6,16 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
+import { formatStudentMeta } from '@/features/students/studentProfileModel';
+import { InstituteType } from '@/lib/database.types';
 import { Student } from '../types';
 import { FeeStatusBadge } from './FeeStatusBadge';
 
 type StudentCardProps = {
   student: Student;
   href?: Href;
+  workspaceType?: InstituteType | null;
+  academySector?: string | null;
 };
 
 function formatLkr(amount: number) {
@@ -24,8 +28,9 @@ function getTrendColor(percent: number) {
   return colors.danger;
 }
 
-export function StudentCard({ student, href }: StudentCardProps) {
+export function StudentCard({ student, href, workspaceType, academySector }: StudentCardProps) {
   const trendColor = getTrendColor(student.attendancePercent);
+  const meta = formatStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector);
 
   const card = (
     <PremiumCard style={styles.card}>
@@ -35,7 +40,7 @@ export function StudentCard({ student, href }: StudentCardProps) {
           </View>
           <View style={styles.nameBlock}>
             <Text style={styles.name} numberOfLines={1}>{student.name}</Text>
-            <Text style={styles.meta} numberOfLines={1}>Grade {student.grade} • {student.medium} • {student.school}</Text>
+            <Text style={styles.meta} numberOfLines={1}>{meta}</Text>
           </View>
           <FeeStatusBadge status={student.feeStatus} />
         </View>

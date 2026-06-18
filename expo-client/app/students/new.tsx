@@ -1,20 +1,26 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
+import { getCurrentWorkspace } from '@/features/auth/authService';
+import {
+  resolveStudentGradeForSave,
+  StudentProfileForm,
+} from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { createStudent } from '@/features/students/studentService';
-import { Medium } from '@/lib/database.types';
+import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function NewStudentScreen() {
   const router = useRouter();
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
+  const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [fullName, setFullName] = useState('');
   const [school, setSchool] = useState('');
   const [grade, setGrade] = useState('9');
@@ -25,13 +31,22 @@ export default function NewStudentScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    getCurrentWorkspace()
+      .then((workspace) => {
+        setWorkspaceType(workspace?.institute_type ?? 'solo');
+        setAcademySector(workspace?.academy_sector ?? 'school_tuition');
+      })
+      .catch(() => setWorkspaceType('solo'));
+  }, []);
+
   async function handleSave() {
     setError(null);
     setSubmitting(true);
     try {
       await createStudent({
         fullName,
-        grade: Number(grade),
+        grade: resolveStudentGradeForSave(workspaceType, academySector, grade),
         medium,
         school,
         parentName,
@@ -57,7 +72,11 @@ export default function NewStudentScreen() {
           </Link>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Add Student</Text>
-            <Text style={styles.subtitle}>Create a complete profile for attendance, fees and parent communication.</Text>
+            <Text style={styles.subtitle}>
+              {workspaceType === 'academy' && academySector !== 'school_tuition'
+                ? 'Register a trainee for your academy programme — no school grade needed.'
+                : 'Create a complete profile for attendance, fees and parent communication.'}
+            </Text>
           </View>
         </View>
 
@@ -74,10 +93,18 @@ export default function NewStudentScreen() {
 
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Student details</Text>
-          <FormTextField label="Student name" placeholder="Kavindu Perera" icon="account-outline" value={fullName} onChangeText={setFullName} />
-          <FormTextField label="School" placeholder="Ananda College" icon="school-outline" value={school} onChangeText={setSchool} />
-          <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
-          <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
+          <StudentProfileForm
+            workspaceType={workspaceType}
+            academySector={academySector}
+            fullName={fullName}
+            school={school}
+            grade={grade}
+            medium={medium}
+            onFullNameChange={setFullName}
+            onSchoolChange={setSchool}
+            onGradeChange={setGrade}
+            onMediumChange={setMedium}
+          />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>

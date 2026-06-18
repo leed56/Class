@@ -1,22 +1,28 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
+import { DesktopShell } from '@/components/DesktopShell';
+import { WorkspaceShellProvider, useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { colors } from '@/theme/colors';
 
-export default function TabLayout() {
+function TabsNavigator() {
+  const { useDesktopShell } = useWorkspaceShell();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          height: 72,
-          paddingTop: 8,
-          paddingBottom: 10,
-        },
+        tabBarStyle: useDesktopShell
+          ? { display: 'none' }
+          : {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
+              height: 72,
+              paddingTop: 8,
+              paddingBottom: 10,
+            },
         sceneStyle: {
           backgroundColor: colors.background,
         },
@@ -62,5 +68,15 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <WorkspaceShellProvider>
+      <DesktopShell>
+        <TabsNavigator />
+      </DesktopShell>
+    </WorkspaceShellProvider>
   );
 }

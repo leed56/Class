@@ -7,9 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
 import { NavPressable } from '@/components/NavPressable';
+import { PageContainer } from '@/components/PageContainer';
 import { PremiumCard } from '@/components/PremiumCard';
 import { QuickActionTile } from '@/components/QuickActionTile';
 import { useAuth } from '@/core/auth/AuthProvider';
+import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   formatLkrCompact,
@@ -20,6 +22,8 @@ import {
 } from '@/features/auth/teacherProfile';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
+import { formatClassMeta } from '@/features/courses/slCourseModel';
+import { HallOccupancyPanel } from '@/features/dashboard/components/HallOccupancyPanel';
 import { getFeeSummaryForMonth } from '@/features/fees/feeService';
 import { listStudents } from '@/features/students/studentService';
 import { colors } from '@/theme/colors';
@@ -28,6 +32,7 @@ import { Href } from 'expo-router';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { useDesktopShell, instituteType } = useWorkspaceShell();
   const [workspaceName, setWorkspaceName] = useState<string | null>(null);
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [studentCount, setStudentCount] = useState(0);
@@ -82,35 +87,46 @@ export default function HomeScreen() {
   const nextClass = todayClasses.find((item) => item.state !== 'completed') ?? todayClasses[0] ?? classes[0];
   const teacherName = getTeacherDisplayName(user);
   const teacherInitials = getTeacherInitials(user);
+  const isInstituteDesktop = useDesktopShell && instituteType === 'institute';
+  const isAcademyDesktop = useDesktopShell && instituteType === 'academy';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={[styles.content, useDesktopShell && styles.contentDesktop]} showsVerticalScrollIndicator={false}>
+        <PageContainer>
+        <View style={[styles.header, useDesktopShell && styles.headerDesktop]}>
           <View>
-            <Text style={styles.screenTitle}>Home</Text>
+            <Text style={[styles.screenTitle, useDesktopShell && styles.screenTitleDesktop]}>
+              {isInstituteDesktop ? 'Building dashboard' : isAcademyDesktop ? 'Academy dashboard' : 'Home'}
+            </Text>
             <Text style={styles.date}>{formatTodayDate()}</Text>
           </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{teacherInitials}</Text>
-          </View>
+          {!useDesktopShell ? (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{teacherInitials}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+        <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, useDesktopShell && styles.heroDesktop]}>
           <View style={styles.heroChip}>
             <Text style={styles.heroChipText}>{workspaceName ?? 'Your workspace'}</Text>
           </View>
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroTitle, useDesktopShell && styles.heroTitleDesktop]}>
             {getTimeGreeting()},
             {'\n'}
             {teacherName}
           </Text>
           <Text style={styles.heroCopy}>
-            {todayClasses.length > 0
-              ? `You have ${todayClasses.length} class${todayClasses.length === 1 ? '' : 'es'} today. ${defaulterCount} student${defaulterCount === 1 ? '' : 's'} with pending fees this month.`
-              : studentCount > 0
-                ? `${studentCount} active student${studentCount === 1 ? '' : 's'} in your registry. Create a class schedule to see today's plan.`
-                : 'Start by adding students and creating your first class.'}
+            {isInstituteDesktop
+              ? `Manage halls, visiting teachers and building operations. ${todayClasses.length} class${todayClasses.length === 1 ? '' : 'es'} in halls today.`
+              : isAcademyDesktop
+                ? `Your academy command centre — ${studentCount} trainee${studentCount === 1 ? '' : 's'}, ${defaulterCount} pending fee${defaulterCount === 1 ? '' : 's'} this month.`
+                : todayClasses.length > 0
+                  ? `You have ${todayClasses.length} class${todayClasses.length === 1 ? '' : 'es'} today. ${defaulterCount} student${defaulterCount === 1 ? '' : 's'} with pending fees this month.`
+                  : studentCount > 0
+                    ? `${studentCount} active student${studentCount === 1 ? '' : 's'} in your registry. Create a class schedule to see today's plan.`
+                    : 'Start by adding students and creating your first class.'}
           </Text>
         </LinearGradient>
 
@@ -121,15 +137,15 @@ export default function HomeScreen() {
           </PremiumCard>
         ) : (
           <>
-            <View style={styles.metricsRow}>
+            <View style={[styles.metricsRow, useDesktopShell && styles.metricsRowDesktop]}>
               <MetricCard label="Classes Today" value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
               <MetricCard label="Attendance" value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
-            </View>
-            <View style={styles.metricsRow}>
               <MetricCard label="Pending Fees" value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
               <MetricCard label="Collected" value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
             </View>
 
+            <View style={[useDesktopShell && styles.desktopSplit]}>
+              <View style={[styles.desktopMainCol, useDesktopShell && styles.desktopMainColSized]}>
             <PremiumCard>
               <Text style={styles.cardTitle}>Next class</Text>
               {nextClass ? (
@@ -141,7 +157,7 @@ export default function HomeScreen() {
                     <View style={styles.classInfo}>
                       <Text style={styles.className}>{nextClass.subject}</Text>
                       <Text style={styles.muted}>
-                        Grade {nextClass.grade} • {nextClass.medium}
+                        {formatClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType)}
                       </Text>
                     </View>
                   </View>
@@ -164,7 +180,7 @@ export default function HomeScreen() {
 
             <View>
               <Text style={styles.sectionTitle}>Quick actions</Text>
-              <View style={styles.quickRow}>
+              <View style={[styles.quickRow, useDesktopShell && styles.quickRowDesktop]}>
                 <QuickActionTile label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
                 <QuickActionTile label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
                 <QuickActionTile label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
@@ -172,6 +188,26 @@ export default function HomeScreen() {
               </View>
             </View>
 
+            <PremiumCard>
+              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
+              {todayClasses.length === 0 ? (
+                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
+              ) : (
+                todayClasses.map((item) => (
+                  <ScheduleRow
+                    key={item.id}
+                    time={item.startTime}
+                    title={item.subject}
+                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
+                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
+                    color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
+                  />
+                ))
+              )}
+            </PremiumCard>
+              </View>
+
+              <View style={[styles.desktopSideCol, useDesktopShell && styles.desktopSideColSized]}>
             <PremiumCard>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.cardTitle}>Fee collection</Text>
@@ -193,25 +229,12 @@ export default function HomeScreen() {
               </View>
             </PremiumCard>
 
-            <PremiumCard>
-              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
-              {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
-              ) : (
-                todayClasses.map((item) => (
-                  <ScheduleRow
-                    key={item.id}
-                    time={item.startTime}
-                    title={item.subject}
-                    meta={`Grade ${item.grade} • ${item.medium}`}
-                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
-                    color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
-                  />
-                ))
-              )}
-            </PremiumCard>
+            {isInstituteDesktop ? <HallOccupancyPanel classes={classes} weekday={todayName} /> : null}
+              </View>
+            </View>
           </>
         )}
+        </PageContainer>
       </ScrollView>
     </SafeAreaView>
   );
@@ -247,19 +270,30 @@ function ScheduleRow({ time, title, meta, status, color }: { time: string; title
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
+  contentDesktop: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxl, paddingBottom: spacing.xxxl, gap: spacing.xl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerDesktop: { marginBottom: spacing.sm },
   screenTitle: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
+  screenTitleDesktop: { fontSize: 34, letterSpacing: -1 },
   date: { marginTop: 4, color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: 'white', fontWeight: '900' },
   hero: { borderRadius: radius.hero, padding: spacing.xxl, overflow: 'hidden' },
+  heroDesktop: { padding: spacing.xxxl },
   heroChip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)' },
   heroChipText: { color: 'white', fontWeight: '800' },
   heroTitle: { marginTop: 18, color: 'white', fontSize: 27, lineHeight: 31, fontWeight: '900', letterSpacing: -0.8 },
+  heroTitleDesktop: { fontSize: 34, lineHeight: 40 },
   heroCopy: { marginTop: 10, color: '#E7DEFF', fontSize: 14, lineHeight: 21, fontWeight: '600' },
   loadingCard: { alignItems: 'center', gap: spacing.md },
   loadingText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  metricsRow: { flexDirection: 'row', gap: spacing.md },
+  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  metricsRowDesktop: {},
+  desktopSplit: { flexDirection: 'row', gap: spacing.xl, alignItems: 'flex-start' },
+  desktopMainCol: { gap: spacing.lg },
+  desktopMainColSized: { flex: 1.4, minWidth: 0 },
+  desktopSideCol: { gap: spacing.lg },
+  desktopSideColSized: { flex: 1, minWidth: 320, maxWidth: 420 },
   cardTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   sectionTitle: { marginBottom: spacing.md, color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   classRow: { marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -274,6 +308,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: 'white', fontWeight: '900', fontSize: 15 },
   emptyCopy: { marginTop: spacing.md, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   quickRow: { flexDirection: 'row', gap: spacing.sm },
+  quickRowDesktop: { flexWrap: 'wrap' },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   monthChip: { color: colors.primary, backgroundColor: colors.primarySoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, fontWeight: '900' },
   progressTrack: { marginTop: spacing.lg, height: 12, borderRadius: 999, backgroundColor: colors.dangerSoft, overflow: 'hidden' },

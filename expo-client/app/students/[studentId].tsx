@@ -15,6 +15,7 @@ import { listStudentOpenInvoices } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById, archiveStudent } from '@/features/students/studentService';
+import { formatStudentMeta } from '@/features/students/studentProfileModel';
 import { Student } from '@/features/students/types';
 import { InstituteType } from '@/lib/database.types';
 import { buildFeeReminderMessage, buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
@@ -41,6 +42,7 @@ export default function StudentProfileScreen() {
   const [openInvoices, setOpenInvoices] = useState<FeeInvoice[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
+  const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function StudentProfileScreen() {
       setOpenInvoices(invoices);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
       setWorkspaceType(workspace?.institute_type ?? 'solo');
+      setAcademySector(workspace?.academy_sector ?? 'school_tuition');
       if (!nextStudent) setError('Student not found.');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
@@ -174,7 +177,7 @@ export default function StudentProfileScreen() {
           <View style={styles.heroCopy}>
             <Text style={styles.heroName}>{student.name}</Text>
             <Text style={styles.heroMeta}>
-              Grade {student.grade} • {student.medium} • {student.school}
+              {formatStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector)}
             </Text>
             <View style={styles.heroBadgeRow}>
               <View style={styles.heroBadge}>

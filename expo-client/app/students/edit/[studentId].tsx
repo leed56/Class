@@ -6,10 +6,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
+import { getCurrentWorkspace } from '@/features/auth/authService';
+import {
+  resolveStudentGradeForSave,
+  StudentProfileForm,
+} from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById, updateStudent } from '@/features/students/studentService';
-import { Medium } from '@/lib/database.types';
+import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -24,12 +28,23 @@ export default function EditStudentScreen() {
   const [school, setSchool] = useState('');
   const [grade, setGrade] = useState('9');
   const [medium, setMedium] = useState<Medium>('English');
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
+  const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
   const [consentCaptured, setConsentCaptured] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getCurrentWorkspace()
+      .then((workspace) => {
+        setWorkspaceType(workspace?.institute_type ?? 'solo');
+        setAcademySector(workspace?.academy_sector ?? 'school_tuition');
+      })
+      .catch(() => setWorkspaceType('solo'));
+  }, []);
 
   const loadStudent = useCallback(async () => {
     if (!params.studentId) return;
@@ -66,7 +81,7 @@ export default function EditStudentScreen() {
     try {
       await updateStudent(params.studentId, {
         fullName,
-        grade: Number(grade),
+        grade: resolveStudentGradeForSave(workspaceType, academySector, grade),
         medium,
         school,
         parentName,
@@ -134,10 +149,18 @@ export default function EditStudentScreen() {
 
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Student details</Text>
-          <FormTextField label="Student name" placeholder="Kavindu Perera" icon="account-outline" value={fullName} onChangeText={setFullName} />
-          <FormTextField label="School" placeholder="Ananda College" icon="school-outline" value={school} onChangeText={setSchool} />
-          <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
-          <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
+          <StudentProfileForm
+            workspaceType={workspaceType}
+            academySector={academySector}
+            fullName={fullName}
+            school={school}
+            grade={grade}
+            medium={medium}
+            onFullNameChange={setFullName}
+            onSchoolChange={setSchool}
+            onGradeChange={setGrade}
+            onMediumChange={setMedium}
+          />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>

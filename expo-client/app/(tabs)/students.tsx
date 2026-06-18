@@ -9,10 +9,12 @@ import { EmptyState } from '@/components/EmptyState';
 import { MetricCard } from '@/components/MetricCard';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { StudentCard } from '@/features/students/components/StudentCard';
 import { StudentFilterBar } from '@/features/students/components/StudentFilterBar';
 import { listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -22,6 +24,8 @@ function formatLkr(amount: number) {
 
 export default function StudentsScreen() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
+  const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,8 +33,10 @@ export default function StudentsScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const nextStudents = await listStudents();
+      const [nextStudents, workspace] = await Promise.all([listStudents(), getCurrentWorkspace()]);
       setStudents(nextStudents);
+      setWorkspaceType(workspace?.institute_type ?? 'solo');
+      setAcademySector(workspace?.academy_sector ?? 'school_tuition');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load students.');
     } finally {
@@ -132,7 +138,13 @@ export default function StudentsScreen() {
         ) : (
           <View style={styles.list}>
             {students.map((student) => (
-              <StudentCard key={student.id} student={student} href={`/students/${student.id}`} />
+              <StudentCard
+                key={student.id}
+                student={student}
+                href={`/students/${student.id}`}
+                workspaceType={workspaceType}
+                academySector={academySector}
+              />
             ))}
           </View>
         )}
