@@ -5,6 +5,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { isPilotDemoAuthEnabled } from '@/features/auth/demoAuth';
+import { ensureDemoWorkspace, isDemoAccountEmail } from '@/features/auth/demoSetupService';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -32,7 +34,15 @@ export default function IndexScreen() {
         return;
       }
 
-      const workspace = await getCurrentWorkspace();
+      let workspace = await getCurrentWorkspace();
+      if (
+        !workspace &&
+        isPilotDemoAuthEnabled() &&
+        (await isDemoAccountEmail(session.user.email))
+      ) {
+        await ensureDemoWorkspace();
+        workspace = await getCurrentWorkspace();
+      }
       if (!isMounted) return;
 
       router.replace((workspace ? '/(tabs)' : '/onboarding') as Href);

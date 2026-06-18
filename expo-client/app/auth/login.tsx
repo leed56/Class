@@ -11,6 +11,8 @@ import {
   DEMO_TEACHER_PASSWORD,
   isPilotDemoAuthEnabled,
 } from '@/features/auth/demoAuth';
+import { ensureDemoWorkspace, isDemoAccountEmail } from '@/features/auth/demoSetupService';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
@@ -23,6 +25,15 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  async function routeAfterTeacherLogin(signedInEmail?: string) {
+    let workspace = await getCurrentWorkspace();
+    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoAccountEmail(signedInEmail ?? email))) {
+      await ensureDemoWorkspace();
+      workspace = await getCurrentWorkspace();
+    }
+    router.replace((workspace ? '/(tabs)' : '/onboarding') as Href);
+  }
 
   async function handleLogin() {
     setError(null);
@@ -40,14 +51,19 @@ export default function LoginScreen() {
 
     setSubmitting(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setSubmitting(false);
-
     if (signInError) {
+      setSubmitting(false);
       setError(signInError.message);
       return;
     }
 
-    router.replace('/(tabs)');
+    try {
+      await routeAfterTeacherLogin(email);
+    } catch (routeError) {
+      setError(routeError instanceof Error ? routeError.message : 'Could not finish sign in.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleDemoAdminLogin() {
@@ -89,8 +105,13 @@ export default function LoginScreen() {
       }
     }
 
-    setSubmitting(false);
-    router.replace('/(tabs)');
+    try {
+      await routeAfterTeacherLogin(DEMO_TEACHER_EMAIL);
+    } catch (routeError) {
+      setError(routeError instanceof Error ? routeError.message : 'Could not finish demo sign in.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
