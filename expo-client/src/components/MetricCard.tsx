@@ -11,11 +11,12 @@ type MetricCardProps = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   tone: string;
   delta?: string;
+  fill?: boolean;
 };
 
-export function MetricCard({ label, value, icon, tone, delta }: MetricCardProps) {
+export function MetricCard({ label, value, icon, tone, delta, fill }: MetricCardProps) {
   return (
-    <PremiumCard style={styles.card}>
+    <PremiumCard style={fill ? styles.cardFill : styles.card}>
       <View style={styles.header}>
         <Text style={styles.label} numberOfLines={1}>{label}</Text>
         <View style={[styles.iconWrap, { backgroundColor: `${tone}1F` }]}>
@@ -32,6 +33,13 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 150,
+    padding: spacing.md,
+  },
+  cardFill: {
+    flex: 1,
+    minWidth: 0,
+    width: '100%',
+    minHeight: 118,
     padding: spacing.md,
   },
   header: {

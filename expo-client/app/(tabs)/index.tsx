@@ -6,6 +6,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetricCard } from '@/components/MetricCard';
+import { DashboardCol, DashboardMetricGrid, DashboardRow, DashboardSection } from '@/components/DashboardGrid';
 import { NavPressable } from '@/components/NavPressable';
 import { PageContainer } from '@/components/PageContainer';
 import { PremiumCard } from '@/components/PremiumCard';
@@ -135,17 +136,113 @@ export default function HomeScreen() {
             <ActivityIndicator color={colors.primary} />
             <Text style={styles.loadingText}>Loading your dashboard...</Text>
           </PremiumCard>
+        ) : useDesktopShell ? (
+          <DashboardSection>
+            <DashboardMetricGrid desktop>
+              <MetricCard fill label="Classes Today" value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
+              <MetricCard fill label="Attendance" value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
+              <MetricCard fill label="Pending Fees" value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
+              <MetricCard fill label="Collected" value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
+            </DashboardMetricGrid>
+
+            <DashboardRow>
+              <DashboardCol flex={3}>
+                <PremiumCard style={styles.panelCard}>
+                  <Text style={styles.cardTitle}>Next class</Text>
+                  {nextClass ? (
+                    <>
+                      <View style={styles.classRow}>
+                        <View style={styles.classIcon}>
+                          <MaterialCommunityIcons name="book-open-page-variant" size={24} color={colors.primary} />
+                        </View>
+                        <View style={styles.classInfo}>
+                          <Text style={styles.className}>{nextClass.subject}</Text>
+                          <Text style={styles.muted}>
+                            {formatClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaText}>
+                          {nextClass.startTime} - {nextClass.endTime}
+                        </Text>
+                        <Text style={styles.metaText}>{nextClass.hall}</Text>
+                      </View>
+                      <View style={styles.primaryButton}>
+                        <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
+                          <Text style={styles.primaryButtonText}>Take Attendance</Text>
+                        </NavPressable>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.emptyCopy}>Create a class to see your next session here.</Text>
+                  )}
+                </PremiumCard>
+              </DashboardCol>
+
+              <DashboardCol flex={2}>
+                <PremiumCard style={styles.panelCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardTitle}>Fee collection</Text>
+                    <Text style={styles.monthChip}>This month</Text>
+                  </View>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${collected + outstanding === 0 ? 0 : Math.round((collected / (collected + outstanding)) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.feeRow}>
+                    <FeeValue label="Collected" value={formatLkrCompact(collected)} color={colors.success} />
+                    <FeeValue label="Outstanding" value={formatLkrCompact(outstanding)} color={colors.danger} />
+                  </View>
+                </PremiumCard>
+              </DashboardCol>
+            </DashboardRow>
+
+            <View>
+              <Text style={styles.sectionTitle}>Quick actions</Text>
+              <View style={styles.quickRowDesktopGrid}>
+                <QuickActionTile fill label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
+                <QuickActionTile fill label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
+                <QuickActionTile fill label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
+                <QuickActionTile fill label="Reports" icon="chart-box-outline" color={colors.warning} href="/reports" />
+              </View>
+            </View>
+
+            <PremiumCard style={styles.panelCard}>
+              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
+              {todayClasses.length === 0 ? (
+                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
+              ) : (
+                todayClasses.map((item) => (
+                  <ScheduleRow
+                    key={item.id}
+                    time={item.startTime}
+                    title={item.subject}
+                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
+                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
+                    color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
+                  />
+                ))
+              )}
+            </PremiumCard>
+
+            {isInstituteDesktop ? <HallOccupancyPanel classes={classes} weekday={todayName} /> : null}
+          </DashboardSection>
         ) : (
           <>
-            <View style={[styles.metricsRow, useDesktopShell && styles.metricsRowDesktop]}>
+            <DashboardMetricGrid>
               <MetricCard label="Classes Today" value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
               <MetricCard label="Attendance" value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
               <MetricCard label="Pending Fees" value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
               <MetricCard label="Collected" value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
-            </View>
+            </DashboardMetricGrid>
 
-            <View style={[useDesktopShell && styles.desktopSplit]}>
-              <View style={[styles.desktopMainCol, useDesktopShell && styles.desktopMainColSized]}>
             <PremiumCard>
               <Text style={styles.cardTitle}>Next class</Text>
               {nextClass ? (
@@ -180,7 +277,7 @@ export default function HomeScreen() {
 
             <View>
               <Text style={styles.sectionTitle}>Quick actions</Text>
-              <View style={[styles.quickRow, useDesktopShell && styles.quickRowDesktop]}>
+              <View style={styles.quickRow}>
                 <QuickActionTile label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
                 <QuickActionTile label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
                 <QuickActionTile label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
@@ -188,26 +285,6 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <PremiumCard>
-              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
-              {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
-              ) : (
-                todayClasses.map((item) => (
-                  <ScheduleRow
-                    key={item.id}
-                    time={item.startTime}
-                    title={item.subject}
-                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
-                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
-                    color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
-                  />
-                ))
-              )}
-            </PremiumCard>
-              </View>
-
-              <View style={[styles.desktopSideCol, useDesktopShell && styles.desktopSideColSized]}>
             <PremiumCard>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.cardTitle}>Fee collection</Text>
@@ -229,9 +306,23 @@ export default function HomeScreen() {
               </View>
             </PremiumCard>
 
-            {isInstituteDesktop ? <HallOccupancyPanel classes={classes} weekday={todayName} /> : null}
-              </View>
-            </View>
+            <PremiumCard>
+              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
+              {todayClasses.length === 0 ? (
+                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
+              ) : (
+                todayClasses.map((item) => (
+                  <ScheduleRow
+                    key={item.id}
+                    time={item.startTime}
+                    title={item.subject}
+                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
+                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
+                    color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
+                  />
+                ))
+              )}
+            </PremiumCard>
           </>
         )}
         </PageContainer>
@@ -270,7 +361,7 @@ function ScheduleRow({ time, title, meta, status, color }: { time: string; title
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
-  contentDesktop: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxl, paddingBottom: spacing.xxxl, gap: spacing.xl },
+  contentDesktop: { paddingTop: spacing.xxl, paddingBottom: spacing.xxxl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerDesktop: { marginBottom: spacing.sm },
   screenTitle: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
@@ -287,13 +378,8 @@ const styles = StyleSheet.create({
   heroCopy: { marginTop: 10, color: '#E7DEFF', fontSize: 14, lineHeight: 21, fontWeight: '600' },
   loadingCard: { alignItems: 'center', gap: spacing.md },
   loadingText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  metricsRowDesktop: {},
-  desktopSplit: { flexDirection: 'row', gap: spacing.xl, alignItems: 'flex-start' },
-  desktopMainCol: { gap: spacing.lg },
-  desktopMainColSized: { flex: 1.4, minWidth: 0 },
-  desktopSideCol: { gap: spacing.lg },
-  desktopSideColSized: { flex: 1, minWidth: 320, maxWidth: 420 },
+  panelCard: { flex: 1, alignSelf: 'stretch', minHeight: 260 },
+  quickRowDesktopGrid: { flexDirection: 'row', gap: spacing.md, width: '100%' },
   cardTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   sectionTitle: { marginBottom: spacing.md, color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   classRow: { marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -308,7 +394,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: 'white', fontWeight: '900', fontSize: 15 },
   emptyCopy: { marginTop: spacing.md, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   quickRow: { flexDirection: 'row', gap: spacing.sm },
-  quickRowDesktop: { flexWrap: 'wrap' },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   monthChip: { color: colors.primary, backgroundColor: colors.primarySoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, fontWeight: '900' },
   progressTrack: { marginTop: spacing.lg, height: 12, borderRadius: 999, backgroundColor: colors.dangerSoft, overflow: 'hidden' },

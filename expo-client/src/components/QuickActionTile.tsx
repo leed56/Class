@@ -11,9 +11,11 @@ type QuickActionTileProps = {
   color: string;
   href?: Href;
   onPress?: () => void;
+  fill?: boolean;
 };
 
-export function QuickActionTile({ label, icon, color, href, onPress }: QuickActionTileProps) {
+export function QuickActionTile({ label, icon, color, href, onPress, fill }: QuickActionTileProps) {
+  const tileStyle = [styles.tile, fill && styles.tileFill];
   const content = (
     <>
       <View style={[styles.iconWrap, { backgroundColor: `${color}1F` }]}>
@@ -26,13 +28,13 @@ export function QuickActionTile({ label, icon, color, href, onPress }: QuickActi
   if (href) {
     return (
       <Link href={href} asChild>
-        <Pressable style={styles.tile}>{content}</Pressable>
+        <Pressable style={tileStyle}>{content}</Pressable>
       </Link>
     );
   }
 
   return (
-    <Pressable style={styles.tile} onPress={onPress}>
+    <Pressable style={tileStyle} onPress={onPress}>
       {content}
     </Pressable>
   );
@@ -63,5 +65,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '800',
+  },
+  tileFill: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 108,
   },
 });
