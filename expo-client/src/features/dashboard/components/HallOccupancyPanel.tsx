@@ -43,10 +43,10 @@ export function HallOccupancyPanel({ classes, weekday }: Props) {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Hall occupancy today</Text>
-          <Text style={styles.subtitle}>Live view of booked slots — hall rent ledger coming in Sprint 9</Text>
+          <Text style={styles.subtitle}>Live view of booked slots and hall rent collection</Text>
         </View>
-        <NavPressable href={'/settings/branches' as Href} style={styles.linkButton}>
-          <Text style={styles.linkText}>Manage halls</Text>
+        <NavPressable href={'/settings/hall-rent' as Href} style={styles.linkButton}>
+          <Text style={styles.linkText}>Hall rent</Text>
         </NavPressable>
       </View>
 

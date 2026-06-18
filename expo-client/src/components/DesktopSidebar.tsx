@@ -26,6 +26,7 @@ const primaryNav: NavItem[] = [
 
 const operationsNav: NavItem[] = [
   { label: 'Halls & branches', href: '/settings/branches', icon: 'office-building-outline', match: '/settings/branches', instituteOnly: true },
+  { label: 'Hall rent', href: '/settings/hall-rent', icon: 'cash-clock', match: '/settings/hall-rent', instituteOnly: true },
   { label: 'Reports', href: '/reports', icon: 'chart-box-outline', match: '/reports' },
   { label: 'Settings', href: '/settings', icon: 'cog-outline', match: '/settings' },
 ];

@@ -172,6 +172,9 @@ export default function SettingsScreen() {
                   <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
                   <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
                   <SetupTile title="Branches" subtitle="Locations, halls & conflicts" icon="source-branch" color={colors.primary} href="/settings/branches" />
+                  {hasPermission('manage_hall_rent') ? (
+                    <SetupTile title="Hall rent" subtitle="Teacher slot fees & invoices" icon="cash-clock" color={colors.danger} href="/settings/hall-rent" />
+                  ) : null}
                   <SetupTile title="Certificates" subtitle="PDF branding & wording" icon="certificate-outline" color={colors.warning} href="/settings/certificate-templates" />
                 </>
               ) : null}

@@ -10,7 +10,8 @@ export type Permission =
   | 'take_attendance'
   | 'manage_students'
   | 'archive_records'
-  | 'view_reports';
+  | 'view_reports'
+  | 'manage_hall_rent';
 
 const ROLE_PERMISSIONS: Record<WorkspaceRole, ReadonlySet<Permission>> = {
   owner: new Set([
@@ -24,6 +25,7 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, ReadonlySet<Permission>> = {
     'manage_students',
     'archive_records',
     'view_reports',
+    'manage_hall_rent',
   ]),
   admin: new Set([
     'manage_settings',
@@ -35,6 +37,7 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, ReadonlySet<Permission>> = {
     'manage_students',
     'archive_records',
     'view_reports',
+    'manage_hall_rent',
   ]),
   teacher: new Set([
     'issue_certificates',

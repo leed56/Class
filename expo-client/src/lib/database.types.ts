@@ -103,6 +103,34 @@ export type HallRow = {
   created_at: string;
 };
 
+export type HallRentStatus = 'pending' | 'partial' | 'paid' | 'overdue';
+
+export type HallBookingRow = {
+  id: string;
+  workspace_id: string;
+  hall_id: string;
+  teacher_user_id: string;
+  label: string | null;
+  weekday: string;
+  start_time: string;
+  end_time: string;
+  monthly_rent_lkr: number;
+  active: boolean;
+  created_at: string;
+};
+
+export type HallRentInvoiceRow = {
+  id: string;
+  workspace_id: string;
+  booking_id: string;
+  teacher_user_id: string;
+  month: string;
+  amount: number;
+  paid_amount: number;
+  due_date: string | null;
+  created_at: string;
+};
+
 export type ClassEnrollmentRow = {
   id: string;
   workspace_id: string;

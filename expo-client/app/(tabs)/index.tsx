@@ -25,7 +25,10 @@ import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { formatClassMeta } from '@/features/courses/slCourseModel';
 import { HallOccupancyPanel } from '@/features/dashboard/components/HallOccupancyPanel';
+import { HallRentSummaryPanel } from '@/features/dashboard/components/HallRentSummaryPanel';
 import { getFeeSummaryForMonth } from '@/features/fees/feeService';
+import { getHallRentSummary } from '@/features/hall-rent/hallRentService';
+import { HallRentSummary } from '@/features/hall-rent/models';
 import { listStudents } from '@/features/students/studentService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -41,6 +44,7 @@ export default function HomeScreen() {
   const [outstanding, setOutstanding] = useState(0);
   const [defaulterCount, setDefaulterCount] = useState(0);
   const [averageAttendance, setAverageAttendance] = useState(0);
+  const [hallRentSummary, setHallRentSummary] = useState<HallRentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
@@ -53,7 +57,17 @@ export default function HomeScreen() {
         getFeeSummaryForMonth(),
       ]);
 
+      let nextHallRentSummary: HallRentSummary | null = null;
+      if (workspace?.institute_type === 'institute') {
+        try {
+          nextHallRentSummary = await getHallRentSummary();
+        } catch {
+          nextHallRentSummary = null;
+        }
+      }
+
       setWorkspaceName(workspace?.name ?? null);
+      setHallRentSummary(nextHallRentSummary);
       setClasses(nextClasses);
       setStudentCount(students.length);
       setCollected(feeSummary.collected);
@@ -72,6 +86,7 @@ export default function HomeScreen() {
       setOutstanding(0);
       setDefaulterCount(0);
       setAverageAttendance(0);
+      setHallRentSummary(null);
     } finally {
       setIsLoading(false);
     }
@@ -232,6 +247,7 @@ export default function HomeScreen() {
               )}
             </PremiumCard>
 
+            {isInstituteDesktop && hallRentSummary ? <HallRentSummaryPanel summary={hallRentSummary} /> : null}
             {isInstituteDesktop ? <HallOccupancyPanel classes={classes} weekday={todayName} /> : null}
           </DashboardSection>
         ) : (
