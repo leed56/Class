@@ -11,7 +11,9 @@
     "dev:web": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-web.ps1",
     "build:web": "expo export --platform web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:check": "node scripts/check-supabase-schema.mjs",
+    "db:apply": "node ../scripts/apply-supabase-sql.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "latest",
