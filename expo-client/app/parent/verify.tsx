@@ -1,10 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DEMO_PARENT_OTP } from '@/features/auth/demoAuth';
 import { formatParentPhone, verifyParentOtp } from '@/features/parent/parentAuthService';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { colors } from '@/theme/colors';
@@ -18,9 +19,17 @@ export default function ParentVerifyScreen() {
     code?: string;
     expiresAt?: string;
   }>();
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(params.code ?? DEMO_PARENT_OTP);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (params.code) {
+      setOtp(params.code);
+      return;
+    }
+    setOtp(DEMO_PARENT_OTP);
+  }, [params.code]);
 
   async function handleVerify() {
     if (!params.phone) return;
@@ -61,7 +70,7 @@ export default function ParentVerifyScreen() {
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
           <Text style={styles.heroLabel}>One-time code</Text>
           <Text style={styles.heroTitle}>Verify parent access</Text>
-          <Text style={styles.heroNote}>SMS delivery via Notify.lk is planned. Pilot institutes can share the code below.</Text>
+          <Text style={styles.heroNote}>Pilot testing uses a fixed code: {DEMO_PARENT_OTP}. SMS via Notify.lk is planned later.</Text>
         </LinearGradient>
 
         {params.code ? (

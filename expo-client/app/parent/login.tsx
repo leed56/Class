@@ -6,13 +6,20 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { requestParentOtp } from '@/features/parent/parentAuthService';
+import {
+  DEMO_PARENT_OTP,
+  DEMO_PARENT_PHONE,
+  DEMO_TEACHER_EMAIL,
+  DEMO_TEACHER_PASSWORD,
+  isPilotDemoAuthEnabled,
+} from '@/features/auth/demoAuth';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function ParentLoginScreen() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(isPilotDemoAuthEnabled() ? DEMO_PARENT_PHONE : '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,6 +72,17 @@ export default function ParentLoginScreen() {
 
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Enter parent phone</Text>
+          {isPilotDemoAuthEnabled() ? (
+            <View style={styles.demoBanner}>
+              <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
+              <View style={styles.demoCopy}>
+                <Text style={styles.demoTitle}>Pilot demo login</Text>
+                <Text style={styles.demoText}>
+                  Phone {DEMO_PARENT_PHONE} • OTP {DEMO_PARENT_OTP}
+                </Text>
+              </View>
+            </View>
+          ) : null}
           <FormTextField
             label="Mobile number"
             placeholder="+94 77 123 4567"
@@ -72,9 +90,14 @@ export default function ParentLoginScreen() {
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
-            helper="We will send a one-time login code for this phone."
+            helper={isPilotDemoAuthEnabled() ? `Pilot OTP is always ${DEMO_PARENT_OTP}.` : 'We will send a one-time login code for this phone.'}
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {isPilotDemoAuthEnabled() ? (
+            <Pressable style={styles.secondaryButton} onPress={handleContinue} disabled={isSubmitting}>
+              <Text style={styles.secondaryButtonText}>Quick demo parent login</Text>
+            </Pressable>
+          ) : null}
           <Pressable style={styles.primaryButton} onPress={handleContinue} disabled={isSubmitting}>
             {isSubmitting ? (
               <ActivityIndicator color="white" />
@@ -106,5 +129,11 @@ const styles = StyleSheet.create({
   formTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '900' },
   primaryButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, backgroundColor: colors.primary },
   primaryButtonText: { color: 'white', fontSize: 14, fontWeight: '900' },
+  secondaryButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  secondaryButtonText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  demoBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primarySoft, backgroundColor: colors.surface, padding: spacing.md },
+  demoCopy: { flex: 1 },
+  demoTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
+  demoText: { marginTop: 2, color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   errorText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
 });
