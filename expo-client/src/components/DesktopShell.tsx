@@ -30,6 +30,8 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
     backgroundColor: colors.background,
   },
 });

@@ -108,7 +108,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.content, useDesktopShell && styles.contentDesktop]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, useDesktopShell && styles.contentDesktop]}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+      >
         <PageContainer>
         <View style={[styles.header, useDesktopShell && styles.headerDesktop]}>
           <View>
@@ -163,6 +168,7 @@ export default function HomeScreen() {
             <DashboardRow>
               <DashboardCol flex={3}>
                 <PremiumCard style={styles.panelCard}>
+                  <View style={styles.panelBody}>
                   <Text style={styles.cardTitle}>Next class</Text>
                   {nextClass ? (
                     <>
@@ -171,17 +177,19 @@ export default function HomeScreen() {
                           <MaterialCommunityIcons name="book-open-page-variant" size={24} color={colors.primary} />
                         </View>
                         <View style={styles.classInfo}>
-                          <Text style={styles.className}>{nextClass.subject}</Text>
-                          <Text style={styles.muted}>
+                          <Text style={styles.className} numberOfLines={2}>{nextClass.subject}</Text>
+                          <Text style={styles.muted} numberOfLines={2}>
                             {formatClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType)}
                           </Text>
                         </View>
                       </View>
                       <View style={styles.metaRow}>
-                        <Text style={styles.metaText}>
+                        <Text style={styles.metaText} numberOfLines={1}>
                           {nextClass.startTime} - {nextClass.endTime}
                         </Text>
-                        <Text style={styles.metaText}>{nextClass.hall}</Text>
+                        <Text style={styles.metaTextSecondary} numberOfLines={1}>
+                          {nextClass.hall}
+                        </Text>
                       </View>
                       <View style={styles.primaryButton}>
                         <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
@@ -192,11 +200,13 @@ export default function HomeScreen() {
                   ) : (
                     <Text style={styles.emptyCopy}>Create a class to see your next session here.</Text>
                   )}
+                  </View>
                 </PremiumCard>
               </DashboardCol>
 
               <DashboardCol flex={2}>
                 <PremiumCard style={styles.panelCard}>
+                  <View style={styles.panelBody}>
                   <View style={styles.cardHeaderRow}>
                     <Text style={styles.cardTitle}>Fee collection</Text>
                     <Text style={styles.monthChip}>This month</Text>
@@ -214,6 +224,7 @@ export default function HomeScreen() {
                   <View style={styles.feeRow}>
                     <FeeValue label="Collected" value={formatLkrCompact(collected)} color={colors.success} />
                     <FeeValue label="Outstanding" value={formatLkrCompact(outstanding)} color={colors.danger} />
+                  </View>
                   </View>
                 </PremiumCard>
               </DashboardCol>
@@ -376,8 +387,9 @@ function ScheduleRow({ time, title, meta, status, color }: { time: string; title
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1, width: '100%' },
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
-  contentDesktop: { paddingTop: spacing.xxl, paddingBottom: spacing.xxxl },
+  contentDesktop: { paddingTop: spacing.xxl, paddingBottom: spacing.xxxl, paddingHorizontal: 0, width: '100%', maxWidth: '100%' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerDesktop: { marginBottom: spacing.sm },
   screenTitle: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
@@ -394,8 +406,9 @@ const styles = StyleSheet.create({
   heroCopy: { marginTop: 10, color: '#E7DEFF', fontSize: 14, lineHeight: 21, fontWeight: '600' },
   loadingCard: { alignItems: 'center', gap: spacing.md },
   loadingText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  panelCard: { flex: 1, alignSelf: 'stretch', minHeight: 260 },
-  quickRowDesktopGrid: { flexDirection: 'row', gap: spacing.md, width: '100%' },
+  panelCard: { flex: 1, alignSelf: 'stretch', minHeight: 280 },
+  panelBody: { flex: 1, gap: spacing.lg, justifyContent: 'space-between' },
+  quickRowDesktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, width: '100%' },
   cardTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   sectionTitle: { marginBottom: spacing.md, color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   classRow: { marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -403,8 +416,9 @@ const styles = StyleSheet.create({
   classInfo: { flex: 1 },
   className: { color: colors.textPrimary, fontSize: 17, fontWeight: '900' },
   muted: { marginTop: 4, color: colors.textSecondary, fontWeight: '700' },
-  metaRow: { marginTop: spacing.lg, flexDirection: 'row', justifyContent: 'space-between' },
-  metaText: { color: colors.textPrimary, fontWeight: '800' },
+  metaRow: { marginTop: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md },
+  metaText: { color: colors.textPrimary, fontWeight: '800', flexShrink: 1 },
+  metaTextSecondary: { color: colors.textSecondary, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
   primaryButton: { marginTop: spacing.lg, height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, overflow: 'hidden' },
   primaryButtonInner: { flex: 1, height: 52, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: 'white', fontWeight: '900', fontSize: 15 },

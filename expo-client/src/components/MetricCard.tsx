@@ -23,7 +23,9 @@ export function MetricCard({ label, value, icon, tone, delta, fill }: MetricCard
           <MaterialCommunityIcons name={icon} size={20} color={tone} />
         </View>
       </View>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+        {value}
+      </Text>
       {delta ? <Text style={[styles.delta, { color: tone }]}>{delta}</Text> : null}
     </PremiumCard>
   );
@@ -39,8 +41,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     width: '100%',
-    minHeight: 118,
-    padding: spacing.md,
+    minHeight: 112,
+    padding: spacing.lg,
   },
   header: {
     flexDirection: 'row',
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   value: {
     marginTop: spacing.md,
     color: colors.textPrimary,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.5,
   },

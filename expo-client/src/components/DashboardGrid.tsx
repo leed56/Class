@@ -20,7 +20,11 @@ export function DashboardRow({ children }: { children: ReactNode }) {
 }
 
 export function DashboardCol({ children, flex = 1 }: { children: ReactNode; flex?: number }) {
-  return <View style={[styles.col, { flex }]}>{children}</View>;
+  return (
+    <View style={[styles.col, flex === 3 && styles.colWide, flex === 2 && styles.colNarrow]}>
+      {children}
+    </View>
+  );
 }
 
 export function DashboardSection({ children }: { children: ReactNode }) {
@@ -36,7 +40,9 @@ const styles = StyleSheet.create({
   },
   metricGridDesktop: {
     flexWrap: 'nowrap',
-    gap: spacing.lg,
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: '100%',
   },
   metricCell: {
     flexGrow: 1,
@@ -46,20 +52,36 @@ const styles = StyleSheet.create({
   metricCellDesktop: {
     flex: 1,
     flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '25%',
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'stretch',
-    gap: spacing.lg,
+    gap: spacing.xl,
     width: '100%',
+    maxWidth: '100%',
   },
   col: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '100%',
     minWidth: 0,
     gap: spacing.lg,
     alignSelf: 'stretch',
   },
+  colWide: {
+    flexBasis: '58%',
+    minWidth: 320,
+  },
+  colNarrow: {
+    flexBasis: '38%',
+    minWidth: 280,
+  },
   section: {
     width: '100%',
-    gap: spacing.lg,
+    maxWidth: '100%',
+    gap: spacing.xxl,
   },
 });

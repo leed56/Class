@@ -25,8 +25,9 @@ const styles = StyleSheet.create({
   desktop: {
     flex: 1,
     width: '100%',
-    maxWidth: 1440,
+    maxWidth: 1280,
     alignSelf: 'center',
-    paddingHorizontal: spacing.xxxl,
+    paddingHorizontal: spacing.xxl,
+    gap: spacing.xxl,
   },
 });
