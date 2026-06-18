@@ -192,7 +192,7 @@ begin
 end;
 $$;
 
-create or replace function public.get_parent_student_overview(session_id uuid, student_id uuid)
+create or replace function public.get_parent_student_overview(session_id uuid, target_student_id uuid)
 returns jsonb
 language plpgsql
 security definer
@@ -208,11 +208,11 @@ declare
   student_row public.students%rowtype;
   workspace_name text;
 begin
-  perform public.assert_parent_session(session_id, student_id);
+  perform public.assert_parent_session(session_id, target_student_id);
 
   select s.* into student_row
   from public.students s
-  where s.id = student_id;
+  where s.id = target_student_id;
 
   select w.name into workspace_name
   from public.workspaces w
@@ -220,7 +220,7 @@ begin
 
   select count(*) into attendance_total
   from public.attendance_marks m
-  where m.student_id = student_id;
+  where m.student_id = target_student_id;
 
   select count(*) into attendance_present
   from public.attendance_marks m
@@ -237,7 +237,7 @@ begin
     coalesce(sum(f.paid_amount), 0)
   into outstanding_amount, paid_amount
   from public.fee_invoices f
-  where f.student_id = student_id;
+  where f.student_id = target_student_id;
 
   if outstanding_amount <= 0 then
     fee_status := 'paid';
@@ -261,7 +261,7 @@ begin
 end;
 $$;
 
-create or replace function public.get_parent_student_timeline(session_id uuid, student_id uuid)
+create or replace function public.get_parent_student_timeline(session_id uuid, target_student_id uuid)
 returns jsonb
 language plpgsql
 security definer
@@ -271,7 +271,7 @@ declare
   receipts jsonb;
   certificates jsonb;
 begin
-  perform public.assert_parent_session(session_id, student_id);
+  perform public.assert_parent_session(session_id, target_student_id);
 
   select coalesce(
     jsonb_agg(
@@ -289,7 +289,7 @@ begin
     '[]'::jsonb
   ) into receipts
   from public.payments p
-  where p.student_id = student_id;
+  where p.student_id = target_student_id;
 
   select coalesce(
     jsonb_agg(
@@ -307,7 +307,7 @@ begin
     '[]'::jsonb
   ) into certificates
   from public.certificates c
-  where c.student_id = student_id;
+  where c.student_id = target_student_id;
 
   return jsonb_build_object(
     'receipts', receipts,

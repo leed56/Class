@@ -51,7 +51,7 @@ export async function getParentStudentOverview(studentId: string, sessionToken?:
 
   const { data, error } = await supabase.rpc('get_parent_student_overview', {
     session_id: token,
-    student_id: studentId,
+    target_student_id: studentId,
   });
   if (error) throw new Error(error.message);
 
@@ -78,7 +78,7 @@ export async function getParentStudentTimeline(studentId: string, sessionToken?:
 
   const { data, error } = await supabase.rpc('get_parent_student_timeline', {
     session_id: token,
-    student_id: studentId,
+    target_student_id: studentId,
   });
   if (error) throw new Error(error.message);
 
