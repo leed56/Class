@@ -15,7 +15,7 @@ type QuickActionTileProps = {
 };
 
 export function QuickActionTile({ label, icon, color, href, onPress, fill }: QuickActionTileProps) {
-  const tileStyle = [styles.tile, fill && styles.tileFill];
+  const tileStyle = fill ? styles.tileFilled : styles.tile;
   const content = (
     <>
       <View style={[styles.iconWrap, { backgroundColor: `${color}1F` }]}>
@@ -66,9 +66,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  tileFill: {
+  tileFilled: {
     flex: 1,
     minWidth: 0,
     minHeight: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 });
