@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import {
   CatalogProgram,
   createOffering,
@@ -36,6 +37,14 @@ function formatLkr(amount: number) {
 const extraOfferingTypes: OfferingType[] = ['revision', 'paper', 'extra', 'online'];
 
 export default function CatalogScreen() {
+  return (
+    <PermissionGate permission="manage_catalog">
+      <CatalogContent />
+    </PermissionGate>
+  );
+}
+
+function CatalogContent() {
   const [programs, setPrograms] = useState<CatalogProgram[]>([]);
   const [instituteType, setInstituteType] = useState('solo');
   const [isLoading, setIsLoading] = useState(true);

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   loadAttendanceSheet,
@@ -25,6 +26,14 @@ type ScanEvent = {
 };
 
 export default function ClassAttendanceScanScreen() {
+  return (
+    <PermissionGate permission="take_attendance">
+      <ClassAttendanceScanContent />
+    </PermissionGate>
+  );
+}
+
+function ClassAttendanceScanContent() {
   const params = useLocalSearchParams<{ classId: string; sessionDate?: string }>();
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
   const [sessionId, setSessionId] = useState('');

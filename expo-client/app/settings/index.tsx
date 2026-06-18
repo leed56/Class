@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PremiumCard } from '@/components/PremiumCard';
 import { useAuth } from '@/core/auth/AuthProvider';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { roleLabel } from '@/features/auth/permissions';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teacherProfile';
 import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -16,6 +18,7 @@ import { radius, spacing } from '@/theme/spacing';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
+  const { role, hasPermission } = useWorkspaceRole();
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
@@ -57,11 +60,15 @@ export default function SettingsScreen() {
             <Text style={styles.title}>Settings</Text>
             <Text style={styles.subtitle}>Teacher profile, language, receipts, subjects and communication controls.</Text>
           </View>
-          <Link href="/settings/edit" asChild>
-            <Pressable style={styles.iconButton}>
-              <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
-            </Pressable>
-          </Link>
+          {hasPermission('manage_settings') ? (
+            <Link href="/settings/edit" asChild>
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
+              </Pressable>
+            </Link>
+          ) : (
+            <View style={styles.iconButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -69,7 +76,7 @@ export default function SettingsScreen() {
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Teacher workspace</Text>
+            <Text style={styles.heroLabel}>Teacher workspace{role ? ` • ${roleLabel(role)}` : ''}</Text>
             <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : workspaceName}</Text>
             <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent controls</Text>
           </View>
@@ -83,23 +90,35 @@ export default function SettingsScreen() {
             </View>
             <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.primary} />
           </View>
-          <Link href="/settings/edit" asChild>
-            <Pressable>
+          {hasPermission('manage_settings') ? (
+            <>
+              <Link href="/settings/edit" asChild>
+                <Pressable>
+                  <SettingValue label="Display name" value={displayName} icon="account-outline" />
+                </Pressable>
+              </Link>
+              <View style={styles.divider} />
+              <Link href="/settings/edit" asChild>
+                <Pressable>
+                  <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
+                </Pressable>
+              </Link>
+              <View style={styles.divider} />
+              <Link href="/settings/edit" asChild>
+                <Pressable>
+                  <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
+                </Pressable>
+              </Link>
+            </>
+          ) : (
+            <>
               <SettingValue label="Display name" value={displayName} icon="account-outline" />
-            </Pressable>
-          </Link>
-          <View style={styles.divider} />
-          <Link href="/settings/edit" asChild>
-            <Pressable>
+              <View style={styles.divider} />
               <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
-            </Pressable>
-          </Link>
-          <View style={styles.divider} />
-          <Link href="/settings/edit" asChild>
-            <Pressable>
+              <View style={styles.divider} />
               <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
-            </Pressable>
-          </Link>
+            </>
+          )}
         </PremiumCard>
 
         <PremiumCard style={styles.languageCard}>
@@ -135,23 +154,58 @@ export default function SettingsScreen() {
           </View>
         </PremiumCard>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Academic setup</Text>
-          <Link href="/settings/subjects" asChild>
+        {hasPermission('manage_catalog') || hasPermission('view_reports') ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Academic setup</Text>
+              {hasPermission('manage_catalog') ? (
+                <Link href="/settings/subjects" asChild>
+                  <Pressable>
+                    <Text style={styles.sectionAction}>Manage</Text>
+                  </Pressable>
+                </Link>
+              ) : null}
+            </View>
+            <View style={styles.grid}>
+              {hasPermission('manage_catalog') ? (
+                <>
+                  <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
+                  <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
+                  <SetupTile title="Branches" subtitle="Locations, halls & conflicts" icon="source-branch" color={colors.primary} href="/settings/branches" />
+                  <SetupTile title="Certificates" subtitle="PDF branding & wording" icon="certificate-outline" color={colors.warning} href="/settings/certificate-templates" />
+                </>
+              ) : null}
+              {hasPermission('take_attendance') ? (
+                <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
+              ) : null}
+              {hasPermission('record_payments') ? (
+                <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
+              ) : null}
+              {hasPermission('view_reports') ? (
+                <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} href="/reports" />
+              ) : null}
+            </View>
+          </>
+        ) : null}
+
+        {hasPermission('manage_staff') ? (
+          <Link href="/settings/staff" asChild>
             <Pressable>
-              <Text style={styles.sectionAction}>Manage</Text>
+              <PremiumCard style={styles.staffCard}>
+                <View style={[styles.settingIcon, { backgroundColor: colors.primarySoft }]}>
+                  <MaterialCommunityIcons name="account-group-outline" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.settingCopy}>
+                  <Text style={styles.cardTitle}>Staff & roles</Text>
+                  <Text style={styles.cardSubtitle}>Add admin, teacher and front-desk staff to your institute</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
+              </PremiumCard>
             </Pressable>
           </Link>
-        </View>
-        <View style={styles.grid}>
-          <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
-          <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
-          <SetupTile title="Certificates" subtitle="PDF branding & wording" icon="certificate-outline" color={colors.warning} href="/settings/certificate-templates" />
-          <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
-          <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
-          <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} href="/reports" />
-        </View>
+        ) : null}
 
+        {hasPermission('archive_records') ? (
         <Link href="/settings/archived" asChild>
           <Pressable>
             <PremiumCard style={styles.archiveCard}>
@@ -166,6 +220,7 @@ export default function SettingsScreen() {
             </PremiumCard>
           </Pressable>
         </Link>
+        ) : null}
 
         <PremiumCard style={styles.policyCard}>
           <View style={styles.policyIcon}>
@@ -252,6 +307,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 32, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  iconButtonPlaceholder: { width: 46, height: 46 },
   headerCopy: { flex: 1 },
   title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
   subtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '700' },
@@ -293,6 +349,7 @@ const styles = StyleSheet.create({
   setupTitle: { marginTop: spacing.md, color: colors.textPrimary, fontSize: 14, fontWeight: '900' },
   setupSubtitle: { marginTop: spacing.xs, color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
   archiveCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.warningSoft },
+  staffCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.primarySoft },
   policyCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderColor: colors.primarySoft },
   policyIcon: { width: 46, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   policyCopy: { flex: 1 },

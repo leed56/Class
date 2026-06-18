@@ -3,6 +3,8 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassAttendanceAverages } from '@/features/attendance/attendanceService';
 import { getClassCollectionPercents } from '@/features/fees/feeService';
 import { getEnrollmentCountsByClass } from '@/features/enrollment/enrollmentService';
+import { getHallById, listHalls } from '@/features/locations/branchService';
+import { Hall } from '@/features/locations/models';
 import { ClassRow, Medium } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 import { ScheduleState, TuitionClass } from './models';
@@ -12,6 +14,7 @@ export type ClassFormInput = {
   grade: number;
   medium: Medium;
   hall?: string;
+  hallId?: string | null;
   weekday: string;
   startTime: string;
   endTime: string;
@@ -74,13 +77,26 @@ function getScheduleState(row: ClassRow): ScheduleState {
   return 'inProgress';
 }
 
-function mapClassRow(row: ClassRow, enrolledCount = 0, attendanceAverage = 0, collectionPercent = 0): TuitionClass {
+function mapClassRow(
+  row: ClassRow,
+  enrolledCount = 0,
+  attendanceAverage = 0,
+  collectionPercent = 0,
+  hallLookup?: Map<string, Hall>,
+): TuitionClass {
+  const linkedHall = row.hall_id ? hallLookup?.get(row.hall_id) : undefined;
+  const hallLabel = linkedHall
+    ? `${linkedHall.branchName} • ${linkedHall.name}`
+    : row.hall ?? 'Hall not set';
+
   return {
     id: row.id,
     subject: row.subject,
     grade: row.grade,
     medium: row.medium,
-    hall: row.hall ?? 'Hall not set',
+    hall: hallLabel,
+    hallId: row.hall_id,
+    branchName: linkedHall?.branchName ?? null,
     day: row.weekday,
     startTime: formatTime(row.start_time),
     endTime: formatTime(row.end_time),
@@ -91,6 +107,27 @@ function mapClassRow(row: ClassRow, enrolledCount = 0, attendanceAverage = 0, co
     collectionPercent,
     state: getScheduleState(row),
   };
+}
+
+async function resolveHallFields(input: ClassFormInput) {
+  if (input.hallId) {
+    const hall = await getHallById(input.hallId);
+    if (!hall) throw new Error('Selected hall not found.');
+    return {
+      hall_id: input.hallId,
+      hall: hall.name,
+    };
+  }
+
+  return {
+    hall_id: null,
+    hall: input.hall?.trim() || null,
+  };
+}
+
+async function buildHallLookup() {
+  const halls = await listHalls();
+  return new Map(halls.map((hall) => [hall.id, hall]));
 }
 
 export async function listClasses() {
@@ -111,10 +148,11 @@ export async function listClasses() {
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as ClassRow[];
   const classIds = rows.map((row) => row.id);
-  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+  const [counts, attendanceAverages, collectionPercents, hallLookup] = await Promise.all([
     getEnrollmentCountsByClass(classIds),
     getClassAttendanceAverages(classIds),
     getClassCollectionPercents(classIds),
+    buildHallLookup(),
   ]);
   return rows.map((row) =>
     mapClassRow(
@@ -122,6 +160,7 @@ export async function listClasses() {
       counts.get(row.id) ?? 0,
       attendanceAverages.get(row.id) ?? 0,
       collectionPercents.get(row.id) ?? 0,
+      hallLookup,
     ),
   );
 }
@@ -143,16 +182,18 @@ export async function getClassById(classId: string) {
 
   if (error) throw new Error(error.message);
   if (!data) return null;
-  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+  const [counts, attendanceAverages, collectionPercents, hallLookup] = await Promise.all([
     getEnrollmentCountsByClass([data.id]),
     getClassAttendanceAverages([data.id]),
     getClassCollectionPercents([data.id]),
+    buildHallLookup(),
   ]);
   return mapClassRow(
     data as ClassRow,
     counts.get(data.id) ?? 0,
     attendanceAverages.get(data.id) ?? 0,
     collectionPercents.get(data.id) ?? 0,
+    hallLookup,
   );
 }
 
@@ -167,6 +208,7 @@ export async function createClass(input: ClassFormInput) {
   const weekday = requireText(input.weekday, 'Class day is required.');
   const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
   const endTime = parseTimeToDb(input.endTime, 'End time is required.');
+  const hallFields = await resolveHallFields(input);
 
   const { data, error } = await supabase
     .from('classes')
@@ -175,7 +217,8 @@ export async function createClass(input: ClassFormInput) {
       subject,
       grade: input.grade,
       medium: input.medium,
-      hall: input.hall?.trim() || null,
+      hall: hallFields.hall,
+      hall_id: hallFields.hall_id,
       weekday,
       start_time: startTime,
       end_time: endTime,
@@ -187,7 +230,8 @@ export async function createClass(input: ClassFormInput) {
 
   if (error) throw new Error(error.message);
   await ensureCatalogForClass(data as ClassRow);
-  return mapClassRow(data as ClassRow);
+  const hallLookup = await buildHallLookup();
+  return mapClassRow(data as ClassRow, 0, 0, 0, hallLookup);
 }
 
 export async function updateClass(classId: string, input: ClassFormInput) {
@@ -201,6 +245,7 @@ export async function updateClass(classId: string, input: ClassFormInput) {
   const weekday = requireText(input.weekday, 'Class day is required.');
   const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
   const endTime = parseTimeToDb(input.endTime, 'End time is required.');
+  const hallFields = await resolveHallFields(input);
 
   const { data, error } = await supabase
     .from('classes')
@@ -208,7 +253,8 @@ export async function updateClass(classId: string, input: ClassFormInput) {
       subject,
       grade: input.grade,
       medium: input.medium,
-      hall: input.hall?.trim() || null,
+      hall: hallFields.hall,
+      hall_id: hallFields.hall_id,
       weekday,
       start_time: startTime,
       end_time: endTime,
@@ -223,10 +269,11 @@ export async function updateClass(classId: string, input: ClassFormInput) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Class not found.');
 
-  const [counts, attendanceAverages, collectionPercents] = await Promise.all([
+  const [counts, attendanceAverages, collectionPercents, hallLookup] = await Promise.all([
     getEnrollmentCountsByClass([data.id]),
     getClassAttendanceAverages([data.id]),
     getClassCollectionPercents([data.id]),
+    buildHallLookup(),
   ]);
 
   return mapClassRow(
@@ -234,6 +281,7 @@ export async function updateClass(classId: string, input: ClassFormInput) {
     counts.get(data.id) ?? 0,
     attendanceAverages.get(data.id) ?? 0,
     collectionPercents.get(data.id) ?? 0,
+    hallLookup,
   );
 }
 

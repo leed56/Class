@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { EnrolledClassCard } from '@/features/enrollment/components/EnrolledClassCard';
 import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
 import { listStudentOpenInvoices } from '@/features/fees/feeService';
@@ -33,6 +34,7 @@ function invoiceLedgerLabel(invoice: FeeInvoice) {
 
 export default function StudentProfileScreen() {
   const router = useRouter();
+  const { hasPermission } = useWorkspaceRole();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
@@ -338,6 +340,7 @@ export default function StudentProfileScreen() {
           </View>
         </PremiumCard>
 
+        {hasPermission('archive_records') ? (
         <PremiumCard style={styles.archiveCard}>
           <View style={styles.archiveCopy}>
             <Text style={styles.archiveTitle}>Archive student</Text>
@@ -354,6 +357,7 @@ export default function StudentProfileScreen() {
             )}
           </Pressable>
         </PremiumCard>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { listStudents } from '@/features/students/studentService';
@@ -40,6 +41,14 @@ function getSubjectSummary(classes: TuitionClass[]) {
 const subjectColors = [colors.primary, colors.success, colors.warning, colors.info];
 
 export default function SubjectSetupScreen() {
+  return (
+    <PermissionGate permission="manage_catalog">
+      <SubjectSetupContent />
+    </PermissionGate>
+  );
+}
+
+function SubjectSetupContent() {
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [isLoading, setIsLoading] = useState(true);

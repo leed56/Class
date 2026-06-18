@@ -15,7 +15,7 @@ create table if not exists public.workspaces (
 create table if not exists public.workspace_members (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
-  role text not null default 'owner' check (role in ('owner', 'teacher', 'admin')),
+  role text not null default 'owner' check (role in ('owner', 'teacher', 'admin', 'front_desk')),
   created_at timestamptz not null default now(),
   primary key (workspace_id, user_id)
 );
@@ -34,6 +34,27 @@ create table if not exists public.students (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.branches (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  name text not null,
+  address text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (workspace_id, name)
+);
+
+create table if not exists public.halls (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  branch_id uuid not null references public.branches(id) on delete cascade,
+  name text not null,
+  capacity integer check (capacity is null or capacity > 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (branch_id, name)
+);
+
 create table if not exists public.classes (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -41,6 +62,7 @@ create table if not exists public.classes (
   grade integer not null check (grade between 1 and 13),
   medium text not null check (medium in ('English', 'Sinhala', 'Tamil')),
   hall text,
+  hall_id uuid references public.halls(id) on delete set null,
   weekday text not null,
   start_time time not null,
   end_time time not null,
@@ -121,6 +143,8 @@ as $$
   );
 $$;
 
+alter table public.branches enable row level security;
+alter table public.halls enable row level security;
 alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
 alter table public.students enable row level security;
@@ -183,4 +207,10 @@ create policy "Members can manage fee invoices" on public.fee_invoices
   for all using (public.is_workspace_member(workspace_id)) with check (public.is_workspace_member(workspace_id));
 
 create policy "Members can manage payments" on public.payments
+  for all using (public.is_workspace_member(workspace_id)) with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage branches" on public.branches
+  for all using (public.is_workspace_member(workspace_id)) with check (public.is_workspace_member(workspace_id));
+
+create policy "Members can manage halls" on public.halls
   for all using (public.is_workspace_member(workspace_id)) with check (public.is_workspace_member(workspace_id));

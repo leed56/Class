@@ -12,6 +12,7 @@ import {
   updateTeacherProfile,
   updateWorkspace,
 } from '@/features/auth/authService';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getDefaultAbsenceAlertTemplate } from '@/features/communications/communicationService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
@@ -40,6 +41,14 @@ function getInstituteTypeLabel(value: InstituteType) {
 }
 
 export default function EditSettingsScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <EditSettingsContent />
+    </PermissionGate>
+  );
+}
+
+function EditSettingsContent() {
   const router = useRouter();
   const { user } = useAuth();
   const [workspaceName, setWorkspaceName] = useState('');

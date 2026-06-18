@@ -211,7 +211,6 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
     .from('workspaces')
     .update(updates)
     .eq('id', workspace.id)
-    .eq('owner_id', user.id)
     .select('*')
     .single();
 

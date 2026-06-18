@@ -9,6 +9,8 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
 import { useAuth } from '@/core/auth/AuthProvider';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { roleLabel } from '@/features/auth/permissions';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { getTeacherInitials } from '@/features/auth/teacherProfile';
 import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
@@ -19,6 +21,7 @@ import { radius, spacing } from '@/theme/spacing';
 
 export default function MoreScreen() {
   const { user, signOut, demoMode } = useAuth();
+  const { role } = useWorkspaceRole();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [dataHealth, setDataHealth] = useState(100);
@@ -70,7 +73,7 @@ export default function MoreScreen() {
             <MaterialCommunityIcons name="school" size={30} color="white" />
           </View>
           <View style={styles.heroTextBlock}>
-            <Text style={styles.heroLabel}>{workspaceName}</Text>
+            <Text style={styles.heroLabel}>{workspaceName}{role ? ` • ${roleLabel(role)}` : ''}</Text>
             <Text style={styles.heroValue}>Teacher workspace</Text>
             <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent tracking</Text>
           </View>

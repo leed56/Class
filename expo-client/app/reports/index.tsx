@@ -162,6 +162,7 @@ export default function ReportsScreen() {
             </View>
 
             <View style={styles.reportGrid}>
+              <ReportTile title="Branch reports" subtitle="Collection and attendance by branch" icon="source-branch" color={colors.primary} href="/reports/branches" />
               <ReportTile title="VAT Quarter" subtitle="Output, input and net VAT" icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" />
               <ReportTile title="Fee Collection" subtitle="Paid, partial and outstanding fees" icon="cash-clock" color={colors.success} href="/(tabs)/fees" />
               <ReportTile title="Defaulter List" subtitle="Parents to follow up this month" icon="account-cancel-outline" color={colors.danger} href="/(tabs)/fees" />

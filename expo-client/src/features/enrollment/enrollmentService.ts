@@ -66,6 +66,8 @@ function mapClassRow(row: ClassRow, enrolledCount = 0): TuitionClass {
     grade: row.grade,
     medium: row.medium,
     hall: row.hall ?? 'Hall not set',
+    hallId: row.hall_id,
+    branchName: null,
     day: row.weekday,
     startTime: formatTime(row.start_time),
     endTime: formatTime(row.end_time),

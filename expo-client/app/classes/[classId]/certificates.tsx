@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
@@ -27,6 +28,14 @@ function certificateTypeLabel(type: CertificateType) {
 }
 
 export default function ClassCertificatesScreen() {
+  return (
+    <PermissionGate permission="issue_certificates">
+      <ClassCertificatesContent />
+    </PermissionGate>
+  );
+}
+
+function ClassCertificatesContent() {
   const params = useLocalSearchParams<{ classId: string }>();
   const [tuitionClass, setTuitionClass] = useState<TuitionClass | null>(null);
   const [roster, setRoster] = useState<ClassRosterEntry[]>([]);

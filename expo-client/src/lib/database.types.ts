@@ -8,7 +8,7 @@ export type Medium = 'English' | 'Sinhala' | 'Tamil';
 export type FeeStatus = 'paid' | 'partial' | 'pending' | 'overdue';
 export type AttendanceStatus = 'present' | 'late' | 'absent';
 export type PaymentMethod = 'cash' | 'bank' | 'online';
-export type WorkspaceRole = 'owner' | 'teacher' | 'admin';
+export type WorkspaceRole = 'owner' | 'teacher' | 'admin' | 'front_desk';
 
 export type MessageDeliveryStatus = 'draft' | 'sent' | 'failed' | 'skipped';
 export type MessageDeliveryType =
@@ -69,12 +69,32 @@ export type ClassRow = {
   grade: number;
   medium: Medium;
   hall: string | null;
+  hall_id: string | null;
   weekday: string;
   start_time: string;
   end_time: string;
   monthly_fee: number;
   active: boolean;
   offering_id: string | null;
+  created_at: string;
+};
+
+export type BranchRow = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  address: string | null;
+  active: boolean;
+  created_at: string;
+};
+
+export type HallRow = {
+  id: string;
+  workspace_id: string;
+  branch_id: string;
+  name: string;
+  capacity: number | null;
+  active: boolean;
   created_at: string;
 };
 

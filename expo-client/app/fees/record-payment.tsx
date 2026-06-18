@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
 import { getInvoiceById, listOutstandingInvoices, listStudentOpenInvoices, recordPayment, recordSplitPayment } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
@@ -34,6 +35,14 @@ function computeSplitTotals(selectedLines: Record<string, { included: boolean; a
 }
 
 export default function RecordPaymentScreen() {
+  return (
+    <PermissionGate permission="record_payments">
+      <RecordPaymentContent />
+    </PermissionGate>
+  );
+}
+
+function RecordPaymentContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ invoiceId?: string; studentId?: string }>();
   const [invoice, setInvoice] = useState<FeeInvoice | null>(null);

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { downloadCertificatePdf } from '@/features/certificates/certificatePdf';
 import {
   CertificatePrint,
@@ -47,6 +48,7 @@ function formatPrintTime(value: string) {
 
 export default function CertificateDetailScreen() {
   const params = useLocalSearchParams<{ studentId: string; certificateId: string }>();
+  const { hasPermission } = useWorkspaceRole();
   const [student, setStudent] = useState<Student | null>(null);
   const [certificate, setCertificate] = useState<StudentCertificate | null>(null);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
@@ -306,7 +308,7 @@ export default function CertificateDetailScreen() {
           )}
         </PremiumCard>
 
-        {!revoked ? (
+        {!revoked && hasPermission('revoke_certificates') ? (
           <Pressable onPress={confirmRevoke} disabled={isWorking}>
             <PremiumCard style={styles.revokeCard}>
               <MaterialCommunityIcons name="cancel" size={22} color={colors.danger} />

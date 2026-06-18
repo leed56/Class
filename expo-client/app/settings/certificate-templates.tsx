@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace, updateWorkspace } from '@/features/auth/authService';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getDefaultCertificateBodies, PLACEHOLDERS } from '@/features/certificates/certificatePdf';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { InstituteType } from '@/lib/database.types';
@@ -14,6 +15,14 @@ import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function CertificateTemplatesScreen() {
+  return (
+    <PermissionGate permission="manage_catalog">
+      <CertificateTemplatesContent />
+    </PermissionGate>
+  );
+}
+
+function CertificateTemplatesContent() {
   const router = useRouter();
   const [instituteType, setInstituteType] = useState<InstituteType>('solo');
   const [workspaceName, setWorkspaceName] = useState('');

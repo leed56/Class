@@ -1,12 +1,16 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { createClass } from '@/features/classes/classService';
+import { HallPicker } from '@/features/locations/components/HallPicker';
+import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
+import { ScheduleConflict } from '@/features/locations/models';
+import { findHallScheduleConflicts } from '@/features/locations/timetableService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { Medium } from '@/lib/database.types';
@@ -18,23 +22,48 @@ export default function NewClassScreen() {
   const [subject, setSubject] = useState('');
   const [grade, setGrade] = useState('9');
   const [medium, setMedium] = useState<Medium>('English');
-  const [hall, setHall] = useState('');
+  const [hallId, setHallId] = useState<string | null>(null);
   const [weekday, setWeekday] = useState('Monday');
   const [startTime, setStartTime] = useState('10:30 AM');
   const [endTime, setEndTime] = useState('12:00 PM');
   const [monthlyFee, setMonthlyFee] = useState('2500');
+  const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!hallId) {
+      setConflicts([]);
+      return;
+    }
+
+    let active = true;
+    findHallScheduleConflicts({ hallId, weekday, startTime, endTime })
+      .then((nextConflicts) => {
+        if (active) setConflicts(nextConflicts);
+      })
+      .catch(() => {
+        if (active) setConflicts([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [endTime, hallId, startTime, weekday]);
+
   async function handleSave() {
     setError(null);
+    if (!hallId) {
+      setError('Select a hall for this class.');
+      return;
+    }
     setSubmitting(true);
     try {
       await createClass({
         subject,
         grade: Number(grade),
         medium,
-        hall,
+        hallId,
         weekday,
         startTime,
         endTime,
@@ -69,12 +98,14 @@ export default function NewClassScreen() {
           <Text style={styles.heroNote}>Students enroll into this class for attendance and monthly fees.</Text>
         </LinearGradient>
 
+        <ScheduleConflictBanner conflicts={conflicts} />
+
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Class details</Text>
           <FormTextField label="Subject" placeholder="Mathematics" icon="book-open-page-variant" value={subject} onChangeText={setSubject} />
           <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
           <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
-          <FormTextField label="Hall / location" placeholder="Hall A" icon="map-marker-outline" value={hall} onChangeText={setHall} />
+          <HallPicker selectedHallId={hallId} onSelect={(nextHallId) => setHallId(nextHallId)} />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>

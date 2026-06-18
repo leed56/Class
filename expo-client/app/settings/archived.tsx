@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { listArchivedClasses, restoreClass } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { listArchivedStudents, restoreStudent } from '@/features/students/studentService';
@@ -25,6 +26,14 @@ import { radius, spacing } from '@/theme/spacing';
 type ArchiveTab = 'students' | 'classes';
 
 export default function ArchivedRecordsScreen() {
+  return (
+    <PermissionGate permission="archive_records">
+      <ArchivedRecordsContent />
+    </PermissionGate>
+  );
+}
+
+function ArchivedRecordsContent() {
   const [tab, setTab] = useState<ArchiveTab>('students');
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<TuitionClass[]>([]);

@@ -7,6 +7,8 @@ export type TuitionClass = {
   grade: number;
   medium: Medium;
   hall: string;
+  hallId: string | null;
+  branchName: string | null;
   day: string;
   startTime: string;
   endTime: string;

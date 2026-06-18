@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { AttendanceStudentRow } from '@/features/attendance/components/AttendanceStudentRow';
 import {
@@ -24,6 +25,14 @@ import { radius, spacing } from '@/theme/spacing';
 type FilterMode = 'all' | 'unmarked' | 'fees';
 
 export default function ClassAttendanceScreen() {
+  return (
+    <PermissionGate permission="take_attendance">
+      <ClassAttendanceContent />
+    </PermissionGate>
+  );
+}
+
+function ClassAttendanceContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ classId: string; sessionDate?: string }>();
   const [session, setSession] = useState<AttendanceSessionRow | null>(null);

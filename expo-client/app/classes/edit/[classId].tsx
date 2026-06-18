@@ -7,6 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getClassById, updateClass } from '@/features/classes/classService';
+import { HallPicker } from '@/features/locations/components/HallPicker';
+import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
+import { ScheduleConflict } from '@/features/locations/models';
+import { findHallScheduleConflicts } from '@/features/locations/timetableService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { Medium } from '@/lib/database.types';
@@ -19,11 +23,12 @@ export default function EditClassScreen() {
   const [subject, setSubject] = useState('');
   const [grade, setGrade] = useState('9');
   const [medium, setMedium] = useState<Medium>('English');
-  const [hall, setHall] = useState('');
+  const [hallId, setHallId] = useState<string | null>(null);
   const [weekday, setWeekday] = useState('Monday');
   const [startTime, setStartTime] = useState('10:30 AM');
   const [endTime, setEndTime] = useState('12:00 PM');
   const [monthlyFee, setMonthlyFee] = useState('2500');
+  const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,7 +46,7 @@ export default function EditClassScreen() {
       setSubject(tuitionClass.subject);
       setGrade(String(tuitionClass.grade));
       setMedium(tuitionClass.medium);
-      setHall(tuitionClass.hall === 'Hall not set' ? '' : tuitionClass.hall);
+      setHallId(tuitionClass.hallId);
       setWeekday(tuitionClass.day);
       setStartTime(tuitionClass.startTime);
       setEndTime(tuitionClass.endTime);
@@ -57,16 +62,46 @@ export default function EditClassScreen() {
     loadClass();
   }, [loadClass]);
 
+  useEffect(() => {
+    if (!hallId || !params.classId) {
+      setConflicts([]);
+      return;
+    }
+
+    let active = true;
+    findHallScheduleConflicts({
+      hallId,
+      weekday,
+      startTime,
+      endTime,
+      excludeClassId: params.classId,
+    })
+      .then((nextConflicts) => {
+        if (active) setConflicts(nextConflicts);
+      })
+      .catch(() => {
+        if (active) setConflicts([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [endTime, hallId, params.classId, startTime, weekday]);
+
   async function handleSave() {
     if (!params.classId) return;
     setError(null);
+    if (!hallId) {
+      setError('Select a hall for this class.');
+      return;
+    }
     setSubmitting(true);
     try {
       await updateClass(params.classId, {
         subject,
         grade: Number(grade),
         medium,
-        hall,
+        hallId,
         weekday,
         startTime,
         endTime,
@@ -126,12 +161,14 @@ export default function EditClassScreen() {
           <Text style={styles.heroNote}>Fee changes apply to new invoices. Existing monthly records stay as recorded.</Text>
         </LinearGradient>
 
+        <ScheduleConflictBanner conflicts={conflicts} />
+
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Class details</Text>
           <FormTextField label="Subject" placeholder="Mathematics" icon="book-open-page-variant" value={subject} onChangeText={setSubject} />
           <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
           <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
-          <FormTextField label="Hall / location" placeholder="Hall A" icon="map-marker-outline" value={hall} onChangeText={setHall} />
+          <HallPicker selectedHallId={hallId} onSelect={(nextHallId) => setHallId(nextHallId)} />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
