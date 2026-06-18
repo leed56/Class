@@ -5,6 +5,8 @@ import {
 } from '@/features/auth/authService';
 import {
   DEMO_ACADEMY_WORKSPACE_NAME,
+  DEMO_IT_ACADEMY_EMAIL,
+  DEMO_MARITIME_EMAIL,
   DEMO_PARENT_PHONE,
   DEMO_TEACHER_EMAIL,
 } from '@/features/auth/demoAuth';
@@ -57,7 +59,9 @@ export async function seedAcademyDemoData(academySector: AcademySector = 'school
       ? classes
       : academySector === 'maritime'
         ? await createMaritimeAcademyDemoClasses(todayWeekday)
-        : await createAcademyDemoClasses(todayWeekday);
+        : academySector === 'it_technology'
+          ? await createItAcademyDemoClasses(todayWeekday)
+          : await createAcademyDemoClasses(todayWeekday);
 
   if (demoStudents.length > 0 && demoClasses.length > 0) {
     await Promise.all(
@@ -221,6 +225,40 @@ async function createMaritimeAcademyDemoClasses(weekday: string) {
   return [stcwClass, ratingClass];
 }
 
+async function createItAcademyDemoClasses(weekday: string) {
+  const diplomaClass = await createClass({
+    subject: 'Diploma in Software Engineering — Year 1',
+    grade: 13,
+    medium: 'English',
+    hallId: null,
+    weekday,
+    startTime: '5:00 PM',
+    endTime: '8:00 PM',
+    monthlyFee: 18000,
+    sector: 'it_technology',
+    sessionType: 'theory',
+    qualificationLevel: 'diploma',
+    intakeLabel: '2026 Intake',
+  });
+
+  const nvqClass = await createClass({
+    subject: 'NVQ Level 4 — ICT Technician',
+    grade: 12,
+    medium: 'English',
+    hallId: null,
+    weekday: weekday === 'Saturday' ? 'Sunday' : 'Saturday',
+    startTime: '9:00 AM',
+    endTime: '12:00 PM',
+    monthlyFee: 12000,
+    sector: 'it_technology',
+    sessionType: 'practical',
+    qualificationLevel: 'nvq',
+    intakeLabel: '2026 Intake',
+  });
+
+  return [diplomaClass, nvqClass];
+}
+
 export async function isDemoAccountEmail(email: string | undefined | null) {
   const normalized = email?.trim().toLowerCase();
   if (!normalized) return false;
@@ -236,6 +274,18 @@ export async function isDemoAcademyAccountEmail(email: string | undefined | null
   const demoEmail =
     process.env.EXPO_PUBLIC_DEMO_ACADEMY_EMAIL?.trim().toLowerCase() || 'academy@classflow.lk';
   return normalized === demoEmail;
+}
+
+export async function isDemoMaritimeAccountEmail(email: string | undefined | null) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === DEMO_MARITIME_EMAIL.trim().toLowerCase();
+}
+
+export async function isDemoItAcademyAccountEmail(email: string | undefined | null) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === DEMO_IT_ACADEMY_EMAIL.trim().toLowerCase();
 }
 
 export function getAcademyPresetWorkspaceName() {

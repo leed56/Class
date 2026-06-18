@@ -18,4 +18,8 @@ export type TuitionClass = {
   attendanceAverage: number;
   collectionPercent: number;
   state: ScheduleState;
+  sector: string | null;
+  sessionType: string | null;
+  qualificationLevel: string | null;
+  intakeLabel: string | null;
 };

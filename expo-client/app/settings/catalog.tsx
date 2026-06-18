@@ -21,7 +21,9 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { PermissionGate } from '@/features/auth/PermissionGate';
 import {
   CatalogProgram,
+  createBatch,
   createOffering,
+  createProgram,
   getOfferingTypeLabel,
   listCatalogTree,
   OfferingType,
@@ -52,6 +54,12 @@ function CatalogContent() {
   const [newOfferingType, setNewOfferingType] = useState<OfferingType>('revision');
   const [newOfferingName, setNewOfferingName] = useState('');
   const [newOfferingFee, setNewOfferingFee] = useState('');
+  const [showProgramForm, setShowProgramForm] = useState(false);
+  const [newProgramName, setNewProgramName] = useState('');
+  const [newProgramGrade, setNewProgramGrade] = useState('13');
+  const [newProgramMedium, setNewProgramMedium] = useState('English');
+  const [addingProgramId, setAddingProgramId] = useState<string | null>(null);
+  const [newBatchName, setNewBatchName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = useCallback(async () => {
@@ -80,6 +88,42 @@ function CatalogContent() {
     setNewOfferingName(`${programName} — Revision`);
     setNewOfferingFee('');
     setError(null);
+  }
+
+  async function handleCreateProgram() {
+    if (!newProgramName.trim()) {
+      Alert.alert('Name required', 'Enter a program name.');
+      return;
+    }
+    try {
+      const program = await createProgram({
+        name: newProgramName.trim(),
+        grade: Number(newProgramGrade) || 13,
+        medium: newProgramMedium as 'English' | 'Sinhala' | 'Tamil',
+        syllabus: instituteType === 'academy' ? 'other' : 'local',
+      });
+      await createBatch({ programId: program.id, name: 'Main batch' });
+      setShowProgramForm(false);
+      setNewProgramName('');
+      await loadCatalog();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not add program.');
+    }
+  }
+
+  async function handleCreateBatch(programId: string) {
+    if (!newBatchName.trim()) {
+      Alert.alert('Name required', 'Enter a batch name.');
+      return;
+    }
+    try {
+      await createBatch({ programId, name: newBatchName.trim() });
+      setAddingProgramId(null);
+      setNewBatchName('');
+      await loadCatalog();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not add batch.');
+    }
   }
 
   async function handleCreateOffering() {
@@ -146,6 +190,56 @@ function CatalogContent() {
           </PremiumCard>
         ) : null}
 
+        {!isLoading ? (
+          <PremiumCard style={styles.manageCard}>
+            <Text style={styles.manageTitle}>Add to catalog</Text>
+            {showProgramForm ? (
+              <View style={styles.addForm}>
+                <Text style={styles.addFormTitle}>New program</Text>
+                <TextInput
+                  value={newProgramName}
+                  onChangeText={setNewProgramName}
+                  placeholder="Diploma in Software Engineering"
+                  placeholderTextColor={colors.textSecondary}
+                  style={styles.input}
+                />
+                <TextInput
+                  value={newProgramGrade}
+                  onChangeText={setNewProgramGrade}
+                  placeholder="Grade (use 13 for professional programmes)"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+                <View style={styles.typeRow}>
+                  {(['English', 'Sinhala', 'Tamil'] as const).map((medium) => (
+                    <Pressable
+                      key={medium}
+                      style={[styles.typeChip, newProgramMedium === medium && styles.typeChipActive]}
+                      onPress={() => setNewProgramMedium(medium)}
+                    >
+                      <Text style={[styles.typeChipText, newProgramMedium === medium && styles.typeChipTextActive]}>{medium}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <View style={styles.addActions}>
+                  <Pressable style={styles.cancelButton} onPress={() => setShowProgramForm(false)}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={styles.saveButton} onPress={() => void handleCreateProgram()}>
+                    <Text style={styles.saveText}>Create program</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable style={styles.addButton} onPress={() => setShowProgramForm(true)}>
+                <MaterialCommunityIcons name="plus-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.addButtonText}>Add program + main batch</Text>
+              </Pressable>
+            )}
+          </PremiumCard>
+        ) : null}
+
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
@@ -176,6 +270,38 @@ function CatalogContent() {
                     </Text>
                   </View>
                 </View>
+
+                {addingProgramId === program.id ? (
+                  <View style={styles.addForm}>
+                    <Text style={styles.addFormTitle}>New batch</Text>
+                    <TextInput
+                      value={newBatchName}
+                      onChangeText={setNewBatchName}
+                      placeholder="2026 January Intake"
+                      placeholderTextColor={colors.textSecondary}
+                      style={styles.input}
+                    />
+                    <View style={styles.addActions}>
+                      <Pressable style={styles.cancelButton} onPress={() => setAddingProgramId(null)}>
+                        <Text style={styles.cancelText}>Cancel</Text>
+                      </Pressable>
+                      <Pressable style={styles.saveButton} onPress={() => void handleCreateBatch(program.id)}>
+                        <Text style={styles.saveText}>Add batch</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <Pressable
+                    style={styles.addButton}
+                    onPress={() => {
+                      setAddingProgramId(program.id);
+                      setNewBatchName(`${new Date().getFullYear()} Intake`);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="calendar-plus" size={18} color={colors.primary} />
+                    <Text style={styles.addButtonText}>Add batch</Text>
+                  </Pressable>
+                )}
 
                 {program.batches.map((batch) => (
                   <View key={batch.id} style={styles.batchBlock}>
@@ -315,6 +441,8 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
   stateCard: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl },
   stateText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  manageCard: { gap: spacing.md },
+  manageTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
   list: { gap: spacing.md },
   programCard: { gap: spacing.md },
   programHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

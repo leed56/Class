@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { isPilotDemoAuthEnabled } from '@/features/auth/demoAuth';
-import { ensureDemoWorkspace, isDemoAccountEmail, isDemoAcademyAccountEmail } from '@/features/auth/demoSetupService';
+import { ensureDemoWorkspace, isDemoAccountEmail, isDemoAcademyAccountEmail, isDemoItAcademyAccountEmail, isDemoMaritimeAccountEmail } from '@/features/auth/demoSetupService';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -35,6 +35,22 @@ export default function IndexScreen() {
       }
 
       let workspace = await getCurrentWorkspace();
+      if (
+        !workspace &&
+        isPilotDemoAuthEnabled() &&
+        (await isDemoMaritimeAccountEmail(session.user.email))
+      ) {
+        router.replace('/onboarding?preset=maritime' as Href);
+        return;
+      }
+      if (
+        !workspace &&
+        isPilotDemoAuthEnabled() &&
+        (await isDemoItAcademyAccountEmail(session.user.email))
+      ) {
+        router.replace('/onboarding?preset=it' as Href);
+        return;
+      }
       if (
         !workspace &&
         isPilotDemoAuthEnabled() &&

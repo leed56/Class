@@ -12,6 +12,7 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { StudentCard } from '@/features/students/components/StudentCard';
 import { StudentFilterBar } from '@/features/students/components/StudentFilterBar';
+import { usesSchoolStudentFields } from '@/features/students/studentProfileModel';
 import { listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { InstituteType } from '@/lib/database.types';
@@ -49,6 +50,8 @@ export default function StudentsScreen() {
       loadStudents();
     }, [loadStudents]),
   );
+
+  const showSchoolGradeFilters = usesSchoolStudentFields(workspaceType, academySector);
 
   const summary = useMemo(() => {
     const totalOutstanding = students.reduce((sum, student) => sum + student.outstandingAmount, 0);
@@ -103,7 +106,7 @@ export default function StudentsScreen() {
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
         </PremiumCard>
 
-        <StudentFilterBar />
+        <StudentFilterBar showSchoolGradeFilters={showSchoolGradeFilters} />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent students</Text>

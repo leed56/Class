@@ -9,6 +9,10 @@ type FilterChipProps = {
   active?: boolean;
 };
 
+type Props = {
+  showSchoolGradeFilters?: boolean;
+};
+
 function FilterChip({ label, active = false }: FilterChipProps) {
   return (
     <View style={[styles.chip, active && styles.activeChip]}>
@@ -17,7 +21,7 @@ function FilterChip({ label, active = false }: FilterChipProps) {
   );
 }
 
-export function StudentFilterBar() {
+export function StudentFilterBar({ showSchoolGradeFilters = true }: Props) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.searchBox}>
@@ -30,8 +34,7 @@ export function StudentFilterBar() {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         <FilterChip label="All" active />
-        <FilterChip label="Grade 9" />
-        <FilterChip label="English" />
+        {showSchoolGradeFilters ? <FilterChip label="By grade" /> : null}
         <FilterChip label="Pending fees" />
         <FilterChip label="No consent" />
       </ScrollView>
@@ -61,7 +64,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   chipRow: {
-    gap: spacing.sm,
+    gap: spacing.md,
     paddingRight: spacing.lg,
   },
   chip: {

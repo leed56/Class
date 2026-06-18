@@ -1,21 +1,36 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, Href, router } from 'expo-router';
-import { useState } from 'react';
+import { Link, Href, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { signUpTeacher } from '@/features/auth/authService';
+import { readInviteToken, saveInviteToken } from '@/features/platform/inviteStorage';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function SignupScreen() {
+  const { invite } = useLocalSearchParams<{ invite?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function persistInvite() {
+      const token = invite?.trim();
+      if (token) {
+        await saveInviteToken(token);
+        return;
+      }
+      const stored = await readInviteToken();
+      if (stored) return;
+    }
+    void persistInvite();
+  }, [invite]);
 
   async function handleSignup() {
     if (!email.trim() || password.length < 6) {

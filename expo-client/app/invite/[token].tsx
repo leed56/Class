@@ -1,0 +1,62 @@
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
+import { saveInviteToken } from '@/features/platform/inviteStorage';
+import { getPlatformInvite } from '@/features/platform/platformService';
+import { colors } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+
+export default function InviteLandingScreen() {
+  const router = useRouter();
+  const { token } = useLocalSearchParams<{ token: string }>();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function handleInvite() {
+      const inviteToken = token?.trim();
+      if (!inviteToken) {
+        setError('Invite link is invalid.');
+        return;
+      }
+
+      try {
+        await getPlatformInvite(inviteToken);
+        await saveInviteToken(inviteToken);
+        if (!active) return;
+        router.replace(`/auth/signup?invite=${encodeURIComponent(inviteToken)}` as Href);
+      } catch (inviteError) {
+        if (!active) return;
+        setError(inviteError instanceof Error ? inviteError.message : 'Invite link is invalid or expired.');
+      }
+    }
+
+    void handleInvite();
+    return () => {
+      active = false;
+    };
+  }, [router, token]);
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.centered}>
+      <ActivityIndicator color={colors.primary} size="large" />
+      <Text style={styles.loadingText}>Opening your ClassFlow invite…</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, backgroundColor: colors.background, padding: spacing.xl },
+  loadingText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+});

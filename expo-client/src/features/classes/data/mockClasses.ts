@@ -1,5 +1,12 @@
 import { TuitionClass } from '../models';
 
+const schoolClassDefaults = {
+  sector: 'school_tuition' as const,
+  sessionType: 'theory' as const,
+  qualificationLevel: 'school_session' as const,
+  intakeLabel: null,
+};
+
 export const mockClasses: TuitionClass[] = [
   {
     id: 'cls-001',
@@ -18,6 +25,7 @@ export const mockClasses: TuitionClass[] = [
     attendanceAverage: 87,
     collectionPercent: 64,
     state: 'inProgress',
+    ...schoolClassDefaults,
   },
   {
     id: 'cls-002',
@@ -36,6 +44,7 @@ export const mockClasses: TuitionClass[] = [
     attendanceAverage: 82,
     collectionPercent: 58,
     state: 'upcoming',
+    ...schoolClassDefaults,
   },
   {
     id: 'cls-003',
@@ -54,6 +63,7 @@ export const mockClasses: TuitionClass[] = [
     attendanceAverage: 91,
     collectionPercent: 72,
     state: 'upcoming',
+    ...schoolClassDefaults,
   },
   {
     id: 'cls-004',
@@ -72,5 +82,6 @@ export const mockClasses: TuitionClass[] = [
     attendanceAverage: 89,
     collectionPercent: 79,
     state: 'completed',
+    ...schoolClassDefaults,
   },
 ];

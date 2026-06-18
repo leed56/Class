@@ -6,23 +6,51 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassById, updateClass } from '@/features/classes/classService';
+import { CourseTemplatePicker } from '@/features/courses/components/CourseTemplatePicker';
+import { SchoolClassForm } from '@/features/courses/components/SchoolClassForm';
+import { MARITIME_COURSE_TEMPLATES } from '@/features/courses/maritimeCourseModel';
+import {
+  AcademySector,
+  DEFAULT_ACADEMY_SECTOR,
+  ExamLevel,
+  findCourseTemplate,
+  SlCourseTemplate,
+  SL_COURSE_TEMPLATES,
+} from '@/features/courses/slCourseModel';
+import {
+  buildSchoolClassSubject,
+  gradeToNumber,
+  parseSchoolClassSubject,
+  SchoolGrade,
+  SchoolSessionType,
+  usesSchoolClassForm,
+} from '@/features/courses/schoolSubjectModel';
 import { HallPicker } from '@/features/locations/components/HallPicker';
 import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
 import { ScheduleConflict } from '@/features/locations/models';
 import { findHallScheduleConflicts } from '@/features/locations/timetableService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { Medium } from '@/lib/database.types';
+import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
+
+const ALL_COURSE_TEMPLATES = [...SL_COURSE_TEMPLATES, ...MARITIME_COURSE_TEMPLATES];
 
 export default function EditClassScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ classId: string }>();
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
+  const [subjectName, setSubjectName] = useState('');
   const [subject, setSubject] = useState('');
-  const [grade, setGrade] = useState('9');
+  const [grade, setGrade] = useState<SchoolGrade>('9');
   const [medium, setMedium] = useState<Medium>('English');
+  const [sessionType, setSessionType] = useState<SchoolSessionType>('theory');
+  const [sector, setSector] = useState<AcademySector>(DEFAULT_ACADEMY_SECTOR);
+  const [examLevel, setExamLevel] = useState<ExamLevel>('A/L');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [hallId, setHallId] = useState<string | null>(null);
   const [weekday, setWeekday] = useState('Monday');
   const [startTime, setStartTime] = useState('10:30 AM');
@@ -33,24 +61,45 @@ export default function EditClassScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  const schoolMode = usesSchoolClassForm(workspaceType, sector);
+
+  useEffect(() => {
+    if (!schoolMode) return;
+    setSubject(buildSchoolClassSubject(subjectName, sessionType));
+  }, [schoolMode, subjectName, sessionType]);
+
   const loadClass = useCallback(async () => {
     if (!params.classId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const tuitionClass = await getClassById(params.classId);
+      const [tuitionClass, workspace] = await Promise.all([getClassById(params.classId), getCurrentWorkspace()]);
       if (!tuitionClass) {
         setError('Class not found.');
         return;
       }
+
+      const type = workspace?.institute_type ?? 'solo';
+      const resolvedSector = (tuitionClass.sector ?? workspace?.academy_sector ?? 'school_tuition') as AcademySector;
+      setWorkspaceType(type);
+      setSector(resolvedSector);
       setSubject(tuitionClass.subject);
-      setGrade(String(tuitionClass.grade));
+      setGrade(String(tuitionClass.grade) as SchoolGrade);
       setMedium(tuitionClass.medium);
       setHallId(tuitionClass.hallId);
       setWeekday(tuitionClass.day);
       setStartTime(tuitionClass.startTime);
       setEndTime(tuitionClass.endTime);
       setMonthlyFee(String(tuitionClass.monthlyFee));
+
+      if (usesSchoolClassForm(type, resolvedSector)) {
+        const parsed = parseSchoolClassSubject(tuitionClass.subject);
+        setSubjectName(parsed.subjectName);
+        setSessionType(parsed.sessionType);
+      } else {
+        const match = ALL_COURSE_TEMPLATES.find((item) => item.subject === tuitionClass.subject);
+        setSelectedTemplateId(match?.id ?? null);
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load class.');
     } finally {
@@ -88,24 +137,48 @@ export default function EditClassScreen() {
     };
   }, [endTime, hallId, params.classId, startTime, weekday]);
 
+  function handleSelectTemplate(template: SlCourseTemplate) {
+    setSelectedTemplateId(template.id);
+    setSubject(template.subject);
+    setGrade(String(template.gradeCompat) as SchoolGrade);
+    setMedium(template.medium);
+    setMonthlyFee(String(template.suggestedFee));
+  }
+
   async function handleSave() {
     if (!params.classId) return;
     setError(null);
-    if (!hallId) {
-      setError('Select a hall for this class.');
+
+    const storedSubject = schoolMode ? buildSchoolClassSubject(subjectName, sessionType) : subject.trim();
+    const template =
+      !schoolMode && selectedTemplateId
+        ? ALL_COURSE_TEMPLATES.find((item) => item.id === selectedTemplateId) ?? findCourseTemplate(storedSubject)
+        : null;
+
+    if (!storedSubject) {
+      setError(schoolMode ? 'Enter a subject name.' : 'Select or enter a course name.');
       return;
     }
+    if (workspaceType === 'institute' && !hallId) {
+      setError('Select a hall slot for this class.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await updateClass(params.classId, {
-        subject,
-        grade: Number(grade),
+        subject: storedSubject,
+        grade: gradeToNumber(grade),
         medium,
         hallId,
         weekday,
         startTime,
         endTime,
         monthlyFee: Number(monthlyFee) || 0,
+        sector: schoolMode ? 'school_tuition' : (template?.sector ?? sector),
+        sessionType: schoolMode ? sessionType : template?.sessionType ?? 'theory',
+        qualificationLevel: schoolMode ? 'school_session' : template?.qualificationLevel ?? 'certificate',
+        intakeLabel: template?.intakeLabel ?? null,
       });
       router.replace(`/classes/${params.classId}` as Href);
     } catch (saveError) {
@@ -140,6 +213,9 @@ export default function EditClassScreen() {
     );
   }
 
+  const title = schoolMode ? 'Edit Class' : 'Edit Course';
+  const saveLabel = schoolMode ? 'Save Changes' : 'Save Course';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -150,13 +226,17 @@ export default function EditClassScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Edit Class</Text>
-            <Text style={styles.subtitle}>Update subject, schedule, hall and monthly fee.</Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>
+              {schoolMode
+                ? 'Update subject, grade, schedule, hall and monthly fee.'
+                : 'Update programme, schedule and fee for your academy course.'}
+            </Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Class template</Text>
+          <Text style={styles.heroLabel}>{schoolMode ? 'School tuition' : 'Academy course'}</Text>
           <Text style={styles.heroTitle}>Update weekly schedule</Text>
           <Text style={styles.heroNote}>Fee changes apply to new invoices. Existing monthly records stay as recorded.</Text>
         </LinearGradient>
@@ -164,11 +244,51 @@ export default function EditClassScreen() {
         <ScheduleConflictBanner conflicts={conflicts} />
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Class details</Text>
-          <FormTextField label="Subject" placeholder="Mathematics" icon="book-open-page-variant" value={subject} onChangeText={setSubject} />
-          <ChoiceChipGroup label="Grade" selected={grade} options={['6', '7', '8', '9', '10', '11']} onSelect={setGrade} />
-          <ChoiceChipGroup label="Medium" selected={medium} options={['English', 'Sinhala', 'Tamil']} onSelect={(value) => setMedium(value as Medium)} />
-          <HallPicker selectedHallId={hallId} onSelect={(nextHallId) => setHallId(nextHallId)} />
+          <Text style={styles.cardTitle}>{schoolMode ? 'Class details' : 'Course details'}</Text>
+          {schoolMode ? (
+            <SchoolClassForm
+              subjectName={subjectName}
+              grade={grade}
+              medium={medium}
+              sessionType={sessionType}
+              onSubjectNameChange={setSubjectName}
+              onGradeChange={setGrade}
+              onMediumChange={setMedium}
+              onSessionTypeChange={setSessionType}
+              showBuildingHint={workspaceType === 'institute'}
+            />
+          ) : (
+            <>
+              <CourseTemplatePicker
+                sector={sector}
+                onSectorChange={setSector}
+                selectedTemplateId={selectedTemplateId}
+                examLevel={examLevel}
+                onExamLevelChange={setExamLevel}
+                onSelectTemplate={handleSelectTemplate}
+              />
+              <FormTextField
+                label="Course / programme name"
+                placeholder="STCW Basic Safety, Diploma in Counselling"
+                icon="book-education-outline"
+                value={subject}
+                onChangeText={(value) => {
+                  setSubject(value);
+                  const match = ALL_COURSE_TEMPLATES.find((item) => item.subject === value);
+                  setSelectedTemplateId(match?.id ?? null);
+                }}
+              />
+              <ChoiceChipGroup
+                label="Medium"
+                selected={medium}
+                options={['English', 'Sinhala', 'Tamil']}
+                onSelect={(value) => setMedium(value as Medium)}
+              />
+            </>
+          )}
+          {workspaceType === 'institute' || workspaceType === 'academy' ? (
+            <HallPicker selectedHallId={hallId} onSelect={(nextHallId) => setHallId(nextHallId)} />
+          ) : null}
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
@@ -190,7 +310,7 @@ export default function EditClassScreen() {
       <View style={styles.saveBar}>
         <Text style={styles.saveValue}>Updates save to your workspace</Text>
         <Pressable style={[styles.saveButton, submitting && styles.saveButtonDisabled]} onPress={handleSave} disabled={submitting}>
-          {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
+          {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>{saveLabel}</Text>}
         </Pressable>
       </View>
     </SafeAreaView>

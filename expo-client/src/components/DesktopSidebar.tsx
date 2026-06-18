@@ -1,10 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, usePathname, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/core/auth/AuthProvider';
 import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { getTeacherInitials } from '@/features/auth/teacherProfile';
+import { isPlatformAdmin } from '@/features/platform/platformService';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -49,6 +51,11 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { instituteType, workspaceName } = useWorkspaceShell();
+  const [showPlatformAdmin, setShowPlatformAdmin] = useState(false);
+
+  useEffect(() => {
+    isPlatformAdmin().then(setShowPlatformAdmin).catch(() => setShowPlatformAdmin(false));
+  }, []);
 
   const opsItems = operationsNav.filter((item) => !item.instituteOnly || instituteType === 'institute');
 
@@ -105,6 +112,15 @@ export function DesktopSidebar() {
             </Pressable>
           );
         })}
+        {showPlatformAdmin ? (
+          <Pressable
+            style={[styles.navItem, pathname.includes('/platform') && styles.navItemActive]}
+            onPress={() => router.push('/platform/index' as Href)}
+          >
+            <MaterialCommunityIcons name="shield-crown-outline" size={20} color={pathname.includes('/platform') ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.navLabel, pathname.includes('/platform') && styles.navLabelActive]}>Platform admin</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View style={styles.footer}>

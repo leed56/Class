@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
 import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
 import { getWorkspaceHealth } from '@/features/reports/reportsService';
+import { isPlatformAdmin } from '@/features/platform/platformService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -27,14 +28,20 @@ export default function MoreScreen() {
   const [dataHealth, setDataHealth] = useState(100);
   const [consentMissingCount, setConsentMissingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPlatformAdmin, setShowPlatformAdmin] = useState(false);
 
   const loadMore = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [workspace, health] = await Promise.all([getCurrentWorkspace(), getWorkspaceHealth()]);
+      const [workspace, health, platformAdmin] = await Promise.all([
+        getCurrentWorkspace(),
+        getWorkspaceHealth(),
+        isPlatformAdmin(),
+      ]);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
       setDataHealth(health.dataHealth);
       setConsentMissingCount(health.consentMissingCount);
+      setShowPlatformAdmin(platformAdmin);
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +158,21 @@ export default function MoreScreen() {
             </View>
           ))}
         </PremiumCard>
+
+        {showPlatformAdmin ? (
+          <PremiumCard style={styles.panelCard}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.sectionTitle}>Platform operator</Text>
+            </View>
+            <NavPressable href="/platform/index">
+              <View style={styles.platformRow}>
+                <MaterialCommunityIcons name="shield-crown-outline" size={20} color={colors.primary} />
+                <Text style={styles.platformRowText}>Open platform admin console</Text>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+              </View>
+            </NavPressable>
+          </PremiumCard>
+        ) : null}
 
         <PremiumCard style={styles.signoutCard}>
           <View style={styles.signoutRow}>
@@ -392,5 +414,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 13,
     fontWeight: '900',
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  platformRowText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

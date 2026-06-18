@@ -284,6 +284,74 @@ export type CreateOfferingInput = {
   defaultMonthlyFee: number;
 };
 
+export type CreateProgramInput = {
+  name: string;
+  grade: number;
+  medium: Medium;
+  syllabus?: SyllabusTrack;
+};
+
+export type CreateBatchInput = {
+  programId: string;
+  name: string;
+  intakeYear?: number | null;
+  examYear?: number | null;
+};
+
+export async function createProgram(input: CreateProgramInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before adding programs.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const name = input.name.trim();
+  if (!name) throw new Error('Program name is required.');
+
+  const grade = Math.min(13, Math.max(1, Math.round(input.grade || 13)));
+
+  const { data, error } = await supabase
+    .from('programs')
+    .insert({
+      workspace_id: workspace.id,
+      name,
+      syllabus: input.syllabus ?? 'other',
+      grade,
+      medium: input.medium,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as ProgramRow;
+}
+
+export async function createBatch(input: CreateBatchInput) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace) throw new Error('Create your workspace before adding batches.');
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const name = input.name.trim();
+  if (!name) throw new Error('Batch name is required.');
+
+  const { data, error } = await supabase
+    .from('batches')
+    .insert({
+      workspace_id: workspace.id,
+      program_id: input.programId,
+      name,
+      intake_year: input.intakeYear ?? new Date().getFullYear(),
+      exam_year: input.examYear ?? null,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as BatchRow;
+}
+
 export async function createOffering(input: CreateOfferingInput) {
   const workspace = await getCurrentWorkspace();
   if (!workspace) throw new Error('Create your workspace before adding offerings.');

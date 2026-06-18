@@ -77,11 +77,15 @@ function mapClassRow(row: ClassRow, enrolledCount = 0): TuitionClass {
     attendanceAverage: 0,
     collectionPercent: 0,
     state: getScheduleState(row),
+    sector: row.sector ?? null,
+    sessionType: row.session_type ?? null,
+    qualificationLevel: row.qualification_level ?? null,
+    intakeLabel: row.intake_label ?? null,
   };
 }
 
-function formatClassLabel(subject: string, grade: number) {
-  return `${subject} G${grade}`;
+function formatClassLabel(subject: string, _grade: number) {
+  return subject;
 }
 
 function unwrapRelation<T>(value: T | T[] | null | undefined): T | null {

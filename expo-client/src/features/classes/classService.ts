@@ -110,6 +110,10 @@ function mapClassRow(
     attendanceAverage,
     collectionPercent,
     state: getScheduleState(row),
+    sector: row.sector ?? null,
+    sessionType: row.session_type ?? null,
+    qualificationLevel: row.qualification_level ?? null,
+    intakeLabel: row.intake_label ?? null,
   };
 }
 

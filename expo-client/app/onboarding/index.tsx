@@ -10,11 +10,15 @@ import { useAuth } from '@/core/auth/AuthProvider';
 import { createTeacherWorkspace } from '@/features/auth/authService';
 import {
   DEMO_ACADEMY_WORKSPACE_NAME,
+  DEMO_IT_ACADEMY_WORKSPACE_NAME,
+  DEMO_MARITIME_WORKSPACE_NAME,
   isPilotDemoAuthEnabled,
 } from '@/features/auth/demoAuth';
 import {
   applyWorkspaceTypeSettings,
   isDemoAcademyAccountEmail,
+  isDemoItAcademyAccountEmail,
+  isDemoMaritimeAccountEmail,
   seedAcademyDemoData,
 } from '@/features/auth/demoSetupService';
 import { getTeacherDisplayName } from '@/features/auth/teacherProfile';
@@ -25,6 +29,8 @@ import {
   getSectorInfo,
 } from '@/features/courses/slCourseModel';
 import { InstituteType, LanguageCode } from '@/lib/database.types';
+import { clearInviteToken, readInviteToken } from '@/features/platform/inviteStorage';
+import { consumePlatformInvite, getPlatformInvite } from '@/features/platform/platformService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -60,26 +66,46 @@ const workspaceTypeOptions: {
   },
 ];
 
-type OnboardingPreset = 'academy' | 'institute' | 'solo';
+type OnboardingPreset = 'academy' | 'institute' | 'solo' | 'maritime' | 'it';
 
 export default function OnboardingScreen() {
   const { user } = useAuth();
   const { preset } = useLocalSearchParams<{ preset?: string }>();
-  const presetMode = (preset === 'academy' || preset === 'institute' || preset === 'solo'
+  const presetMode = (preset === 'academy' ||
+    preset === 'institute' ||
+    preset === 'solo' ||
+    preset === 'maritime' ||
+    preset === 'it'
     ? preset
     : 'academy') as OnboardingPreset;
 
   const [workspaceName, setWorkspaceName] = useState('');
-  const [workspaceType, setWorkspaceType] = useState<InstituteType>(presetMode);
-  const [academySector, setAcademySector] = useState<AcademySector>(DEFAULT_ACADEMY_SECTOR);
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>(presetMode === 'institute' ? 'institute' : presetMode === 'solo' ? 'solo' : 'academy');
+  const [academySector, setAcademySector] = useState<AcademySector>(
+    presetMode === 'maritime' ? 'maritime' : presetMode === 'it' ? 'it_technology' : DEFAULT_ACADEMY_SECTOR,
+  );
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteLocked, setInviteLocked] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
-  const isAcademyPreset = presetMode === 'academy';
+  const isAcademyPreset = presetMode === 'academy' || presetMode === 'maritime' || presetMode === 'it';
 
   useEffect(() => {
-    if (isAcademyPreset) {
+    if (presetMode === 'maritime') {
+      setWorkspaceType('academy');
+      setAcademySector('maritime');
+      setWorkspaceName(DEMO_MARITIME_WORKSPACE_NAME);
+      return;
+    }
+    if (presetMode === 'it') {
+      setWorkspaceType('academy');
+      setAcademySector('it_technology');
+      setWorkspaceName(DEMO_IT_ACADEMY_WORKSPACE_NAME);
+      return;
+    }
+    if (isAcademyPreset && presetMode === 'academy') {
       setWorkspaceType('academy');
       setWorkspaceName(DEMO_ACADEMY_WORKSPACE_NAME);
       return;
@@ -87,8 +113,33 @@ export default function OnboardingScreen() {
 
     const teacherName = getTeacherDisplayName(user);
     setWorkspaceName(teacherName === 'Teacher' ? '' : `${teacherName} Classes`);
-    setWorkspaceType(presetMode);
+    setWorkspaceType(presetMode === 'institute' ? 'institute' : presetMode === 'solo' ? 'solo' : 'academy');
   }, [user, isAcademyPreset, presetMode]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInvite() {
+      const token = await readInviteToken();
+      if (!token || !active) return;
+
+      try {
+        const invite = await getPlatformInvite(token);
+        setInviteToken(token);
+        setInviteLocked(true);
+        setWorkspaceType(invite.instituteType);
+        if (invite.workspaceNameHint) setWorkspaceName(invite.workspaceNameHint);
+        if (invite.academySector) setAcademySector(invite.academySector as AcademySector);
+      } catch {
+        await clearInviteToken();
+      }
+    }
+
+    void loadInvite();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const heroCopy = useMemo(() => {
     if (workspaceType === 'academy') {
@@ -146,6 +197,10 @@ export default function OnboardingScreen() {
     setError(null);
 
     try {
+      if (inviteToken) {
+        await consumePlatformInvite(inviteToken);
+      }
+
       await createTeacherWorkspace({ name: workspaceName, defaultLanguage });
       const sectorForWorkspace = workspaceType === 'academy' ? academySector : 'school_tuition';
       await applyWorkspaceTypeSettings(workspaceType, sectorForWorkspace);
@@ -153,12 +208,16 @@ export default function OnboardingScreen() {
       const shouldSeedAcademy =
         workspaceType === 'academy' &&
         isPilotDemoAuthEnabled() &&
-        (isAcademyPreset || (await isDemoAcademyAccountEmail(user?.email)));
+        (isAcademyPreset ||
+          (await isDemoAcademyAccountEmail(user?.email)) ||
+          (await isDemoMaritimeAccountEmail(user?.email)) ||
+          (await isDemoItAcademyAccountEmail(user?.email)));
 
       if (shouldSeedAcademy) {
         await seedAcademyDemoData(sectorForWorkspace);
       }
 
+      await clearInviteToken();
       router.replace('/(tabs)');
     } catch (setupError) {
       setError(setupError instanceof Error ? setupError.message : 'Could not create workspace. Please try again.');
@@ -191,7 +250,16 @@ export default function OnboardingScreen() {
             <Text style={styles.presetBannerText}>
               {academySector === 'maritime'
                 ? 'Maritime academy demo — finish setup to load STCW & pre-sea rating sample courses.'
-                : 'Sample academy flow — finish setup to load demo students, theory + revision classes, and parent portal data.'}
+                : academySector === 'it_technology'
+                  ? 'IT academy demo — finish setup to load diploma and NVQ sample programmes.'
+                  : 'Sample academy flow — finish setup to load demo students, theory + revision classes, and parent portal data.'}
+            </Text>
+          </View>
+        ) : inviteLocked ? (
+          <View style={styles.presetBanner}>
+            <MaterialCommunityIcons name="link-variant" size={18} color={colors.info} />
+            <Text style={styles.presetBannerText}>
+              Customer invite applied — workspace type and sector are pre-set for this account.
             </Text>
           </View>
         ) : null}
@@ -208,7 +276,10 @@ export default function OnboardingScreen() {
                 <Pressable
                   key={option.value}
                   style={[styles.typeCard, isSelected && styles.typeCardActive]}
-                  onPress={() => setWorkspaceType(option.value)}
+                  onPress={() => {
+                    if (inviteLocked) return;
+                    setWorkspaceType(option.value);
+                  }}
                 >
                   <View style={[styles.typeIcon, isSelected && styles.typeIconActive]}>
                     <MaterialCommunityIcons

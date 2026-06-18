@@ -9,6 +9,7 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace, updateWorkspace } from '@/features/auth/authService';
 import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getDefaultCertificateBodies, PLACEHOLDERS } from '@/features/certificates/certificatePdf';
+import { getSectorCertificatePreset, listSectorCertificatePresets } from '@/features/certificates/certificateSectorPresets';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -25,6 +26,7 @@ export default function CertificateTemplatesScreen() {
 function CertificateTemplatesContent() {
   const router = useRouter();
   const [instituteType, setInstituteType] = useState<InstituteType>('solo');
+  const [academySector, setAcademySector] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
   const [signatoryName, setSignatoryName] = useState('');
   const [signatoryTitle, setSignatoryTitle] = useState('Director');
@@ -41,6 +43,7 @@ function CertificateTemplatesContent() {
     try {
       const workspace = await getCurrentWorkspace();
       setInstituteType(workspace?.institute_type ?? 'solo');
+      setAcademySector(workspace?.academy_sector ?? null);
       setWorkspaceName(workspace?.name ?? '');
       setSignatoryName(workspace?.certificate_signatory_name ?? '');
       setSignatoryTitle(workspace?.certificate_signatory_title ?? 'Director');
@@ -126,6 +129,41 @@ function CertificateTemplatesContent() {
           <Text style={styles.heroTitle}>{workspaceName}</Text>
           <Text style={styles.heroNote}>Parents receive official documents with your institute name and signatory.</Text>
         </LinearGradient>
+
+        <PremiumCard style={styles.card}>
+          <Text style={styles.cardTitle}>Sector presets</Text>
+          <Text style={styles.cardHint}>
+            Apply maritime, IT or school tuition wording. Current sector: {academySector ?? 'school_tuition'}.
+          </Text>
+          <View style={styles.presetRow}>
+            {listSectorCertificatePresets(academySector).map((preset) => (
+              <Pressable
+                key={preset.label}
+                style={styles.presetChip}
+                onPress={() => {
+                  setSignatoryTitle(preset.signatoryTitle);
+                  setCompletionBody(preset.completionBody);
+                  setAchievementBody(preset.achievementBody);
+                  setFooterNote(preset.footerNote);
+                }}
+              >
+                <Text style={styles.presetChipText}>{preset.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            style={styles.presetChip}
+            onPress={() => {
+              const preset = getSectorCertificatePreset(academySector);
+              setSignatoryTitle(preset.signatoryTitle);
+              setCompletionBody(preset.completionBody);
+              setAchievementBody(preset.achievementBody);
+              setFooterNote(preset.footerNote);
+            }}
+          >
+            <Text style={styles.presetChipText}>Reset to sector default</Text>
+          </Pressable>
+        </PremiumCard>
 
         <PremiumCard style={styles.card}>
           <Text style={styles.cardTitle}>Signatory</Text>
@@ -217,6 +255,9 @@ const styles = StyleSheet.create({
   card: { gap: spacing.lg },
   cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '900' },
   cardHint: { color: colors.textSecondary, fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  presetChip: { borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface },
+  presetChipText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   blockedTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '900', textAlign: 'center' },
   blockedText: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center' },
   errorText: { color: colors.danger, fontSize: 12, fontWeight: '800', textAlign: 'center' },

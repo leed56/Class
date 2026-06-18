@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,12 +9,23 @@ import { useAuth } from '@/core/auth/AuthProvider';
 import {
   DEMO_ACADEMY_EMAIL,
   DEMO_ACADEMY_PASSWORD,
+  DEMO_IT_ACADEMY_EMAIL,
+  DEMO_IT_ACADEMY_PASSWORD,
+  DEMO_MARITIME_EMAIL,
+  DEMO_MARITIME_PASSWORD,
   DEMO_TEACHER_EMAIL,
   DEMO_TEACHER_PASSWORD,
   isPilotDemoAuthEnabled,
 } from '@/features/auth/demoAuth';
-import { ensureDemoWorkspace, isDemoAccountEmail, isDemoAcademyAccountEmail } from '@/features/auth/demoSetupService';
+import {
+  ensureDemoWorkspace,
+  isDemoAccountEmail,
+  isDemoAcademyAccountEmail,
+  isDemoItAcademyAccountEmail,
+  isDemoMaritimeAccountEmail,
+} from '@/features/auth/demoSetupService';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { isPlatformAdmin } from '@/features/platform/platformService';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
@@ -27,10 +38,25 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPlatformAdmin, setShowPlatformAdmin] = useState(false);
+
+  useEffect(() => {
+    isPlatformAdmin().then(setShowPlatformAdmin).catch(() => setShowPlatformAdmin(false));
+  }, []);
 
   async function routeAfterTeacherLogin(signedInEmail?: string) {
     const loginEmail = signedInEmail ?? email;
     let workspace = await getCurrentWorkspace();
+
+    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoMaritimeAccountEmail(loginEmail))) {
+      router.replace('/onboarding?preset=maritime' as Href);
+      return;
+    }
+
+    if (!workspace && isPilotDemoAuthEnabled() && (await isDemoItAcademyAccountEmail(loginEmail))) {
+      router.replace('/onboarding?preset=it' as Href);
+      return;
+    }
 
     if (!workspace && isPilotDemoAuthEnabled() && (await isDemoAcademyAccountEmail(loginEmail))) {
       router.replace('/onboarding?preset=academy' as Href);
@@ -172,6 +198,48 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleSectorDemoLogin(demoEmail: string, demoPassword: string, preset: 'maritime' | 'it') {
+    setError(null);
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+
+    if (demoMode) {
+      router.replace(`/onboarding?preset=${preset}` as Href);
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured yet.');
+      return;
+    }
+
+    setSubmitting(true);
+    const signInResult = await supabase.auth.signInWithPassword({ email: demoEmail, password: demoPassword });
+
+    if (signInResult.error) {
+      const signUpResult = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
+      if (signUpResult.error) {
+        setSubmitting(false);
+        setError(signUpResult.error.message);
+        return;
+      }
+      if (!signUpResult.data.session) {
+        setSubmitting(false);
+        setError('Demo account created. Confirm the email in Supabase Auth, then retry.');
+        return;
+      }
+    }
+
+    try {
+      await routeAfterTeacherLogin(demoEmail);
+    } catch (routeError) {
+      setError(routeError instanceof Error ? routeError.message : 'Could not finish demo sign in.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -193,6 +261,12 @@ export default function LoginScreen() {
               </Text>
               <Text style={styles.pilotText}>
                 Academy: {DEMO_ACADEMY_EMAIL} / {DEMO_ACADEMY_PASSWORD}
+              </Text>
+              <Text style={styles.pilotText}>
+                Maritime: {DEMO_MARITIME_EMAIL} / {DEMO_MARITIME_PASSWORD}
+              </Text>
+              <Text style={styles.pilotText}>
+                IT: {DEMO_IT_ACADEMY_EMAIL} / {DEMO_IT_ACADEMY_PASSWORD}
               </Text>
             </View>
           </View>
@@ -241,13 +315,37 @@ export default function LoginScreen() {
               <Pressable style={styles.secondaryButton} onPress={handleDemoAdminLogin} disabled={submitting}>
                 <Text style={styles.secondaryButtonText}>Quick demo institute login</Text>
               </Pressable>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => void handleSectorDemoLogin(DEMO_MARITIME_EMAIL, DEMO_MARITIME_PASSWORD, 'maritime')}
+                disabled={submitting}
+              >
+                <Text style={styles.secondaryButtonText}>Maritime academy demo</Text>
+              </Pressable>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => void handleSectorDemoLogin(DEMO_IT_ACADEMY_EMAIL, DEMO_IT_ACADEMY_PASSWORD, 'it')}
+                disabled={submitting}
+              >
+                <Text style={styles.secondaryButtonText}>IT academy demo</Text>
+              </Pressable>
             </>
           ) : null}
         </View>
 
+        {showPlatformAdmin ? (
+          <Link href={'/platform' as Href} asChild>
+            <Pressable style={styles.parentLinkCard}>
+              <MaterialCommunityIcons name="shield-crown-outline" size={20} color={colors.primary} />
+              <Text style={styles.parentLinkText}>Platform admin console</Text>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+            </Pressable>
+          </Link>
+        ) : null}
+
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>New teacher?</Text>
-          <Link href={'/auth/register' as Href} asChild>
+          <Link href={'/auth/signup' as Href} asChild>
             <Pressable>
               <Text style={styles.footerLink}>Create account</Text>
             </Pressable>

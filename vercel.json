@@ -2,5 +2,12 @@
   "installCommand": "cd expo-client && npm install",
   "buildCommand": "cd expo-client && npm run build:web",
   "outputDirectory": "expo-client/dist",
+  "redirects": [
+    {
+      "source": "/invite/:token",
+      "destination": "/auth/signup?invite=:token",
+      "permanent": false
+    }
+  ],
   "rewrites": [{ "source": "/((?!_expo/static/).*)", "destination": "/index.html" }]
 }
