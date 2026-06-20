@@ -30,8 +30,8 @@ if (!url || !key) {
 
 const supabase = createClient(url, key);
 
-async function tableExists(table) {
-  const { error } = await supabase.from(table).select('id').limit(1);
+async function tableExists(table, column = 'id') {
+  const { error } = await supabase.from(table).select(column).limit(1);
   if (!error) return true;
   if (error.code === 'PGRST205' || error.message.includes('does not exist')) return false;
   return `error:${error.message}`;
@@ -49,7 +49,7 @@ async function rpcExists(name, args = {}) {
 const result = {
   hall_bookings: await tableExists('hall_bookings'),
   hall_rent_invoices: await tableExists('hall_rent_invoices'),
-  platform_admins: await tableExists('platform_admins'),
+  platform_admins: await tableExists('platform_admins', 'email'),
   platform_invites: await tableExists('platform_invites'),
   is_platform_admin_rpc: await rpcExists('is_platform_admin'),
   get_platform_invite_rpc: await rpcExists('get_platform_invite', { p_token: '000000000000000000000000' }),

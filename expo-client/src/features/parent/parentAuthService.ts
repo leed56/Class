@@ -24,7 +24,8 @@ type RequestOtpResult = {
   phone: string;
   childCount: number;
   expiresAt: string;
-  code: string;
+  code: string | null;
+  smsQueued?: boolean;
 };
 
 type VerifyOtpResult = {
@@ -90,6 +91,7 @@ export async function requestParentOtp(phone: string) {
     childCount: result.childCount,
     expiresAt: result.expiresAt,
     code: result.code,
+    smsQueued: Boolean(result.smsQueued),
   };
 }
 

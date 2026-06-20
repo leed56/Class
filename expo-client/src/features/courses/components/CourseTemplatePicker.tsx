@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -42,9 +42,10 @@ export function CourseTemplatePicker({
   const [maritimeTrack, setMaritimeTrack] = useState<MaritimeTrack>('officer_cadet');
   const sectorInfo = getSectorInfo(sector);
 
-  useEffect(() => {
-    if (sector === 'maritime') setMaritimeTrack('officer_cadet');
-  }, [sector]);
+  function handleSectorChange(nextSector: AcademySector) {
+    if (nextSector === 'maritime') setMaritimeTrack('officer_cadet');
+    onSectorChange(nextSector);
+  }
 
   const templates =
     sector === 'school_tuition'
@@ -66,7 +67,7 @@ export function CourseTemplatePicker({
             <Pressable
               key={item.id}
               style={[styles.sectorChip, active && styles.sectorChipActive]}
-              onPress={() => onSectorChange(item.id)}
+              onPress={() => handleSectorChange(item.id)}
             >
               <MaterialCommunityIcons
                 name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}

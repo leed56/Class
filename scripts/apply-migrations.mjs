@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, '../..');
+const repoRoot = resolve(__dirname, '..');
 
 function loadEnvFile(path) {
   if (!existsSync(path)) return;

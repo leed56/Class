@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { requestParentOtp } from '@/features/parent/parentAuthService';
+import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_PARENT_OTP,
   DEMO_PARENT_PHONE,
@@ -19,6 +20,7 @@ import { radius, spacing } from '@/theme/spacing';
 
 export default function ParentLoginScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [phone, setPhone] = useState(isPilotDemoAuthEnabled() ? DEMO_PARENT_PHONE : '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +35,7 @@ export default function ParentLoginScreen() {
         params: {
           phone: result.phone,
           childCount: String(result.childCount),
-          code: result.code,
+          code: result.code ?? '',
           expiresAt: result.expiresAt,
         },
       });
@@ -54,8 +56,8 @@ export default function ParentLoginScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Parent portal</Text>
-            <Text style={styles.subtitle}>Check attendance, fees, receipts and certificates for your child.</Text>
+            <Text style={styles.title}>{t('parent.loginTitle')}</Text>
+            <Text style={styles.subtitle}>{t('parent.loginSubtitle')}</Text>
           </View>
         </View>
 
@@ -71,7 +73,7 @@ export default function ParentLoginScreen() {
         </LinearGradient>
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Enter parent phone</Text>
+          <Text style={styles.formTitle}>{t('parent.phoneLabel')}</Text>
           {isPilotDemoAuthEnabled() ? (
             <View style={styles.demoBanner}>
               <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
@@ -84,13 +86,13 @@ export default function ParentLoginScreen() {
             </View>
           ) : null}
           <FormTextField
-            label="Mobile number"
+            label={t('parent.phoneLabel')}
             placeholder="+94 77 123 4567"
             icon="phone-outline"
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
-            helper={isPilotDemoAuthEnabled() ? `Pilot OTP is always ${DEMO_PARENT_OTP}.` : 'We will send a one-time login code for this phone.'}
+            helper={isPilotDemoAuthEnabled() ? t('parent.otpHint') : t('parent.otpHintSms')}
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {isPilotDemoAuthEnabled() ? (
@@ -102,7 +104,7 @@ export default function ParentLoginScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.primaryButtonText}>Send login code</Text>
+              <Text style={styles.primaryButtonText}>{t('parent.sendOtp')}</Text>
             )}
           </Pressable>
         </View>

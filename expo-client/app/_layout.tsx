@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/core/auth/AuthProvider';
+import { I18nProvider } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 
 function RootNavigator() {
@@ -27,7 +28,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <I18nProvider>
+        <RootNavigator />
+      </I18nProvider>
     </AuthProvider>
   );
 }

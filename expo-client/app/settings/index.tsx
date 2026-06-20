@@ -8,20 +8,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { useAuth } from '@/core/auth/AuthProvider';
-import { getCurrentWorkspace } from '@/features/auth/authService';
+import { getCurrentWorkspace, updateWorkspace } from '@/features/auth/authService';
 import { roleLabel } from '@/features/auth/permissions';
 import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teacherProfile';
 import { LanguageCode } from '@/lib/database.types';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
   const { role, hasPermission } = useWorkspaceRole();
+  const { locale, setLocale, t } = useI18n();
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
+  const [savingLanguage, setSavingLanguage] = useState(false);
 
   const displayName = getTeacherDisplayName(user);
   const initials = getTeacherInitials(user);
@@ -41,6 +44,19 @@ export default function SettingsScreen() {
     }
   }, []);
 
+  async function handleLanguageChange(next: LanguageCode) {
+    setSavingLanguage(true);
+    try {
+      await setLocale(next);
+      setDefaultLanguage(next);
+      if (hasPermission('manage_settings')) {
+        await updateWorkspace({ defaultLanguage: next });
+      }
+    } finally {
+      setSavingLanguage(false);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       loadSettings();
@@ -57,8 +73,8 @@ export default function SettingsScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Settings</Text>
-            <Text style={styles.subtitle}>Teacher profile, language, receipts, subjects and communication controls.</Text>
+            <Text style={styles.title}>{t('settings.title')}</Text>
+            <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
           </View>
           {hasPermission('manage_settings') ? (
             <Link href="/settings/edit" asChild>
@@ -77,7 +93,7 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>Teacher workspace{role ? ` • ${roleLabel(role)}` : ''}</Text>
-            <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : workspaceName}</Text>
+            <Text style={styles.heroTitle}>{isLoading ? t('common.loading') : workspaceName}</Text>
             <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent controls</Text>
           </View>
         </LinearGradient>
@@ -85,7 +101,7 @@ export default function SettingsScreen() {
         <PremiumCard style={styles.profileCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Teacher profile</Text>
+              <Text style={styles.cardTitle}>{t('settings.teacherProfile')}</Text>
               <Text style={styles.cardSubtitle}>Used in receipts, reports and parent messages</Text>
             </View>
             <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.primary} />
@@ -94,7 +110,7 @@ export default function SettingsScreen() {
             <>
               <Link href="/settings/edit" asChild>
                 <Pressable>
-                  <SettingValue label="Display name" value={displayName} icon="account-outline" />
+                  <SettingValue label={t('settings.displayName')} value={displayName} icon="account-outline" />
                 </Pressable>
               </Link>
               <View style={styles.divider} />
@@ -112,7 +128,7 @@ export default function SettingsScreen() {
             </>
           ) : (
             <>
-              <SettingValue label="Display name" value={displayName} icon="account-outline" />
+              <SettingValue label={t('settings.displayName')} value={displayName} icon="account-outline" />
               <View style={styles.divider} />
               <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
               <View style={styles.divider} />
@@ -124,16 +140,19 @@ export default function SettingsScreen() {
         <PremiumCard style={styles.languageCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Language</Text>
-              <Text style={styles.cardSubtitle}>Trilingual foundation for Sri Lankan tuition teachers</Text>
+              <Text style={styles.cardTitle}>{t('settings.language')}</Text>
+              <Text style={styles.cardSubtitle}>{t('settings.languageHint')}</Text>
             </View>
             <MaterialCommunityIcons name="translate" size={24} color={colors.primary} />
           </View>
           <View style={styles.languageRow}>
-            <LanguageChip label="English" active={defaultLanguage === 'en'} />
-            <LanguageChip label="සිංහල" active={defaultLanguage === 'si'} />
-            <LanguageChip label="தமிழ்" active={defaultLanguage === 'ta'} />
+            <LanguageChip label={t('settings.english')} active={locale === 'en'} onPress={() => void handleLanguageChange('en')} disabled={savingLanguage} />
+            <LanguageChip label={t('settings.sinhala')} active={locale === 'si'} onPress={() => void handleLanguageChange('si')} disabled={savingLanguage} />
+            <LanguageChip label={t('settings.tamil')} active={locale === 'ta'} onPress={() => void handleLanguageChange('ta')} disabled={savingLanguage} />
           </View>
+          {defaultLanguage !== locale ? (
+            <Text style={styles.languageNote}>{t('settings.workspaceLanguage')}: {defaultLanguage.toUpperCase()}</Text>
+          ) : null}
         </PremiumCard>
 
         <PremiumCard style={styles.receiptCard}>
@@ -171,6 +190,7 @@ export default function SettingsScreen() {
                 <>
                   <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
                   <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
+                  <SetupTile title="Timetable board" subtitle="Hall × time grid for building admins" icon="calendar-clock" color={colors.info} href={'/settings/timetable-board' as Href} />
                   <SetupTile title="Branches" subtitle="Locations, halls & conflicts" icon="source-branch" color={colors.primary} href="/settings/branches" />
                   {hasPermission('manage_hall_rent') ? (
                     <SetupTile title="Hall rent" subtitle="Teacher slot fees & invoices" icon="cash-clock" color={colors.danger} href="/settings/hall-rent" />
@@ -265,11 +285,25 @@ function SettingValue({ label, value, icon, success = false }: { label: string; 
   );
 }
 
-function LanguageChip({ label, active = false }: { label: string; active?: boolean }) {
+function LanguageChip({
+  label,
+  active = false,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <View style={[styles.languageChip, active && styles.languageChipActive]}>
+    <Pressable
+      style={[styles.languageChip, active && styles.languageChipActive, disabled && styles.languageChipDisabled]}
+      onPress={onPress}
+      disabled={disabled || !onPress}
+    >
       <Text style={[styles.languageChipText, active && styles.languageChipTextActive]}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -338,6 +372,8 @@ const styles = StyleSheet.create({
   languageChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
   languageChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '900' },
   languageChipTextActive: { color: 'white' },
+  languageChipDisabled: { opacity: 0.6 },
+  languageNote: { color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   previewBox: { marginTop: spacing.md, borderRadius: radius.xl, padding: spacing.lg, backgroundColor: colors.background },
   previewLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800' },
   previewTitle: { marginTop: 4, color: colors.textPrimary, fontSize: 15, fontWeight: '900' },

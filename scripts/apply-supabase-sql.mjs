@@ -3,7 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, '../..');
+const repoRoot = resolve(__dirname, '..');
 const projectRef = 'cqophpwbzuqyqhvpovzq';
 
 function loadEnvFile(path) {
@@ -20,6 +20,7 @@ function loadEnvFile(path) {
 }
 
 loadEnvFile(resolve(repoRoot, 'expo-client/.env.local'));
+loadEnvFile(resolve(repoRoot, 'expo-client/.env'));
 loadEnvFile(resolve(repoRoot, 'expo-client/.env.production.local'));
 loadEnvFile(resolve(repoRoot, '.env.local'));
 

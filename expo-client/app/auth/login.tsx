@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/core/auth/AuthProvider';
+import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_ACADEMY_EMAIL,
   DEMO_ACADEMY_PASSWORD,
@@ -34,6 +35,7 @@ import { radius, spacing } from '@/theme/spacing';
 export default function LoginScreen() {
   const router = useRouter();
   const { demoMode } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -247,8 +249,8 @@ export default function LoginScreen() {
           <View style={styles.logoMark}>
             <MaterialCommunityIcons name="school" size={34} color="white" />
           </View>
-          <Text style={styles.heroTitle}>ClassFlow</Text>
-          <Text style={styles.heroCopy}>Smart class management for Sri Lankan teachers</Text>
+          <Text style={styles.heroTitle}>{t('auth.appName')}</Text>
+          <Text style={styles.heroCopy}>{t('auth.tagline')}</Text>
         </LinearGradient>
 
         {isPilotDemoAuthEnabled() && isSupabaseConfigured ? (
@@ -275,16 +277,14 @@ export default function LoginScreen() {
         {!isSupabaseConfigured ? (
           <View style={styles.demoBanner}>
             <MaterialCommunityIcons name="information-outline" size={18} color={colors.warning} />
-            <Text style={styles.demoBannerText}>
-              Demo mode: add Supabase env keys to enable secure sign-in.
-            </Text>
+            <Text style={styles.demoBannerText}>{t('auth.supabaseMissing')}</Text>
           </View>
         ) : null}
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Teacher sign in</Text>
+          <Text style={styles.formTitle}>{t('auth.teacherSignIn')}</Text>
           <FormTextField
-            label="Email"
+            label={t('auth.email')}
             placeholder="teacher@example.com"
             icon="email-outline"
             keyboardType="email-address"
@@ -292,7 +292,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
           />
           <FormTextField
-            label="Password"
+            label={t('auth.password')}
             placeholder="Your password"
             icon="lock-outline"
             secureTextEntry
@@ -304,7 +304,7 @@ export default function LoginScreen() {
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.primaryButtonText}>{demoMode ? 'Continue in demo mode' : 'Sign in'}</Text>
+              <Text style={styles.primaryButtonText}>{demoMode ? t('auth.demoMode') : t('auth.signIn')}</Text>
             )}
           </Pressable>
           {isPilotDemoAuthEnabled() && isSupabaseConfigured ? (
@@ -337,17 +337,17 @@ export default function LoginScreen() {
           <Link href={'/platform' as Href} asChild>
             <Pressable style={styles.parentLinkCard}>
               <MaterialCommunityIcons name="shield-crown-outline" size={20} color={colors.primary} />
-              <Text style={styles.parentLinkText}>Platform admin console</Text>
+              <Text style={styles.parentLinkText}>{t('auth.platformAdmin')}</Text>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
             </Pressable>
           </Link>
         ) : null}
 
         <View style={styles.footerRow}>
-          <Text style={styles.footerText}>New teacher?</Text>
+          <Text style={styles.footerText}>{t('auth.newTeacher')}</Text>
           <Link href={'/auth/signup' as Href} asChild>
             <Pressable>
-              <Text style={styles.footerLink}>Create account</Text>
+              <Text style={styles.footerLink}>{t('auth.createAccount')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -355,7 +355,7 @@ export default function LoginScreen() {
         <Link href={'/parent/login' as Href} asChild>
           <Pressable style={styles.parentLinkCard}>
             <MaterialCommunityIcons name="account-child-outline" size={20} color={colors.primary} />
-            <Text style={styles.parentLinkText}>Parent? Open parent portal</Text>
+            <Text style={styles.parentLinkText}>{t('auth.parentPortal')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
           </Pressable>
         </Link>

@@ -1,7 +1,9 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
-import { ensureAdmissionInvoice } from '@/features/fees/feeService';
+import {
+  ensureAdmissionInvoice,
+  getStudentFeeSummaries,
+} from '@/features/fees/feeService';
 import { getAttendanceTrend, getStudentAttendancePercents } from '@/features/attendance/attendanceService';
-import { getStudentFeeSummaries } from '@/features/fees/feeService';
 import { getClassLabelsByStudent } from '@/features/enrollment/enrollmentService';
 import { FeeStatus, Medium, StudentRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';

@@ -3,10 +3,12 @@ import { Tabs } from 'expo-router';
 
 import { DesktopShell } from '@/components/DesktopShell';
 import { WorkspaceShellProvider, useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 
 function TabsNavigator() {
   const { useDesktopShell } = useWorkspaceShell();
+  const { t } = useI18n();
 
   return (
     <Tabs
@@ -35,35 +37,35 @@ function TabsNavigator() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="home-variant" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="classes"
         options={{
-          title: 'Classes',
+          title: t('tabs.classes'),
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="school" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="students"
         options={{
-          title: 'Students',
+          title: t('tabs.students'),
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-group" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="fees"
         options={{
-          title: 'Fees',
+          title: t('tabs.fees'),
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cash-multiple" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
+          title: t('tabs.more'),
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="menu" size={size} color={color} />,
         }}
       />
