@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { flushQueuedParentOtpSms } from '@/features/notifications/smsOutboxService';
 import { getSupabase } from '@/lib/supabase';
 
 const PARENT_SESSION_KEY = 'classflow:parent_session';
@@ -86,6 +87,11 @@ export async function requestParentOtp(phone: string) {
   if (error) throw new Error(error.message);
 
   const result = data as RequestOtpResult;
+
+  if (result.smsQueued) {
+    void flushQueuedParentOtpSms(result.phone);
+  }
+
   return {
     phone: result.phone,
     childCount: result.childCount,

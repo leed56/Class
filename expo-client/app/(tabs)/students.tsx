@@ -15,6 +15,8 @@ import { StudentFilterBar } from '@/features/students/components/StudentFilterBa
 import { usesSchoolStudentFields } from '@/features/students/studentProfileModel';
 import { listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -24,6 +26,7 @@ function formatLkr(amount: number) {
 }
 
 export default function StudentsScreen() {
+  const { t } = useI18n();
   const [students, setStudents] = useState<Student[]>([]);
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>('school_tuition');
@@ -69,8 +72,8 @@ export default function StudentsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Students</Text>
-            <Text style={styles.subtitle}>Manage students, parents, fees, consent and attendance.</Text>
+            <Text style={styles.title}>{t('students.title')}</Text>
+            <Text style={styles.subtitle}>{t('students.subtitle')}</Text>
           </View>
           <NavPressable href="/students/new" style={styles.addButton}>
             <MaterialCommunityIcons name="account-plus" size={22} color="white" />
@@ -82,17 +85,20 @@ export default function StudentsScreen() {
             <MaterialCommunityIcons name="account-school" size={28} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Active student registry</Text>
-            <Text style={styles.heroValue}>{students.length} students</Text>
+            <Text style={styles.heroLabel}>{t('students.registryLabel')}</Text>
+            <Text style={styles.heroValue}>{interpolate(t('students.studentCount'), { count: students.length })}</Text>
             <Text style={styles.heroNote}>
-              {summary.pendingCount} need fee follow-up • {summary.consentMissingCount} consent pending
+              {interpolate(t('students.heroNote'), {
+                fees: summary.pendingCount,
+                consent: summary.consentMissingCount,
+              })}
             </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.metricsRow}>
-          <MetricCard label="Avg Attendance" value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
-          <MetricCard label="Outstanding" value={formatLkr(summary.totalOutstanding)} icon="account-alert" tone={colors.danger} />
+          <MetricCard label={t('students.avgAttendance')} value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
+          <MetricCard label={t('students.outstanding')} value={formatLkr(summary.totalOutstanding)} icon="account-alert" tone={colors.danger} />
         </View>
 
         <PremiumCard style={styles.insightCard}>
@@ -100,8 +106,8 @@ export default function StudentsScreen() {
             <MaterialCommunityIcons name="whatsapp" size={22} color={colors.success} />
           </View>
           <View style={styles.insightTextBlock}>
-            <Text style={styles.insightTitle}>High-value action</Text>
-            <Text style={styles.insightCopy}>WhatsApp reminders unlock after real fee invoices are generated.</Text>
+            <Text style={styles.insightTitle}>{t('students.insightTitle')}</Text>
+            <Text style={styles.insightCopy}>{t('students.insightCopy')}</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
         </PremiumCard>
@@ -109,32 +115,32 @@ export default function StudentsScreen() {
         <StudentFilterBar showSchoolGradeFilters={showSchoolGradeFilters} />
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent students</Text>
+          <Text style={styles.sectionTitle}>{t('students.recentStudents')}</Text>
           <NavPressable href="/settings/archived">
-            <Text style={styles.sectionAction}>Archived</Text>
+            <Text style={styles.sectionAction}>{t('common.archived')}</Text>
           </NavPressable>
         </View>
 
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateTitle}>Loading students...</Text>
+            <Text style={styles.stateTitle}>{t('students.loading')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <MaterialCommunityIcons name="alert-circle-outline" size={24} color={colors.danger} />
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadStudents}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : students.length === 0 ? (
           <PremiumCard style={styles.stateCard}>
             <EmptyState
               icon="account-plus-outline"
-              title="No students yet"
-              message="Add your first student to start attendance, fees and receipts."
-              actionLabel="Add Student"
+              title={t('students.emptyTitle')}
+              message={t('students.emptyMessage')}
+              actionLabel={t('common.addStudent')}
               actionHref="/students/new"
             />
           </PremiumCard>

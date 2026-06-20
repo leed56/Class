@@ -16,12 +16,15 @@ import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
 import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
 import { getWorkspaceHealth } from '@/features/reports/reportsService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { isPlatformAdmin } from '@/features/platform/platformService';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function MoreScreen() {
   const { user, signOut, demoMode } = useAuth();
+  const { t } = useI18n();
   const { role } = useWorkspaceRole();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
@@ -67,8 +70,8 @@ export default function MoreScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>More</Text>
-            <Text style={styles.subtitle}>Reports, settings, communication and account controls.</Text>
+            <Text style={styles.title}>{t('more.title')}</Text>
+            <Text style={styles.subtitle}>{t('more.subtitle')}</Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getTeacherInitials(user)}</Text>
@@ -81,27 +84,27 @@ export default function MoreScreen() {
           </View>
           <View style={styles.heroTextBlock}>
             <Text style={styles.heroLabel}>{workspaceName}{role ? ` • ${roleLabel(role)}` : ''}</Text>
-            <Text style={styles.heroValue}>Teacher workspace</Text>
-            <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent tracking</Text>
+            <Text style={styles.heroValue}>{t('more.teacherWorkspace')}</Text>
+            <Text style={styles.heroNote}>{t('more.heroNote')}</Text>
           </View>
         </LinearGradient>
 
         <View style={styles.healthRow}>
           <PremiumCard style={styles.healthCard}>
-            <Text style={styles.healthLabel}>Data Health</Text>
+            <Text style={styles.healthLabel}>{t('more.dataHealth')}</Text>
             <Text style={styles.healthValue}>{isLoading ? '—' : `${dataHealth}%`}</Text>
-            <Text style={styles.healthNote}>{consentMissingCount} consent pending</Text>
+            <Text style={styles.healthNote}>{interpolate(t('more.consentPending'), { count: consentMissingCount })}</Text>
           </PremiumCard>
           <PremiumCard style={styles.healthCard}>
-            <Text style={styles.healthLabel}>Plan</Text>
-            <Text style={styles.healthValue}>Free</Text>
-            <Text style={styles.healthNote}>30 student limit</Text>
+            <Text style={styles.healthLabel}>{t('more.plan')}</Text>
+            <Text style={styles.healthValue}>{t('more.planFree')}</Text>
+            <Text style={styles.healthNote}>{t('more.planNote')}</Text>
           </PremiumCard>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Reports</Text>
-          <Text style={styles.sectionAction}>Export later</Text>
+          <Text style={styles.sectionTitle}>{t('more.reports')}</Text>
+          <Text style={styles.sectionAction}>{t('more.exportLater')}</Text>
         </View>
         <View style={styles.commandGrid}>
           {reportCommands.map((item) => (
@@ -111,9 +114,9 @@ export default function MoreScreen() {
 
         <PremiumCard style={styles.panelCard}>
           <View style={styles.panelHeader}>
-            <Text style={styles.sectionTitle}>Setup</Text>
+            <Text style={styles.sectionTitle}>{t('more.setup')}</Text>
             <NavPressable href="/settings">
-              <Text style={styles.sectionAction}>Open settings</Text>
+              <Text style={styles.sectionAction}>{t('more.openSettings')}</Text>
             </NavPressable>
           </View>
           {setupCommands.map((item, index) => (
@@ -137,7 +140,7 @@ export default function MoreScreen() {
 
         <PremiumCard style={styles.panelCard}>
           <View style={styles.panelHeader}>
-            <Text style={styles.sectionTitle}>Communication & billing</Text>
+            <Text style={styles.sectionTitle}>{t('more.commsBilling')}</Text>
             <View style={styles.panelBadgeSuccess}>
               <Text style={styles.panelBadgeSuccessText}>Phase 2+</Text>
             </View>
@@ -162,12 +165,12 @@ export default function MoreScreen() {
         {showPlatformAdmin ? (
           <PremiumCard style={styles.panelCard}>
             <View style={styles.panelHeader}>
-              <Text style={styles.sectionTitle}>Platform operator</Text>
+              <Text style={styles.sectionTitle}>{t('more.platformOperator')}</Text>
             </View>
             <NavPressable href="/platform/index">
               <View style={styles.platformRow}>
                 <MaterialCommunityIcons name="shield-crown-outline" size={20} color={colors.primary} />
-                <Text style={styles.platformRowText}>Open platform admin console</Text>
+                <Text style={styles.platformRowText}>{t('more.platformAdmin')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
             </NavPressable>
@@ -180,13 +183,13 @@ export default function MoreScreen() {
               <MaterialCommunityIcons name="shield-lock-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.signoutTextBlock}>
-              <Text style={styles.signoutTitle}>Secure teacher account</Text>
+              <Text style={styles.signoutTitle}>{t('more.secureAccount')}</Text>
               <Text style={styles.signoutCopy}>
                 {demoMode
-                  ? 'Demo mode is active. Connect Supabase env keys for secure sign-in.'
+                  ? t('more.demoActive')
                   : user?.email
-                    ? `Signed in as ${user.email}`
-                    : 'Your workspace stays private. Only you and invited staff can access student and fee records.'}
+                    ? interpolate(t('more.signedInAs'), { email: user.email })
+                    : t('more.privateWorkspace')}
               </Text>
             </View>
           </View>
@@ -196,7 +199,7 @@ export default function MoreScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="logout" size={16} color="white" />
-                <Text style={styles.signOutButtonText}>Sign out</Text>
+                <Text style={styles.signOutButtonText}>{t('common.signOut')}</Text>
               </>
             )}
           </Pressable>

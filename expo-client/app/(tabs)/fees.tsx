@@ -14,9 +14,12 @@ import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
 import { PaymentRow } from '@/features/fees/components/PaymentRow';
 import { FeeSummary, getFeeSummaryForMonth, listOutstandingInvoices, listRecentPayments } from '@/features/fees/feeService';
 import { exportDefaulterCsv } from '@/features/fees/feeExport';
+import { sendLoggedFeeReminder } from '@/features/fees/feeReminderService';
 import { groupDefaulterReminders, runBulkDefaulterReminders, showBulkReminderSummary } from '@/features/fees/bulkReminders';
 import { FeeInvoice, PaymentRecord } from '@/features/fees/models';
-import { buildFeeReminderMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -25,10 +28,12 @@ function formatLkr(amount: number) {
 }
 
 export default function FeesScreen() {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceLanguage, setWorkspaceLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isBulkReminding, setIsBulkReminding] = useState(false);
@@ -48,6 +53,7 @@ export default function FeesScreen() {
       setInvoices(nextInvoices);
       setPayments(nextPayments);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceLanguage(workspace?.default_language ?? 'en');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load fees.');
     } finally {
@@ -57,16 +63,13 @@ export default function FeesScreen() {
 
   const sendFeeReminder = useCallback(
     async (invoice: FeeInvoice) => {
-      const message = buildFeeReminderMessage({
+      await sendLoggedFeeReminder({
         workspaceName,
-        studentName: invoice.studentName,
-        className: invoice.className,
-        month: invoice.month,
-        outstandingAmount: invoice.outstandingAmount,
+        invoice,
+        locale: workspaceLanguage,
       });
-      await openWhatsAppChat(invoice.parentPhone, message);
     },
-    [workspaceName],
+    [workspaceLanguage, workspaceName],
   );
 
   const sendTopReminder = useCallback(async () => {
@@ -92,12 +95,12 @@ export default function FeesScreen() {
     if (invoices.length === 0) return;
     setIsBulkReminding(true);
     try {
-      const result = await runBulkDefaulterReminders(invoices, workspaceName);
+      const result = await runBulkDefaulterReminders(invoices, workspaceName, workspaceLanguage);
       showBulkReminderSummary(result);
     } finally {
       setIsBulkReminding(false);
     }
-  }, [invoices, workspaceName]);
+  }, [invoices, workspaceLanguage, workspaceName]);
 
   const showRemindOptions = useCallback(() => {
     if (invoices.length === 0) return;
@@ -137,8 +140,8 @@ export default function FeesScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Fees</Text>
-            <Text style={styles.subtitle}>Track monthly tuition fees, cash payments, receipts and defaulters.</Text>
+            <Text style={styles.title}>{t('fees.title')}</Text>
+            <Text style={styles.subtitle}>{t('fees.subtitle')}</Text>
           </View>
           <NavPressable href="/fees/record-payment" style={styles.addButton}>
             <MaterialCommunityIcons name="cash-plus" size={23} color="white" />
@@ -148,8 +151,8 @@ export default function FeesScreen() {
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View>
-              <Text style={styles.heroLabel}>{monthLabel} collection</Text>
-              <Text style={styles.heroValue}>{collectionPercent}% collected</Text>
+              <Text style={styles.heroLabel}>{interpolate(t('fees.collectionLabel'), { month: monthLabel })}</Text>
+              <Text style={styles.heroValue}>{interpolate(t('fees.collectedPercent'), { percent: collectionPercent })}</Text>
             </View>
             <View style={styles.monthPill}>
               <MaterialCommunityIcons name="calendar-month" size={15} color="white" />
@@ -161,11 +164,11 @@ export default function FeesScreen() {
           </View>
           <View style={styles.heroStatsRow}>
             <View>
-              <Text style={styles.heroStatLabel}>Collected</Text>
+              <Text style={styles.heroStatLabel}>{t('fees.collected')}</Text>
               <Text style={styles.heroStatValue}>{formatLkr(collected)}</Text>
             </View>
             <View>
-              <Text style={styles.heroStatLabel}>Outstanding</Text>
+              <Text style={styles.heroStatLabel}>{t('fees.outstanding')}</Text>
               <Text style={styles.heroStatValue}>{formatLkr(outstanding)}</Text>
             </View>
           </View>
@@ -174,31 +177,31 @@ export default function FeesScreen() {
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading fee records...</Text>
+            <Text style={styles.stateText}>{t('fees.loading')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadFees}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : (
           <>
             <View style={styles.metricsRow}>
-              <MetricCard label="Outstanding" value={formatLkr(outstanding)} icon="account-alert" tone={colors.danger} />
-              <MetricCard label="Defaulters" value={`${defaulterCount}`} icon="account-alert" tone={colors.warning} />
+              <MetricCard label={t('fees.outstanding')} value={formatLkr(outstanding)} icon="account-alert" tone={colors.danger} />
+              <MetricCard label={t('fees.defaulters')} value={`${defaulterCount}`} icon="account-alert" tone={colors.warning} />
             </View>
 
             <View style={styles.actionColumn}>
               <NavPressable href="/fees/record-payment" style={styles.primaryAction}>
                 <MaterialCommunityIcons name="cash-register" size={19} color="white" />
-                <Text style={styles.primaryActionText}>Record Payment</Text>
+                <Text style={styles.primaryActionText}>{t('common.recordPayment')}</Text>
               </NavPressable>
               <View style={styles.actionRow}>
                 <NavPressable href="/fees/charge" style={styles.chargeAction}>
                   <MaterialCommunityIcons name="file-document-plus-outline" size={19} color={colors.warning} />
-                  <Text style={styles.chargeActionText}>Issue charge</Text>
+                  <Text style={styles.chargeActionText}>{t('common.issueCharge')}</Text>
                 </NavPressable>
                 <Pressable
                   style={styles.secondaryAction}
@@ -210,7 +213,7 @@ export default function FeesScreen() {
                   ) : (
                     <>
                       <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
-                      <Text style={styles.secondaryActionText}>Remind</Text>
+                      <Text style={styles.secondaryActionText}>{t('common.remind')}</Text>
                     </>
                   )}
                 </Pressable>
@@ -224,7 +227,7 @@ export default function FeesScreen() {
                   ) : (
                     <>
                       <MaterialCommunityIcons name="file-delimited-outline" size={19} color={colors.primary} />
-                      <Text style={styles.exportActionText}>Export CSV</Text>
+                      <Text style={styles.exportActionText}>{t('common.exportCsv')}</Text>
                     </>
                   )}
                 </Pressable>
@@ -238,9 +241,12 @@ export default function FeesScreen() {
                     <MaterialCommunityIcons name="bell-ring-outline" size={22} color={colors.danger} />
                   </View>
                   <View style={styles.alertTextBlock}>
-                    <Text style={styles.alertTitle}>Defaulter follow-up</Text>
+                    <Text style={styles.alertTitle}>{t('fees.defaulterFollowUp')}</Text>
                     <Text style={styles.alertCopy}>
-                      {defaulterCount} open invoices • remind all {parentReminderCount} parents or export CSV.
+                      {interpolate(t('fees.defaulterCopy'), {
+                        invoices: defaulterCount,
+                        parents: parentReminderCount,
+                      })}
                     </Text>
                   </View>
                   <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
@@ -249,17 +255,17 @@ export default function FeesScreen() {
             ) : null}
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Outstanding fees</Text>
-              <Text style={styles.sectionAction}>{invoices.length} open</Text>
+              <Text style={styles.sectionTitle}>{t('fees.outstandingFees')}</Text>
+              <Text style={styles.sectionAction}>{interpolate(t('common.openCount'), { count: invoices.length })}</Text>
             </View>
 
             {invoices.length === 0 ? (
               <PremiumCard>
                 <EmptyState
                   icon="cash-check"
-                  title="All caught up"
-                  message="Every enrolled student invoice for this month is fully paid."
-                  actionLabel="Record Payment"
+                  title={t('fees.allCaughtUp')}
+                  message={t('fees.allCaughtUpMessage')}
+                  actionLabel={t('common.recordPayment')}
                   actionHref="/fees/record-payment"
                 />
               </PremiumCard>
@@ -275,11 +281,11 @@ export default function FeesScreen() {
 
             <PremiumCard>
               <View style={styles.sectionHeaderInsideCard}>
-                <Text style={styles.cardTitle}>Recent payments</Text>
-                <Text style={styles.sectionAction}>Receipts</Text>
+                <Text style={styles.cardTitle}>{t('fees.recentPayments')}</Text>
+                <Text style={styles.sectionAction}>{t('common.receipts')}</Text>
               </View>
               {payments.length === 0 ? (
-                <Text style={styles.emptyPayments}>Payments you record will appear here with receipt numbers.</Text>
+                <Text style={styles.emptyPayments}>{t('fees.emptyPayments')}</Text>
               ) : (
                 <View style={styles.paymentsList}>
                   {payments.map((payment) => (

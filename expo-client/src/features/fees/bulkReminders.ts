@@ -1,20 +1,11 @@
 import { Alert } from 'react-native';
 
+import { sendLoggedDefaulterReminder, type DefaulterReminderTarget } from '@/features/fees/feeReminderService';
 import { FeeInvoice } from '@/features/fees/models';
-import {
-  buildCombinedFeeReminderMessage,
-  buildFeeReminderMessage,
-  normalizeWhatsAppPhone,
-  openWhatsAppChat,
-} from '@/lib/whatsapp';
+import { LanguageCode } from '@/lib/database.types';
+import { normalizeWhatsAppPhone } from '@/lib/whatsapp';
 
-export type DefaulterReminderTarget = {
-  parentPhone: string;
-  parentLabel: string;
-  invoices: FeeInvoice[];
-  totalOutstanding: number;
-};
-
+export type { DefaulterReminderTarget };
 export function groupDefaulterReminders(invoices: FeeInvoice[]): DefaulterReminderTarget[] {
   const byPhone = new Map<string, FeeInvoice[]>();
 
@@ -38,29 +29,6 @@ export function groupDefaulterReminders(invoices: FeeInvoice[]): DefaulterRemind
     .sort((a, b) => b.totalOutstanding - a.totalOutstanding);
 }
 
-function buildReminderMessage(workspaceName: string, target: DefaulterReminderTarget) {
-  if (target.invoices.length === 1) {
-    const invoice = target.invoices[0];
-    return buildFeeReminderMessage({
-      workspaceName,
-      studentName: invoice.studentName,
-      className: invoice.className,
-      month: invoice.month,
-      outstandingAmount: invoice.outstandingAmount,
-    });
-  }
-
-  return buildCombinedFeeReminderMessage({
-    workspaceName,
-    month: target.invoices[0].month,
-    items: target.invoices.map((invoice) => ({
-      studentName: invoice.studentName,
-      className: invoice.className,
-      outstandingAmount: invoice.outstandingAmount,
-    })),
-  });
-}
-
 function confirmAction(title: string, message: string): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(title, message, [
@@ -79,6 +47,7 @@ export type BulkReminderResult = {
 export async function runBulkDefaulterReminders(
   invoices: FeeInvoice[],
   workspaceName: string,
+  locale: LanguageCode = 'en',
 ): Promise<BulkReminderResult> {
   const targets = groupDefaulterReminders(invoices);
   if (targets.length === 0) {
@@ -118,9 +87,12 @@ export async function runBulkDefaulterReminders(
       }
     }
 
-    const message = buildReminderMessage(workspaceName, target);
-    const didOpen = await openWhatsAppChat(target.parentPhone, message);
-    if (didOpen) {
+    const result = await sendLoggedDefaulterReminder({
+      workspaceName,
+      target,
+      locale,
+    });
+    if (result.opened) {
       opened += 1;
     } else {
       skipped += 1;

@@ -85,7 +85,9 @@ export default function CommunicationSetupScreen() {
           <View style={styles.divider} />
           <IntegrationStep title="Offline attendance queue" state="Active" icon="cloud-sync-outline" />
           <View style={styles.divider} />
-          <IntegrationStep title="Enable SMS fallback" state="Later" icon="cellphone-message" />
+          <IntegrationStep title="Fee reminder delivery log" state="Active" icon="cash-clock" />
+          <View style={styles.divider} />
+          <IntegrationStep title="Enable SMS fallback" state="Notify.lk ready" icon="cellphone-message" />
         </PremiumCard>
 
         <View style={styles.sectionHeader}>

@@ -16,11 +16,11 @@ import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   formatLkrCompact,
-  formatTodayDate,
   getTeacherDisplayName,
   getTeacherInitials,
-  getTimeGreeting,
 } from '@/features/auth/teacherProfile';
+import { formatLocalizedTodayDate, getLocalizedTimeGreeting, interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { formatClassMeta } from '@/features/courses/slCourseModel';
@@ -36,6 +36,7 @@ import { Href } from 'expo-router';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { locale, t } = useI18n();
   const { useDesktopShell, instituteType } = useWorkspaceShell();
   const [workspaceName, setWorkspaceName] = useState<string | null>(null);
   const [classes, setClasses] = useState<TuitionClass[]>([]);
@@ -106,6 +107,28 @@ export default function HomeScreen() {
   const isInstituteDesktop = useDesktopShell && instituteType === 'institute';
   const isAcademyDesktop = useDesktopShell && instituteType === 'academy';
 
+  const screenTitle = isInstituteDesktop
+    ? t('dashboard.titleBuilding')
+    : isAcademyDesktop
+      ? t('dashboard.titleAcademy')
+      : t('dashboard.titleHome');
+
+  const heroCopy = isInstituteDesktop
+    ? interpolate(t('dashboard.heroInstitute'), { count: todayClasses.length })
+    : isAcademyDesktop
+      ? interpolate(t('dashboard.heroAcademy'), { students: studentCount, fees: defaulterCount })
+      : todayClasses.length > 0
+        ? interpolate(t('dashboard.heroTodayClasses'), { count: todayClasses.length, fees: defaulterCount })
+        : studentCount > 0
+          ? interpolate(t('dashboard.heroActiveStudents'), { count: studentCount })
+          : t('dashboard.heroEmpty');
+
+  const statusLabel = (state: TuitionClass['state']) => {
+    if (state === 'completed') return t('common.statusCompleted');
+    if (state === 'inProgress') return t('common.statusNow');
+    return t('common.statusUpcoming');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView
@@ -118,9 +141,9 @@ export default function HomeScreen() {
         <View style={[styles.header, useDesktopShell && styles.headerDesktop]}>
           <View>
             <Text style={[styles.screenTitle, useDesktopShell && styles.screenTitleDesktop]}>
-              {isInstituteDesktop ? 'Building dashboard' : isAcademyDesktop ? 'Academy dashboard' : 'Home'}
+              {screenTitle}
             </Text>
-            <Text style={styles.date}>{formatTodayDate()}</Text>
+            <Text style={styles.date}>{formatLocalizedTodayDate(locale)}</Text>
           </View>
           {!useDesktopShell ? (
             <View style={styles.avatar}>
@@ -131,45 +154,35 @@ export default function HomeScreen() {
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, useDesktopShell && styles.heroDesktop]}>
           <View style={styles.heroChip}>
-            <Text style={styles.heroChipText}>{workspaceName ?? 'Your workspace'}</Text>
+            <Text style={styles.heroChipText}>{workspaceName ?? t('common.yourWorkspace')}</Text>
           </View>
           <Text style={[styles.heroTitle, useDesktopShell && styles.heroTitleDesktop]}>
-            {getTimeGreeting()},
+            {getLocalizedTimeGreeting(locale)},
             {'\n'}
             {teacherName}
           </Text>
-          <Text style={styles.heroCopy}>
-            {isInstituteDesktop
-              ? `Manage halls, visiting teachers and building operations. ${todayClasses.length} class${todayClasses.length === 1 ? '' : 'es'} in halls today.`
-              : isAcademyDesktop
-                ? `Your academy command centre — ${studentCount} trainee${studentCount === 1 ? '' : 's'}, ${defaulterCount} pending fee${defaulterCount === 1 ? '' : 's'} this month.`
-                : todayClasses.length > 0
-                  ? `You have ${todayClasses.length} class${todayClasses.length === 1 ? '' : 'es'} today. ${defaulterCount} student${defaulterCount === 1 ? '' : 's'} with pending fees this month.`
-                  : studentCount > 0
-                    ? `${studentCount} active student${studentCount === 1 ? '' : 's'} in your registry. Create a class schedule to see today's plan.`
-                    : 'Start by adding students and creating your first class.'}
-          </Text>
+          <Text style={styles.heroCopy}>{heroCopy}</Text>
         </LinearGradient>
 
         {isLoading ? (
           <PremiumCard style={styles.loadingCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadingText}>Loading your dashboard...</Text>
+            <Text style={styles.loadingText}>{t('dashboard.loading')}</Text>
           </PremiumCard>
         ) : useDesktopShell ? (
           <DashboardSection>
             <DashboardMetricGrid desktop>
-              <MetricCard fill label="Classes Today" value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
-              <MetricCard fill label="Attendance" value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
-              <MetricCard fill label="Pending Fees" value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
-              <MetricCard fill label="Collected" value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
+              <MetricCard fill label={t('dashboard.classesToday')} value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
+              <MetricCard fill label={t('dashboard.attendance')} value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
+              <MetricCard fill label={t('dashboard.pendingFees')} value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
+              <MetricCard fill label={t('dashboard.collected')} value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
             </DashboardMetricGrid>
 
             <DashboardRow>
               <DashboardCol flex={3}>
                 <PremiumCard style={styles.panelCard}>
                   <View style={styles.panelBody}>
-                  <Text style={styles.cardTitle}>Next class</Text>
+                  <Text style={styles.cardTitle}>{t('common.nextClass')}</Text>
                   {nextClass ? (
                     <>
                       <View style={styles.classRow}>
@@ -193,12 +206,12 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.primaryButton}>
                         <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
-                          <Text style={styles.primaryButtonText}>Take Attendance</Text>
+                          <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
                         </NavPressable>
                       </View>
                     </>
                   ) : (
-                    <Text style={styles.emptyCopy}>Create a class to see your next session here.</Text>
+                    <Text style={styles.emptyCopy}>{t('dashboard.emptyNextClass')}</Text>
                   )}
                   </View>
                 </PremiumCard>
@@ -208,8 +221,8 @@ export default function HomeScreen() {
                 <PremiumCard style={styles.panelCard}>
                   <View style={styles.panelBody}>
                   <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardTitle}>Fee collection</Text>
-                    <Text style={styles.monthChip}>This month</Text>
+                    <Text style={styles.cardTitle}>{t('common.feeCollection')}</Text>
+                    <Text style={styles.monthChip}>{t('common.thisMonth')}</Text>
                   </View>
                   <View style={styles.progressTrack}>
                     <View
@@ -222,8 +235,8 @@ export default function HomeScreen() {
                     />
                   </View>
                   <View style={styles.feeRow}>
-                    <FeeValue label="Collected" value={formatLkrCompact(collected)} color={colors.success} />
-                    <FeeValue label="Outstanding" value={formatLkrCompact(outstanding)} color={colors.danger} />
+                    <FeeValue label={t('dashboard.collected')} value={formatLkrCompact(collected)} color={colors.success} />
+                    <FeeValue label={t('dashboard.outstanding')} value={formatLkrCompact(outstanding)} color={colors.danger} />
                   </View>
                   </View>
                 </PremiumCard>
@@ -231,19 +244,19 @@ export default function HomeScreen() {
             </DashboardRow>
 
             <View>
-              <Text style={styles.sectionTitle}>Quick actions</Text>
+              <Text style={styles.sectionTitle}>{t('common.quickActions')}</Text>
               <View style={styles.quickRowDesktopGrid}>
-                <QuickActionTile fill label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
-                <QuickActionTile fill label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
-                <QuickActionTile fill label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
-                <QuickActionTile fill label="Reports" icon="chart-box-outline" color={colors.warning} href="/reports" />
+                <QuickActionTile fill label={t('common.addStudent')} icon="account-plus" color={colors.primary} href="/students/new" />
+                <QuickActionTile fill label={t('common.createClass')} icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
+                <QuickActionTile fill label={t('common.recordPayment')} icon="cash-plus" color={colors.success} href="/fees/record-payment" />
+                <QuickActionTile fill label={t('common.reports')} icon="chart-box-outline" color={colors.warning} href="/reports" />
               </View>
             </View>
 
             <PremiumCard style={styles.panelCard}>
-              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
+              <Text style={styles.cardTitle}>{t('common.todaysSchedule')}</Text>
               {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
+                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayName })}</Text>
               ) : (
                 todayClasses.map((item) => (
                   <ScheduleRow
@@ -251,7 +264,7 @@ export default function HomeScreen() {
                     time={item.startTime}
                     title={item.subject}
                     meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
-                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
+                    status={statusLabel(item.state)}
                     color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
                   />
                 ))
@@ -264,14 +277,14 @@ export default function HomeScreen() {
         ) : (
           <>
             <DashboardMetricGrid>
-              <MetricCard label="Classes Today" value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
-              <MetricCard label="Attendance" value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
-              <MetricCard label="Pending Fees" value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
-              <MetricCard label="Collected" value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
+              <MetricCard label={t('dashboard.classesToday')} value={`${todayClasses.length}`} icon="calendar-month" tone={colors.primary} />
+              <MetricCard label={t('dashboard.attendance')} value={`${averageAttendance}%`} icon="trending-up" tone={colors.success} />
+              <MetricCard label={t('dashboard.pendingFees')} value={`${defaulterCount}`} icon="account-alert" tone={colors.danger} />
+              <MetricCard label={t('dashboard.collected')} value={formatLkrCompact(collected)} icon="wallet" tone={colors.success} />
             </DashboardMetricGrid>
 
             <PremiumCard>
-              <Text style={styles.cardTitle}>Next class</Text>
+              <Text style={styles.cardTitle}>{t('common.nextClass')}</Text>
               {nextClass ? (
                 <>
                   <View style={styles.classRow}>
@@ -293,29 +306,29 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.primaryButton}>
                     <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
-                      <Text style={styles.primaryButtonText}>Take Attendance</Text>
+                      <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
                     </NavPressable>
                   </View>
                 </>
               ) : (
-                <Text style={styles.emptyCopy}>Create a class to see your next session here.</Text>
+                <Text style={styles.emptyCopy}>{t('dashboard.emptyNextClass')}</Text>
               )}
             </PremiumCard>
 
             <View>
-              <Text style={styles.sectionTitle}>Quick actions</Text>
+              <Text style={styles.sectionTitle}>{t('common.quickActions')}</Text>
               <View style={styles.quickRow}>
-                <QuickActionTile label="Add Student" icon="account-plus" color={colors.primary} href="/students/new" />
-                <QuickActionTile label="Create Class" icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
-                <QuickActionTile label="Payment" icon="cash-plus" color={colors.success} href="/fees/record-payment" />
-                <QuickActionTile label="Reports" icon="chart-box-outline" color={colors.warning} href="/reports" />
+                <QuickActionTile label={t('common.addStudent')} icon="account-plus" color={colors.primary} href="/students/new" />
+                <QuickActionTile label={t('common.createClass')} icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
+                <QuickActionTile label={t('common.payment')} icon="cash-plus" color={colors.success} href="/fees/record-payment" />
+                <QuickActionTile label={t('common.reports')} icon="chart-box-outline" color={colors.warning} href="/reports" />
               </View>
             </View>
 
             <PremiumCard>
               <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardTitle}>Fee collection</Text>
-                <Text style={styles.monthChip}>This month</Text>
+                <Text style={styles.cardTitle}>{t('common.feeCollection')}</Text>
+                <Text style={styles.monthChip}>{t('common.thisMonth')}</Text>
               </View>
               <View style={styles.progressTrack}>
                 <View
@@ -328,15 +341,15 @@ export default function HomeScreen() {
                 />
               </View>
               <View style={styles.feeRow}>
-                <FeeValue label="Collected" value={formatLkrCompact(collected)} color={colors.success} />
-                <FeeValue label="Outstanding" value={formatLkrCompact(outstanding)} color={colors.danger} />
+                <FeeValue label={t('dashboard.collected')} value={formatLkrCompact(collected)} color={colors.success} />
+                <FeeValue label={t('dashboard.outstanding')} value={formatLkrCompact(outstanding)} color={colors.danger} />
               </View>
             </PremiumCard>
 
             <PremiumCard>
-              <Text style={styles.cardTitle}>Today&apos;s schedule</Text>
+              <Text style={styles.cardTitle}>{t('common.todaysSchedule')}</Text>
               {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>No classes scheduled for {todayName}.</Text>
+                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayName })}</Text>
               ) : (
                 todayClasses.map((item) => (
                   <ScheduleRow
@@ -344,7 +357,7 @@ export default function HomeScreen() {
                     time={item.startTime}
                     title={item.subject}
                     meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
-                    status={item.state === 'completed' ? 'Completed' : item.state === 'inProgress' ? 'Now' : 'Upcoming'}
+                    status={statusLabel(item.state)}
                     color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
                   />
                 ))

@@ -28,3 +28,5 @@ export function resolveTranslation(tree: TranslationTree, path: string): string 
 export function isLocale(value: string | null | undefined): value is Locale {
   return value === 'en' || value === 'si' || value === 'ta';
 }
+
+export { formatLocalizedTodayDate, getLocalizedTimeGreeting, interpolate } from '@/i18n/format';

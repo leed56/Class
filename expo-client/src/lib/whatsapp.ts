@@ -1,5 +1,7 @@
 import { Alert, Linking, Platform } from 'react-native';
 
+export { buildCombinedFeeReminderMessage, buildFeeReminderMessage } from '@/lib/whatsappMessages';
+
 export function normalizeWhatsAppPhone(phone: string): string | null {
   const digits = phone.replace(/\D/g, '');
   if (!digits) return null;
@@ -114,49 +116,6 @@ export function buildCertificateMessage(params: {
 
   lines.push('', 'Congratulations and best wishes.');
   return lines.join('\n');
-}
-
-export function buildFeeReminderMessage(params: {
-  workspaceName: string;
-  studentName: string;
-  className: string;
-  month: string;
-  outstandingAmount: number;
-}) {
-  const amount = `LKR ${params.outstandingAmount.toLocaleString('en-LK')}`;
-
-  return [
-    `Fee reminder - ${params.workspaceName}`,
-    '',
-    'Dear parent,',
-    `This is a friendly reminder that ${params.studentName}'s tuition fee for ${params.className} (${params.month}) has an outstanding balance of ${amount}.`,
-    '',
-    'Please settle at your earliest convenience. Thank you.',
-  ].join('\n');
-}
-
-export function buildCombinedFeeReminderMessage(params: {
-  workspaceName: string;
-  month: string;
-  items: { studentName: string; className: string; outstandingAmount: number }[];
-}) {
-  const total = params.items.reduce((sum, item) => sum + item.outstandingAmount, 0);
-  const lines = params.items.map(
-    (item) =>
-      `- ${item.studentName} (${item.className}): LKR ${item.outstandingAmount.toLocaleString('en-LK')}`,
-  );
-
-  return [
-    `Fee reminder - ${params.workspaceName}`,
-    '',
-    'Dear parent,',
-    `Outstanding tuition fees for ${params.month}:`,
-    ...lines,
-    '',
-    `Total outstanding: LKR ${total.toLocaleString('en-LK')}`,
-    '',
-    'Please settle at your earliest convenience. Thank you.',
-  ].join('\n');
 }
 
 export function buildParentMessage(params: {

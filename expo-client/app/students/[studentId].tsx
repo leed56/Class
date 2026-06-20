@@ -18,7 +18,9 @@ import { getStudentById, archiveStudent } from '@/features/students/studentServi
 import { formatStudentMeta } from '@/features/students/studentProfileModel';
 import { Student } from '@/features/students/types';
 import { InstituteType } from '@/lib/database.types';
-import { buildFeeReminderMessage, buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { sendLoggedFeeReminder } from '@/features/fees/feeReminderService';
+import { LanguageCode } from '@/lib/database.types';
+import { buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -41,6 +43,7 @@ export default function StudentProfileScreen() {
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
   const [openInvoices, setOpenInvoices] = useState<FeeInvoice[]>([]);
   const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceLanguage, setWorkspaceLanguage] = useState<LanguageCode>('en');
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +65,7 @@ export default function StudentProfileScreen() {
       setEnrollments(nextEnrollments);
       setOpenInvoices(invoices);
       setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceLanguage(workspace?.default_language ?? 'en');
       setWorkspaceType(workspace?.institute_type ?? 'solo');
       setAcademySector(workspace?.academy_sector ?? 'school_tuition');
       if (!nextStudent) setError('Student not found.');
@@ -81,20 +85,20 @@ export default function StudentProfileScreen() {
   async function messageParent() {
     if (!student) return;
 
-    const message =
-      student.outstandingAmount > 0
-        ? buildFeeReminderMessage({
-            workspaceName,
-            studentName: student.name,
-            className: student.className,
-            month: 'this month',
-            outstandingAmount: student.outstandingAmount,
-          })
-        : buildParentMessage({
-            workspaceName,
-            studentName: student.name,
-            parentName: student.parentName,
-          });
+    if (student.outstandingAmount > 0 && openInvoices[0]) {
+      await sendLoggedFeeReminder({
+        workspaceName,
+        invoice: openInvoices[0],
+        locale: workspaceLanguage,
+      });
+      return;
+    }
+
+    const message = buildParentMessage({
+      workspaceName,
+      studentName: student.name,
+      parentName: student.parentName,
+    });
 
     await openWhatsAppChat(student.parentPhone, message);
   }

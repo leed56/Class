@@ -12,6 +12,8 @@ import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -26,6 +28,7 @@ const weekdayShortNames: Record<string, string> = {
 };
 
 export default function ClassesScreen() {
+  const { t } = useI18n();
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +69,8 @@ export default function ClassesScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Classes</Text>
-            <Text style={styles.subtitle}>Create schedules, manage halls, fees, capacity and attendance.</Text>
+            <Text style={styles.title}>{t('classes.title')}</Text>
+            <Text style={styles.subtitle}>{t('classes.subtitle')}</Text>
           </View>
           <NavPressable href={'/classes/new' as Href} style={styles.addButton}>
             <MaterialCommunityIcons name="plus" size={24} color="white" />
@@ -79,48 +82,53 @@ export default function ClassesScreen() {
             <MaterialCommunityIcons name="calendar-star" size={29} color="white" />
           </View>
           <View style={styles.heroTextBlock}>
-            <Text style={styles.heroLabel}>Today’s teaching plan</Text>
-            <Text style={styles.heroValue}>{todayClasses.length} classes today</Text>
+            <Text style={styles.heroLabel}>{t('classes.heroLabel')}</Text>
+            <Text style={styles.heroValue}>{interpolate(t('classes.classesToday'), { count: todayClasses.length })}</Text>
             <Text style={styles.heroNote}>
               {nextClass
-                ? `Next: ${nextClass.subject} Grade ${nextClass.grade} • ${nextClass.startTime} • ${nextClass.hall}`
-                : 'Create your first class to see today’s schedule.'}
+                ? interpolate(t('classes.heroNext'), {
+                    subject: nextClass.subject,
+                    grade: nextClass.grade,
+                    time: nextClass.startTime,
+                    hall: nextClass.hall,
+                  })
+                : t('classes.heroEmpty')}
             </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.metricsRow}>
-          <MetricCard label="Active Students" value={`${summary.totalStudents}`} icon="account-group" tone={colors.primary} />
-          <MetricCard label="Avg Attendance" value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
+          <MetricCard label={t('classes.activeStudents')} value={`${summary.totalStudents}`} icon="account-group" tone={colors.primary} />
+          <MetricCard label={t('classes.avgAttendance')} value={`${summary.averageAttendance}%`} icon="chart-line" tone={colors.success} />
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Class schedule</Text>
+          <Text style={styles.sectionTitle}>{t('classes.scheduleTitle')}</Text>
           <NavPressable href="/settings/archived">
-            <Text style={styles.sectionAction}>Archived</Text>
+            <Text style={styles.sectionAction}>{t('common.archived')}</Text>
           </NavPressable>
         </View>
 
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateTitle}>Loading classes...</Text>
+            <Text style={styles.stateTitle}>{t('classes.loading')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <MaterialCommunityIcons name="alert-circle-outline" size={24} color={colors.danger} />
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadClasses}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : classes.length === 0 ? (
           <PremiumCard style={styles.stateCard}>
             <EmptyState
               icon="calendar-plus"
-              title="No classes yet"
-              message="Create your first recurring class template with schedule and monthly fee."
-              actionLabel="Create Class"
+              title={t('classes.emptyTitle')}
+              message={t('classes.emptyMessage')}
+              actionLabel={t('common.createClass')}
               actionHref={'/classes/new' as Href}
             />
           </PremiumCard>
