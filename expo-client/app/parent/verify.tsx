@@ -70,7 +70,7 @@ export default function ParentVerifyScreen() {
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
           <Text style={styles.heroLabel}>One-time code</Text>
           <Text style={styles.heroTitle}>Verify parent access</Text>
-          <Text style={styles.heroNote}>Pilot testing uses a fixed code: {DEMO_PARENT_OTP}. SMS via Notify.lk is planned later.</Text>
+          <Text style={styles.heroNote}>Pilot testing uses code {DEMO_PARENT_OTP}. Live SMS sends via Text.lk when configured.</Text>
         </LinearGradient>
 
         {params.code ? (

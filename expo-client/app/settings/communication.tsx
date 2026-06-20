@@ -87,7 +87,7 @@ export default function CommunicationSetupScreen() {
           <View style={styles.divider} />
           <IntegrationStep title="Fee reminder delivery log" state="Active" icon="cash-clock" />
           <View style={styles.divider} />
-          <IntegrationStep title="Enable SMS fallback" state="Notify.lk ready" icon="cellphone-message" />
+          <IntegrationStep title="Enable SMS fallback" state="Text.lk ready" icon="cellphone-message" />
         </PremiumCard>
 
         <View style={styles.sectionHeader}>

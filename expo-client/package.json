@@ -13,7 +13,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "db:check": "node scripts/check-supabase-schema.mjs",
-    "db:apply": "node ../scripts/apply-supabase-sql.mjs"
+    "db:apply": "node ../scripts/apply-supabase-sql.mjs",
+    "db:apply:textlk": "node ../scripts/apply-supabase-file.mjs supabase/migrations/20260629_text_lk_sms.sql"
   },
   "dependencies": {
     "@expo/vector-icons": "latest",

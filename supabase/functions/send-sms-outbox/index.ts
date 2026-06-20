@@ -7,6 +7,8 @@ type OutboxRow = {
   status: string;
 };
 
+const TEXT_LK_SEND_URL = 'https://app.text.lk/api/v3/sms/send';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,25 +21,31 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-async function sendViaNotifyLk(params: {
-  userId: string;
-  apiKey: string;
+async function sendViaTextLk(params: {
+  apiToken: string;
   senderId: string;
   phone: string;
   message: string;
 }) {
-  const url = new URL('https://app.notify.lk/api/v1/send');
-  url.searchParams.set('user_id', params.userId);
-  url.searchParams.set('api_key', params.apiKey);
-  url.searchParams.set('sender_id', params.senderId);
-  url.searchParams.set('to', params.phone);
-  url.searchParams.set('message', params.message);
+  const response = await fetch(TEXT_LK_SEND_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${params.apiToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      recipient: params.phone,
+      sender_id: params.senderId,
+      type: 'plain',
+      message: params.message,
+    }),
+  });
 
-  const response = await fetch(url.toString(), { method: 'GET' });
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Notify.lk HTTP ${response.status}: ${text}`);
+    throw new Error(`Text.lk HTTP ${response.status}: ${text}`);
   }
 
   return text;
@@ -50,16 +58,15 @@ Deno.serve(async (request) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const notifyUserId = Deno.env.get('NOTIFY_LK_USER_ID');
-  const notifyApiKey = Deno.env.get('NOTIFY_LK_API_KEY');
-  const notifySenderId = Deno.env.get('NOTIFY_LK_SENDER_ID') ?? 'NotifyDEMO';
+  const textLkApiToken = Deno.env.get('TEXT_LK_API_TOKEN');
+  const textLkSenderId = Deno.env.get('TEXT_LK_SENDER_ID') ?? 'TextLKDemo';
 
   if (!supabaseUrl || !serviceRoleKey) {
     return jsonResponse({ error: 'Missing Supabase service configuration.' }, 500);
   }
 
-  if (!notifyUserId || !notifyApiKey) {
-    return jsonResponse({ error: 'Notify.lk credentials are not configured.' }, 503);
+  if (!textLkApiToken) {
+    return jsonResponse({ error: 'Text.lk API token is not configured.' }, 503);
   }
 
   let phoneFilter: string | undefined;
@@ -92,7 +99,7 @@ Deno.serve(async (request) => {
 
   const rows = (data ?? []) as OutboxRow[];
   if (rows.length === 0) {
-    return jsonResponse({ processed: 0, sent: 0, failed: 0 });
+    return jsonResponse({ processed: 0, sent: 0, failed: 0, provider: 'text_lk' });
   }
 
   let sent = 0;
@@ -100,10 +107,9 @@ Deno.serve(async (request) => {
 
   for (const row of rows) {
     try {
-      const providerResponse = await sendViaNotifyLk({
-        userId: notifyUserId,
-        apiKey: notifyApiKey,
-        senderId: notifySenderId,
+      const providerResponse = await sendViaTextLk({
+        apiToken: textLkApiToken,
+        senderId: textLkSenderId,
         phone: row.phone,
         message: row.message,
       });
@@ -113,6 +119,7 @@ Deno.serve(async (request) => {
         .update({
           status: 'sent',
           sent_at: new Date().toISOString(),
+          provider: 'text_lk',
           provider_response: { raw: providerResponse },
         })
         .eq('id', row.id);
@@ -125,6 +132,7 @@ Deno.serve(async (request) => {
         .from('sms_outbox')
         .update({
           status: 'failed',
+          provider: 'text_lk',
           provider_response: {
             error: sendError instanceof Error ? sendError.message : 'Send failed.',
           },
@@ -133,5 +141,5 @@ Deno.serve(async (request) => {
     }
   }
 
-  return jsonResponse({ processed: rows.length, sent, failed });
+  return jsonResponse({ processed: rows.length, sent, failed, provider: 'text_lk' });
 });

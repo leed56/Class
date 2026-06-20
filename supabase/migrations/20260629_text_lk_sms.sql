@@ -1,23 +1,9 @@
--- Text.lk SMS foundation for parent OTP
+-- Switch parent OTP SMS from Notify.lk to Text.lk
 -- Edge function secrets: TEXT_LK_API_TOKEN, TEXT_LK_SENDER_ID (default TextLKDemo)
--- Optional DB flag: SELECT set_config('app.settings.text_lk_api_token', 'your-token', false);
+-- Optional DB flag: app.settings.text_lk_api_token (set in Supabase SQL if using DB-side enable check)
 
-create table if not exists public.sms_outbox (
-  id uuid primary key default gen_random_uuid(),
-  phone text not null,
-  message text not null,
-  provider text not null default 'text_lk',
-  purpose text not null default 'parent_otp',
-  status text not null default 'queued' check (status in ('queued', 'sent', 'failed', 'skipped')),
-  provider_response jsonb,
-  created_at timestamptz not null default now(),
-  sent_at timestamptz
-);
-
-create index if not exists sms_outbox_status_created_idx
-  on public.sms_outbox (status, created_at desc);
-
-alter table public.sms_outbox enable row level security;
+alter table if exists public.sms_outbox
+  alter column provider set default 'text_lk';
 
 create or replace function public.text_lk_sms_enabled()
 returns boolean
@@ -121,5 +107,3 @@ end;
 $$;
 
 grant execute on function public.text_lk_sms_enabled() to anon, authenticated;
-grant execute on function public.notify_lk_sms_enabled() to anon, authenticated;
-grant execute on function public.enqueue_parent_otp_sms(text, text) to service_role;

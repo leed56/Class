@@ -126,7 +126,7 @@ export const integrationCommands: MoreSetting[] = [
   {
     id: 'sms',
     title: 'SMS Fallback',
-    subtitle: 'Notify.lk / Text.lk fallback for parents offline',
+    subtitle: 'Text.lk SMS fallback for parents offline',
     icon: 'message-processing-outline',
     color: colors.info,
     value: 'Later',

@@ -353,14 +353,14 @@ values
   ('mohamed@lgroup.global')
 on conflict (email) do nothing;
 
--- === 20260628_notify_lk_sms_foundation.sql ===
--- Run after parent portal migration. Set app.settings.notify_lk_api_key in Supabase for live SMS.
+-- === 20260628_text_lk_sms_foundation.sql ===
+-- Run after parent portal migration. Edge secrets: TEXT_LK_API_TOKEN, TEXT_LK_SENDER_ID
 
 create table if not exists public.sms_outbox (
   id uuid primary key default gen_random_uuid(),
   phone text not null,
   message text not null,
-  provider text not null default 'notify_lk',
+  provider text not null default 'text_lk',
   purpose text not null default 'parent_otp',
   status text not null default 'queued' check (status in ('queued', 'sent', 'failed', 'skipped')),
   provider_response jsonb,
@@ -373,7 +373,7 @@ create index if not exists sms_outbox_status_created_idx
 
 alter table public.sms_outbox enable row level security;
 
-create or replace function public.notify_lk_sms_enabled()
+create or replace function public.text_lk_sms_enabled()
 returns boolean
 language sql
 stable
@@ -381,9 +381,19 @@ security definer
 set search_path = public
 as $$
   select coalesce(
-    nullif(current_setting('app.settings.notify_lk_api_key', true), '') is not null,
+    nullif(current_setting('app.settings.text_lk_api_token', true), '') is not null,
     false
   );
+$$;
+
+create or replace function public.notify_lk_sms_enabled()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.text_lk_sms_enabled();
 $$;
 
 create or replace function public.enqueue_parent_otp_sms(target_phone text, otp_code text)
@@ -396,14 +406,14 @@ declare
   outbox_id uuid;
   sms_body text;
 begin
-  if not public.notify_lk_sms_enabled() then
+  if not public.text_lk_sms_enabled() then
     return null;
   end if;
 
   sms_body := format('ClassFlow parent login code: %s. Valid for 10 minutes.', otp_code);
 
-  insert into public.sms_outbox (phone, message, purpose, status)
-  values (target_phone, sms_body, 'parent_otp', 'queued')
+  insert into public.sms_outbox (phone, message, provider, purpose, status)
+  values (target_phone, sms_body, 'text_lk', 'parent_otp', 'queued')
   returning id into outbox_id;
 
   return outbox_id;
@@ -439,7 +449,7 @@ begin
     raise exception 'No students found for this parent phone';
   end if;
 
-  sms_enabled := public.notify_lk_sms_enabled();
+  sms_enabled := public.text_lk_sms_enabled();
 
   if norm = pilot_phone and not sms_enabled then
     otp_code := pilot_code;
@@ -464,5 +474,6 @@ begin
 end;
 $$;
 
+grant execute on function public.text_lk_sms_enabled() to anon, authenticated;
 grant execute on function public.notify_lk_sms_enabled() to anon, authenticated;
 grant execute on function public.enqueue_parent_otp_sms(text, text) to service_role;
