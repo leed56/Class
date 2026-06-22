@@ -1,6 +1,6 @@
 # Planned Project Structure
 
-ClassFlow starts as a Flutter teacher mobile app with a Supabase backend. The structure keeps the app modular so later institute, parent, and BrainCoin features can be added without rewriting the MVP.
+ClassFlow starts as a Flutter teacher mobile app with a Supabase backend. The structure keeps the app modular so later institute and parent features can be added without rewriting the MVP.
 
 ## Root structure
 

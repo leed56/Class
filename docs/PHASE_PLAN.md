@@ -81,6 +81,23 @@ Goal: replace the teacher's paper register and fee book.
 - Teacher can view outstanding students
 - App is usable on small Android phones
 
+## Phase 1.5 — Hardening and Localization
+
+Goal: make the MVP safe to put in real teachers' hands before adding more surface area.
+
+### Features
+
+- Supabase RLS hardening so each teacher only ever sees their own workspace data
+- Full trilingual UI (English, Sinhala, Tamil) wired through a shared i18n layer
+- Consistent empty, loading and error states across every screen
+- Input validation and friendly error messages on all forms
+
+### Exit criteria
+
+- A teacher cannot read or modify another teacher's students, classes, fees or receipts
+- Every user-facing string can switch between English, Sinhala and Tamil
+- No screen shows a raw error or a blank state
+
 ## Phase 2 — Scale and Communication
 
 Goal: make the app sticky through parent communication and faster attendance.
@@ -143,31 +160,29 @@ Goal: support larger tuition institutes.
 - Staff can register students and record payments
 - Reports can be filtered by branch, teacher, hall, and subject
 
-## Phase 4 — AI and BrainCoin Layer
+## Phase 4 — AI Assistance Layer
 
-Goal: connect ClassFlow to learning outcomes and BrainCoin.
+Goal: cut the teacher's admin and communication time with AI, without leaving ClassFlow.
 
 ### Features
 
-- Claude-drafted trilingual parent messages
+- Claude-drafted trilingual parent messages (fee reminders, absence notes, announcements)
 - Student attendance summaries
 - Student fee summaries
-- Progress notes
-- BrainCoin Learning Pack assignment
-- Class-to-content linking
+- Auto-drafted progress notes from attendance and payment history
+- Tone and language controls (English / Sinhala / Tamil)
 
 ### Main screens added
 
 - AI message assistant
 - Student progress summary
-- BrainCoin content linking
-- Learning pack assignment
+- Message review and edit sheet
 
 ### Exit criteria
 
 - Teacher can send polished Sinhala/Tamil/English messages faster
-- ClassFlow classes can link to BrainCoin content
-- Teachers can assign learning packs to students
+- AI summaries are generated from real workspace data
+- Every AI draft is editable before it is sent
 
 ## Build order recommendation
 
@@ -179,4 +194,6 @@ Goal: connect ClassFlow to learning outcomes and BrainCoin.
 6. Reports module
 7. Settings and tenant profile
 8. Supabase RLS hardening
-9. Offline and messaging enhancements
+9. Trilingual localization pass
+10. Offline and messaging enhancements
+11. AI assistance layer
