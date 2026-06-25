@@ -1,17 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { FeeInvoice, FeeStatus } from '../models';
-
-const statusConfig: Record<FeeStatus, { label: string; color: string; background: string }> = {
-  paid: { label: 'Paid', color: colors.success, background: colors.successSoft },
-  partial: { label: 'Partial', color: colors.warning, background: colors.warningSoft },
-  pending: { label: 'Pending', color: colors.danger, background: colors.dangerSoft },
-  overdue: { label: 'Overdue', color: colors.danger, background: colors.dangerSoft },
-};
 
 type FeeInvoiceCardProps = {
   invoice: FeeInvoice;
@@ -23,8 +20,40 @@ function formatLkr(amount: number) {
 }
 
 export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
+  const { t } = useI18n();
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[invoice.medium as Medium] ?? invoice.medium;
+
+  const statusConfig = useMemo(
+    (): Record<FeeStatus, { label: string; color: string; background: string }> => ({
+      paid: { label: t('common.paid'), color: colors.success, background: colors.successSoft },
+      partial: { label: t('common.partial'), color: colors.warning, background: colors.warningSoft },
+      pending: { label: t('common.pending'), color: colors.danger, background: colors.dangerSoft },
+      overdue: { label: t('common.overdue'), color: colors.danger, background: colors.dangerSoft },
+    }),
+    [t],
+  );
+
   const status = statusConfig[invoice.status];
   const progress = invoice.monthlyFee === 0 ? 0 : Math.min(invoice.paidAmount / invoice.monthlyFee, 1);
+
+  const meta =
+    invoice.invoiceType === 'admission'
+      ? interpolate(t('fees.invoiceAdmissionMeta'), { grade: invoice.grade, medium })
+      : invoice.invoiceType === 'material'
+        ? interpolate(t('fees.invoiceMaterialMeta'), { className: invoice.className })
+        : invoice.invoiceType === 'exam'
+          ? interpolate(t('fees.invoiceExamMeta'), { className: invoice.className })
+          : interpolate(t('fees.invoiceMonthlyMeta'), {
+              grade: invoice.grade,
+              medium,
+              className: invoice.className,
+            });
 
   return (
     <PremiumCard style={styles.card}>
@@ -34,15 +63,7 @@ export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
         </View>
         <View style={styles.nameBlock}>
           <Text style={styles.name} numberOfLines={1}>{invoice.studentName}</Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {invoice.invoiceType === 'admission'
-              ? `Admission • Grade ${invoice.grade} • ${invoice.medium}`
-              : invoice.invoiceType === 'material'
-                ? `Material • ${invoice.className}`
-                : invoice.invoiceType === 'exam'
-                  ? `Exam • ${invoice.className}`
-                  : `Grade ${invoice.grade} • ${invoice.medium} • ${invoice.className}`}
-          </Text>
+          <Text style={styles.meta} numberOfLines={1}>{meta}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.background }]}>
           <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
@@ -51,7 +72,7 @@ export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
 
       <View style={styles.amountRow}>
         <View>
-          <Text style={styles.amountLabel}>Outstanding</Text>
+          <Text style={styles.amountLabel}>{t('fees.outstanding')}</Text>
           <Text style={[styles.amountValue, { color: invoice.outstandingAmount > 0 ? colors.danger : colors.success }]}>{formatLkr(invoice.outstandingAmount)}</Text>
         </View>
         <View style={styles.monthPill}>
@@ -72,12 +93,12 @@ export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
         {invoice.outstandingAmount > 0 ? (
           <Pressable style={styles.reminderButton} onPress={onRemind}>
             <MaterialCommunityIcons name="whatsapp" size={15} color={colors.success} />
-            <Text style={styles.reminderText}>Remind</Text>
+            <Text style={styles.reminderText}>{t('common.remind')}</Text>
           </Pressable>
         ) : (
           <View style={styles.receiptButton}>
             <MaterialCommunityIcons name="receipt-text-check-outline" size={15} color={colors.success} />
-            <Text style={styles.receiptText}>Receipt</Text>
+            <Text style={styles.receiptText}>{t('common.receipt')}</Text>
           </View>
         )}
       </View>

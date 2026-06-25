@@ -4,11 +4,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { saveInviteToken } from '@/features/platform/inviteStorage';
 import { getPlatformInvite } from '@/features/platform/platformService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
 export default function InviteLandingScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const { token } = useLocalSearchParams<{ token: string }>();
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +20,7 @@ export default function InviteLandingScreen() {
     async function handleInvite() {
       const inviteToken = token?.trim();
       if (!inviteToken) {
-        setError('Invite link is invalid.');
+        setError(t('auth.inviteInvalid'));
         return;
       }
 
@@ -29,7 +31,7 @@ export default function InviteLandingScreen() {
         router.replace(`/auth/signup?invite=${encodeURIComponent(inviteToken)}` as Href);
       } catch (inviteError) {
         if (!active) return;
-        setError(inviteError instanceof Error ? inviteError.message : 'Invite link is invalid or expired.');
+        setError(inviteError instanceof Error ? inviteError.message : t('auth.inviteInvalidOrExpired'));
       }
     }
 
@@ -37,7 +39,7 @@ export default function InviteLandingScreen() {
     return () => {
       active = false;
     };
-  }, [router, token]);
+  }, [router, t, token]);
 
   if (error) {
     return (
@@ -50,7 +52,7 @@ export default function InviteLandingScreen() {
   return (
     <View style={styles.centered}>
       <ActivityIndicator color={colors.primary} size="large" />
-      <Text style={styles.loadingText}>Opening your ClassFlow invite…</Text>
+      <Text style={styles.loadingText}>{t('auth.inviteLoading')}</Text>
     </View>
   );
 }

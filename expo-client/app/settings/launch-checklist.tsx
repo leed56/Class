@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -13,8 +15,20 @@ const totalItems = 12;
 const readinessPercent = Math.round((completedItems / totalItems) * 100);
 
 export default function LaunchChecklistScreen() {
+  const { t } = useI18n();
+
+  const checklistItems = [
+    { title: t('launchChecklist.check1Title'), subtitle: t('launchChecklist.check1Subtitle'), state: t('launchChecklist.stateDone'), icon: 'cellphone' as const, done: true },
+    { title: t('launchChecklist.check2Title'), subtitle: t('launchChecklist.check2Subtitle'), state: t('launchChecklist.stateNext'), icon: 'database-outline' as const },
+    { title: t('launchChecklist.check3Title'), subtitle: t('launchChecklist.check3Subtitle'), state: t('launchChecklist.stateNext'), icon: 'account-lock-outline' as const },
+    { title: t('launchChecklist.check4Title'), subtitle: t('launchChecklist.check4Subtitle'), state: t('launchChecklist.statePlanned'), icon: 'cloud-sync-outline' as const },
+    { title: t('launchChecklist.check5Title'), subtitle: t('launchChecklist.check5Subtitle'), state: t('launchChecklist.stateCheck'), icon: 'web' as const },
+    { title: t('launchChecklist.check6Title'), subtitle: t('launchChecklist.check6Subtitle'), state: t('launchChecklist.stateNext'), icon: 'android' as const },
+    { title: t('launchChecklist.check7Title'), subtitle: t('launchChecklist.check7Subtitle'), state: t('launchChecklist.stateReady'), icon: 'shield-check-outline' as const, done: true },
+  ];
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/settings" asChild>
@@ -23,8 +37,8 @@ export default function LaunchChecklistScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Launch Checklist</Text>
-            <Text style={styles.subtitle}>Production readiness for mobile, web preview, security and store release.</Text>
+            <Text style={styles.title}>{t('launchChecklist.title')}</Text>
+            <Text style={styles.subtitle}>{t('launchChecklist.subtitle')}</Text>
           </View>
           <View style={styles.iconButton}>
             <MaterialCommunityIcons name="rocket-launch-outline" size={22} color={colors.primary} />
@@ -36,17 +50,19 @@ export default function LaunchChecklistScreen() {
             <MaterialCommunityIcons name="shield-check-outline" size={31} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Production readiness</Text>
-            <Text style={styles.heroTitle}>{readinessPercent}% launch-ready</Text>
-            <Text style={styles.heroNote}>{completedItems}/{totalItems} checks prepared • MVP path is clear</Text>
+            <Text style={styles.heroLabel}>{t('launchChecklist.heroLabel')}</Text>
+            <Text style={styles.heroTitle}>{interpolate(t('launchChecklist.heroTitle'), { percent: readinessPercent })}</Text>
+            <Text style={styles.heroNote}>
+              {interpolate(t('launchChecklist.heroNote'), { completed: completedItems, total: totalItems })}
+            </Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.progressCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Readiness progress</Text>
-              <Text style={styles.cardSubtitle}>From prototype UI to installable teacher MVP</Text>
+              <Text style={styles.cardTitle}>{t('launchChecklist.progressTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('launchChecklist.progressSubtitle')}</Text>
             </View>
             <Text style={styles.progressPercent}>{readinessPercent}%</Text>
           </View>
@@ -56,8 +72,8 @@ export default function LaunchChecklistScreen() {
         </PremiumCard>
 
         <View style={styles.summaryRow}>
-          <ReadinessMetric label="Done" value={`${completedItems}`} icon="check-decagram-outline" color={colors.success} />
-          <ReadinessMetric label="Open" value={`${totalItems - completedItems}`} icon="progress-clock" color={colors.warning} />
+          <ReadinessMetric label={t('launchChecklist.metricDone')} value={`${completedItems}`} icon="check-decagram-outline" color={colors.success} />
+          <ReadinessMetric label={t('launchChecklist.metricOpen')} value={`${totalItems - completedItems}`} icon="progress-clock" color={colors.warning} />
         </View>
 
         <PremiumCard style={styles.blockerCard}>
@@ -65,37 +81,30 @@ export default function LaunchChecklistScreen() {
             <MaterialCommunityIcons name="alert-decagram-outline" size={24} color={colors.warning} />
           </View>
           <View style={styles.blockerCopy}>
-            <Text style={styles.cardTitle}>Main launch blockers</Text>
-            <Text style={styles.cardSubtitle}>Supabase schema, real auth/RLS, route wiring, web build check and Android test build.</Text>
+            <Text style={styles.cardTitle}>{t('launchChecklist.blockersTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('launchChecklist.blockersSubtitle')}</Text>
           </View>
         </PremiumCard>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Checklist</Text>
-          <Text style={styles.sectionAction}>Export</Text>
+          <Text style={styles.sectionTitle}>{t('launchChecklist.sectionChecklist')}</Text>
+          <Text style={styles.sectionAction}>{t('launchChecklist.sectionExport')}</Text>
         </View>
 
         <PremiumCard style={styles.checklistCard}>
-          <ChecklistRow title="Expo app shell" subtitle="Tabs, routes and premium screens created" state="Done" icon="cellphone" done />
-          <View style={styles.divider} />
-          <ChecklistRow title="Supabase schema" subtitle="Students, classes, fees, attendance and tenant tables" state="Next" icon="database-outline" />
-          <View style={styles.divider} />
-          <ChecklistRow title="Auth + RLS" subtitle="Teacher login, workspace isolation and parent data safety" state="Next" icon="account-lock-outline" />
-          <View style={styles.divider} />
-          <ChecklistRow title="Offline-first attendance" subtitle="Save marks locally before syncing" state="Planned" icon="cloud-sync-outline" />
-          <View style={styles.divider} />
-          <ChecklistRow title="Vercel web preview" subtitle="Expo web export and preview deployment" state="Check" icon="web" />
-          <View style={styles.divider} />
-          <ChecklistRow title="Android APK" subtitle="EAS internal distribution build" state="Next" icon="android" />
-          <View style={styles.divider} />
-          <ChecklistRow title="Privacy & consent" subtitle="PDPA-aware consent capture and retention rules" state="Ready" icon="shield-check-outline" done />
+          {checklistItems.map((item, index) => (
+            <View key={item.title}>
+              {index > 0 ? <View style={styles.divider} /> : null}
+              <ChecklistRow title={item.title} subtitle={item.subtitle} state={item.state} icon={item.icon} done={item.done} />
+            </View>
+          ))}
         </PremiumCard>
 
         <View style={styles.stageGrid}>
-          <StageTile title="Backend" subtitle="Supabase tables + policies" icon="database-cog-outline" color={colors.primary} />
-          <StageTile title="Testing" subtitle="Typecheck, build, device QA" icon="bug-check-outline" color={colors.warning} />
-          <StageTile title="Deploy" subtitle="Vercel web + EAS Android" icon="rocket-launch-outline" color={colors.success} />
-          <StageTile title="Store" subtitle="Listing, screenshots, privacy" icon="storefront-outline" color={colors.info} />
+          <StageTile title={t('launchChecklist.stageBackend')} subtitle={t('launchChecklist.stageBackendSub')} icon="database-cog-outline" color={colors.primary} />
+          <StageTile title={t('launchChecklist.stageTesting')} subtitle={t('launchChecklist.stageTestingSub')} icon="bug-check-outline" color={colors.warning} />
+          <StageTile title={t('launchChecklist.stageDeploy')} subtitle={t('launchChecklist.stageDeploySub')} icon="rocket-launch-outline" color={colors.success} />
+          <StageTile title={t('launchChecklist.stageStore')} subtitle={t('launchChecklist.stageStoreSub')} icon="storefront-outline" color={colors.info} />
         </View>
 
         <PremiumCard style={styles.nextCard}>
@@ -103,8 +112,8 @@ export default function LaunchChecklistScreen() {
             <MaterialCommunityIcons name="database-plus-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.nextCopy}>
-            <Text style={styles.cardTitle}>Recommended next build step</Text>
-            <Text style={styles.cardSubtitle}>Create the Supabase schema and connect real data behind the premium UI.</Text>
+            <Text style={styles.cardTitle}>{t('launchChecklist.nextStepTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('launchChecklist.nextStepSubtitle')}</Text>
           </View>
         </PremiumCard>
       </ScrollView>

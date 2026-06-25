@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -83,7 +83,7 @@ export default function MoreScreen() {
             <MaterialCommunityIcons name="school" size={30} color="white" />
           </View>
           <View style={styles.heroTextBlock}>
-            <Text style={styles.heroLabel}>{workspaceName}{role ? ` • ${roleLabel(role)}` : ''}</Text>
+            <Text style={styles.heroLabel}>{workspaceName}{role ? ` • ${roleLabel(role, t)}` : ''}</Text>
             <Text style={styles.heroValue}>{t('more.teacherWorkspace')}</Text>
             <Text style={styles.heroNote}>{t('more.heroNote')}</Text>
           </View>
@@ -167,7 +167,7 @@ export default function MoreScreen() {
             <View style={styles.panelHeader}>
               <Text style={styles.sectionTitle}>{t('more.platformOperator')}</Text>
             </View>
-            <NavPressable href="/platform/index">
+            <NavPressable href={'/platform/index' as Href}>
               <View style={styles.platformRow}>
                 <MaterialCommunityIcons name="shield-crown-outline" size={20} color={colors.primary} />
                 <Text style={styles.platformRowText}>{t('more.platformAdmin')}</Text>

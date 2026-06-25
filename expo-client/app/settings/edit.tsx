@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,29 +16,13 @@ import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getDefaultAbsenceAlertTemplate } from '@/features/communications/communicationService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { useI18n } from '@/i18n/I18nProvider';
 import { LanguageCode, InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const languageOptions: { label: string; value: LanguageCode }[] = [
-  { label: 'English', value: 'en' },
-  { label: 'සිංහල', value: 'si' },
-  { label: 'தமிழ்', value: 'ta' },
-];
-
-function getLanguageLabel(value: LanguageCode) {
-  return languageOptions.find((option) => option.value === value)?.label ?? 'English';
-}
-
-const instituteTypeOptions: { label: string; value: InstituteType }[] = [
-  { label: 'Solo tutor', value: 'solo' },
-  { label: 'Academy', value: 'academy' },
-  { label: 'Tuition building', value: 'institute' },
-];
-
-function getInstituteTypeLabel(value: InstituteType) {
-  return instituteTypeOptions.find((option) => option.value === value)?.label ?? 'Solo tutor';
-}
+const languageValues: LanguageCode[] = ['en', 'si', 'ta'];
+const instituteTypeValues: InstituteType[] = ['solo', 'academy', 'institute'];
 
 export default function EditSettingsScreen() {
   return (
@@ -51,6 +35,7 @@ export default function EditSettingsScreen() {
 function EditSettingsContent() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [workspaceName, setWorkspaceName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
@@ -65,6 +50,26 @@ function EditSettingsContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const languageLabels = useMemo(
+    () =>
+      ({
+        en: t('settings.english'),
+        si: t('settings.sinhala'),
+        ta: t('settings.tamil'),
+      }) satisfies Record<LanguageCode, string>,
+    [t],
+  );
+
+  const instituteTypeLabels = useMemo(
+    () =>
+      ({
+        solo: t('settingsEdit.typeSolo'),
+        academy: t('settingsEdit.typeAcademy'),
+        institute: t('settingsEdit.typeInstitute'),
+      }) satisfies Record<InstituteType, string>,
+    [t],
+  );
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -85,11 +90,11 @@ function EditSettingsContent() {
       );
       setPhone(typeof user?.user_metadata?.phone === 'string' ? user.user_metadata.phone : '');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load settings.');
+      setError(loadError instanceof Error ? loadError.message : t('settingsEdit.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   useEffect(() => {
     loadSettings();
@@ -115,7 +120,7 @@ function EditSettingsContent() {
       ]);
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save settings.');
+      setError(saveError instanceof Error ? saveError.message : t('settingsEdit.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -141,22 +146,22 @@ function EditSettingsContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Edit Settings</Text>
-            <Text style={styles.subtitle}>Update institute name, teacher profile and default language.</Text>
+            <Text style={styles.title}>{t('settingsEdit.title')}</Text>
+            <Text style={styles.subtitle}>{t('settingsEdit.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Workspace settings</Text>
-          <Text style={styles.heroTitle}>Keep your institute details current</Text>
-          <Text style={styles.heroNote}>Used on receipts, reports, WhatsApp messages and the home dashboard.</Text>
+          <Text style={styles.heroLabel}>{t('settingsEdit.heroLabel')}</Text>
+          <Text style={styles.heroTitle}>{t('settingsEdit.heroTitle')}</Text>
+          <Text style={styles.heroNote}>{t('settingsEdit.heroNote')}</Text>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Institute</Text>
+          <Text style={styles.cardTitle}>{t('settingsEdit.instituteTitle')}</Text>
           <FormTextField
-            label="Institute name"
-            placeholder="Your Classes"
+            label={t('settingsEdit.instituteNameLabel')}
+            placeholder={t('settingsEdit.institutePlaceholder')}
             icon="school-outline"
             value={workspaceName}
             onChangeText={setWorkspaceName}
@@ -164,17 +169,17 @@ function EditSettingsContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Teacher profile</Text>
+          <Text style={styles.cardTitle}>{t('settingsEdit.teacherProfileTitle')}</Text>
           <FormTextField
-            label="Display name"
-            placeholder="Your name"
+            label={t('settingsEdit.displayNameLabel')}
+            placeholder={t('settingsEdit.displayNamePlaceholder')}
             icon="account-outline"
             value={displayName}
             onChangeText={setDisplayName}
           />
           <FormTextField
-            label="Mobile number"
-            placeholder="+94 77 123 4567"
+            label={t('settingsEdit.mobileLabel')}
+            placeholder={t('settingsEdit.mobilePlaceholder')}
             icon="phone-outline"
             keyboardType="phone-pad"
             value={phone}
@@ -183,86 +188,82 @@ function EditSettingsContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Institute type & fees</Text>
-          <Text style={styles.cardHint}>
-            Academies can charge a one-time admission fee. Pro-rata applies half-month rules for mid-month enrollments.
-          </Text>
+          <Text style={styles.cardTitle}>{t('settingsEdit.instituteFeesTitle')}</Text>
+          <Text style={styles.cardHint}>{t('settingsEdit.instituteFeesHint')}</Text>
           <ChoiceChipGroup
-            label="Institute type"
-            selected={getInstituteTypeLabel(instituteType)}
-            options={instituteTypeOptions.map((option) => option.label)}
+            label={t('settingsEdit.instituteTypeLabel')}
+            selected={instituteTypeLabels[instituteType]}
+            options={instituteTypeValues.map((value) => instituteTypeLabels[value])}
             onSelect={(label) => {
-              const match = instituteTypeOptions.find((option) => option.label === label);
-              if (match) setInstituteType(match.value);
+              const match = instituteTypeValues.find((value) => instituteTypeLabels[value] === label);
+              if (match) setInstituteType(match);
             }}
           />
           <FormTextField
-            label="Admission fee (LKR)"
-            placeholder="0"
+            label={t('settingsEdit.admissionFeeLabel')}
+            placeholder={t('settingsEdit.admissionPlaceholder')}
             icon="cash-plus"
             keyboardType="number-pad"
             value={admissionFeeLkr}
             onChangeText={setAdmissionFeeLkr}
-            helper="One-time per student. Set 0 for solo tutors with no registration fee."
+            helper={t('settingsEdit.admissionHelper')}
           />
           <ChoiceChipGroup
-            label="Mid-month pro-rata"
-            selected={proRataEnabled ? 'Enabled' : 'Disabled'}
-            options={['Enabled', 'Disabled']}
-            onSelect={(label) => setProRataEnabled(label === 'Enabled')}
+            label={t('settingsEdit.proRataLabel')}
+            selected={proRataEnabled ? t('settingsEdit.enabled') : t('settingsEdit.disabled')}
+            options={[t('settingsEdit.enabled'), t('settingsEdit.disabled')]}
+            onSelect={(label) => setProRataEnabled(label === t('settingsEdit.enabled'))}
           />
           {instituteType !== 'solo' ? (
             <>
               <FormTextField
-                label="Minimum attendance for certificates (%)"
-                placeholder="75"
+                label={t('settingsEdit.minAttendanceLabel')}
+                placeholder={t('settingsEdit.minAttendancePlaceholder')}
                 icon="percent-outline"
                 keyboardType="number-pad"
                 value={minAttendanceForCertificate}
                 onChangeText={setMinAttendanceForCertificate}
-                helper="Students below this threshold are blocked from certification."
+                helper={t('settingsEdit.minAttendanceHelper')}
               />
               <ChoiceChipGroup
-                label="Require all fees cleared for certificates"
-                selected={requireFeesClearForCertificate ? 'Required' : 'Not required'}
-                options={['Required', 'Not required']}
-                onSelect={(label) => setRequireFeesClearForCertificate(label === 'Required')}
+                label={t('settingsEdit.requireFeesLabel')}
+                selected={requireFeesClearForCertificate ? t('settingsEdit.required') : t('settingsEdit.notRequired')}
+                options={[t('settingsEdit.required'), t('settingsEdit.notRequired')]}
+                onSelect={(label) => setRequireFeesClearForCertificate(label === t('settingsEdit.required'))}
               />
             </>
           ) : null}
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Absence alerts</Text>
-          <Text style={styles.cardHint}>
-            After saving attendance, open the message composer for absent students and send same-day parent WhatsApp alerts.
-          </Text>
+          <Text style={styles.cardTitle}>{t('settingsEdit.absenceTitle')}</Text>
+          <Text style={styles.cardHint}>{t('settingsEdit.absenceHint')}</Text>
           <ChoiceChipGroup
-            label="Same-day absence alerts"
-            selected={absenceAlertsEnabled ? 'Enabled' : 'Disabled'}
-            options={['Enabled', 'Disabled']}
-            onSelect={(label) => setAbsenceAlertsEnabled(label === 'Enabled')}
+            label={t('settingsEdit.absenceAlertsLabel')}
+            selected={absenceAlertsEnabled ? t('settingsEdit.enabled') : t('settingsEdit.disabled')}
+            options={[t('settingsEdit.enabled'), t('settingsEdit.disabled')]}
+            onSelect={(label) => setAbsenceAlertsEnabled(label === t('settingsEdit.enabled'))}
           />
           <FormTextField
-            label="Absence alert template"
-            placeholder="Dear parent..."
+            label={t('settingsEdit.absenceTemplateLabel')}
+            placeholder={t('settingsEdit.absencePlaceholder')}
             icon="message-alert-outline"
             value={absenceAlertTemplate}
             onChangeText={setAbsenceAlertTemplate}
             multiline
-            helper="Placeholders: {{student_name}}, {{class_name}}, {{session_date}}, {{workspace_name}}"
+            helper={t('settingsEdit.absenceTemplateHelper')}
           />
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Default language</Text>
+          <Text style={styles.cardTitle}>{t('settingsEdit.defaultLanguageTitle')}</Text>
           <ChoiceChipGroup
-            label="Language"
-            selected={getLanguageLabel(defaultLanguage)}
-            options={languageOptions.map((option) => option.label)}
+            label={t('settingsEdit.languageLabel')}
+            selected={languageLabels[defaultLanguage]}
+            options={languageValues.map((value) => languageLabels[value])}
             onSelect={(label) => {
-              const match = languageOptions.find((option) => option.label === label);
-              if (match) setDefaultLanguage(match.value);
+              const match = languageValues.find((value) => languageLabels[value] === label);
+              if (match) setDefaultLanguage(match);
             }}
           />
         </PremiumCard>
@@ -271,14 +272,14 @@ function EditSettingsContent() {
       </ScrollView>
 
       <View style={styles.saveBar}>
-        <Text style={styles.saveNote}>Changes apply across your workspace</Text>
+        <Text style={styles.saveNote}>{t('settingsEdit.saveFootnote')}</Text>
         <Pressable style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving}>
           {isSaving ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
             <>
               <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Save Settings</Text>
+              <Text style={styles.saveButtonText}>{t('settingsEdit.saveSettings')}</Text>
             </>
           )}
         </Pressable>

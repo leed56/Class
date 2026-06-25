@@ -14,6 +14,8 @@ import { getInvoiceById, listOutstandingInvoices, listStudentOpenInvoices, recor
 import { FeeInvoice } from '@/features/fees/models';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { PaymentMethod } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -21,11 +23,11 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-function invoiceLineLabel(invoice: FeeInvoice) {
-  if (invoice.invoiceType === 'admission') return 'Admission fee';
-  if (invoice.invoiceType === 'material') return 'Material fee';
-  if (invoice.invoiceType === 'exam') return 'Exam fee';
-  return `${invoice.className} • ${invoice.month}`;
+function invoiceLineLabel(invoice: FeeInvoice, t: (key: string) => string) {
+  if (invoice.invoiceType === 'admission') return t('studentProfile.admissionFee');
+  if (invoice.invoiceType === 'material') return t('studentProfile.materialFee');
+  if (invoice.invoiceType === 'exam') return t('studentProfile.examFee');
+  return interpolate(t('studentProfile.classMonth'), { className: invoice.className, month: invoice.month });
 }
 
 function computeSplitTotals(selectedLines: Record<string, { included: boolean; amount: string }>) {
@@ -44,6 +46,7 @@ export default function RecordPaymentScreen() {
 
 function RecordPaymentContent() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ invoiceId?: string; studentId?: string }>();
   const [invoice, setInvoice] = useState<FeeInvoice | null>(null);
   const [pickerInvoices, setPickerInvoices] = useState<FeeInvoice[]>([]);
@@ -65,7 +68,7 @@ function RecordPaymentContent() {
       if (params.studentId) {
         const open = await listStudentOpenInvoices(params.studentId);
         setSplitInvoices(open);
-        setSplitStudentName(open[0]?.studentName ?? 'Student');
+        setSplitStudentName(open[0]?.studentName ?? t('recordPayment.studentFallback'));
         const initial: Record<string, { included: boolean; amount: string }> = {};
         for (const item of open) {
           const preselect = params.invoiceId ? item.id === params.invoiceId : true;
@@ -79,7 +82,7 @@ function RecordPaymentContent() {
       if (params.invoiceId) {
         const nextInvoice = await getInvoiceById(params.invoiceId);
         if (!nextInvoice) {
-          setError('Invoice not found.');
+          setError(t('recordPayment.invoiceNotFound'));
           setInvoice(null);
           return;
         }
@@ -91,11 +94,11 @@ function RecordPaymentContent() {
         setInvoice(null);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load invoice.');
+      setError(loadError instanceof Error ? loadError.message : t('recordPayment.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.invoiceId, params.studentId]);
+  }, [params.invoiceId, params.studentId, t]);
 
   useEffect(() => {
     loadScreen();
@@ -113,7 +116,7 @@ function RecordPaymentContent() {
       .filter((line) => line.amount > 0);
 
     if (lines.length === 0) {
-      setError('Select at least one invoice with an amount.');
+      setError(t('recordPayment.selectOneInvoice'));
       return;
     }
 
@@ -128,7 +131,7 @@ function RecordPaymentContent() {
       });
       router.replace(`/fees/receipt/${result.receiptNo}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not record payment.');
+      setError(saveError instanceof Error ? saveError.message : t('recordPayment.recordFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -137,11 +140,15 @@ function RecordPaymentContent() {
   function confirmSplitRecord() {
     const { total, count } = computeSplitTotals(selectedLines);
     Alert.alert(
-      'Record split payment?',
-      `Save ${formatLkr(total)} across ${count} invoice${count === 1 ? '' : 's'} for ${splitStudentName}.`,
+      t('recordPayment.splitConfirmTitle'),
+      interpolate(count === 1 ? t('recordPayment.splitConfirmMessage') : t('recordPayment.splitConfirmMessageMulti'), {
+        total: formatLkr(total),
+        count,
+        name: splitStudentName,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Record', onPress: handleSplitRecord },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('recordPayment.record'), onPress: handleSplitRecord },
       ],
     );
   }
@@ -161,7 +168,7 @@ function RecordPaymentContent() {
       setReceiptNo(result.payment.receiptNo);
       router.replace(`/fees/receipt/${result.payment.receiptNo}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not record payment.');
+      setError(saveError instanceof Error ? saveError.message : t('recordPayment.recordFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -170,11 +177,14 @@ function RecordPaymentContent() {
   function confirmRecord() {
     if (!invoice) return;
     Alert.alert(
-      'Record payment?',
-      `Save ${formatLkr(Number(amount) || 0)} for ${invoice.studentName}.`,
+      t('recordPayment.recordConfirmTitle'),
+      interpolate(t('recordPayment.recordConfirmMessage'), {
+        amount: formatLkr(Number(amount) || 0),
+        name: invoice.studentName,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Record', onPress: handleRecord },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('recordPayment.record'), onPress: handleRecord },
       ],
     );
   }
@@ -206,16 +216,16 @@ function RecordPaymentContent() {
                 </Pressable>
               </Link>
               <View style={styles.headerCopy}>
-                <Text style={styles.title}>Split Payment</Text>
-                <Text style={styles.subtitle}>No open invoices for {splitStudentName}.</Text>
+                <Text style={styles.title}>{t('recordPayment.splitTitle')}</Text>
+                <Text style={styles.subtitle}>{interpolate(t('recordPayment.splitSubtitleEmpty'), { name: splitStudentName })}</Text>
               </View>
             </View>
             <PremiumCard>
               <EmptyState
                 icon="cash-check"
-                title="All paid up"
-                message="This student has no outstanding invoices this month."
-                actionLabel="Back to student"
+                title={t('recordPayment.allPaidUp')}
+                message={t('recordPayment.allPaidUpMessage')}
+                actionLabel={t('recordPayment.backToStudent')}
                 actionHref={backHref}
               />
             </PremiumCard>
@@ -234,8 +244,8 @@ function RecordPaymentContent() {
               </Pressable>
             </Link>
             <View style={styles.headerCopy}>
-              <Text style={styles.title}>Split Payment</Text>
-              <Text style={styles.subtitle}>Allocate one receipt across admission, monthly and other open invoices.</Text>
+              <Text style={styles.title}>{t('recordPayment.splitTitle')}</Text>
+              <Text style={styles.subtitle}>{t('recordPayment.splitSubtitle')}</Text>
             </View>
           </View>
 
@@ -244,15 +254,19 @@ function RecordPaymentContent() {
               <MaterialCommunityIcons name="cash-multiple" size={30} color="white" />
             </View>
             <View style={styles.heroCopy}>
-              <Text style={styles.heroLabel}>Student</Text>
+              <Text style={styles.heroLabel}>{t('recordPayment.heroStudent')}</Text>
               <Text style={styles.heroTitle}>{splitStudentName}</Text>
-              <Text style={styles.heroNote}>{splitInvoices.length} open invoice{splitInvoices.length === 1 ? '' : 's'}</Text>
+              <Text style={styles.heroNote}>
+                {splitInvoices.length === 1
+                  ? t('recordPayment.openInvoicesSingle')
+                  : interpolate(t('recordPayment.openInvoicesMulti'), { count: splitInvoices.length })}
+              </Text>
             </View>
           </LinearGradient>
 
           <PremiumCard style={styles.formCard}>
-            <Text style={styles.cardTitle}>Select invoices</Text>
-            <Text style={styles.cardSubtitle}>Toggle lines and adjust amounts for partial payments.</Text>
+            <Text style={styles.cardTitle}>{t('recordPayment.selectInvoices')}</Text>
+            <Text style={styles.cardSubtitle}>{t('recordPayment.selectInvoicesHint')}</Text>
             <View style={styles.splitList}>
               {splitInvoices.map((item) => {
                 const line = selectedLines[item.id] ?? { included: false, amount: '0' };
@@ -270,8 +284,8 @@ function RecordPaymentContent() {
                       {line.included ? <MaterialCommunityIcons name="check" size={14} color="white" /> : null}
                     </Pressable>
                     <View style={styles.splitLineCopy}>
-                      <Text style={styles.splitLineTitle}>{invoiceLineLabel(item)}</Text>
-                      <Text style={styles.splitLineMeta}>Due {formatLkr(item.outstandingAmount)}</Text>
+                      <Text style={styles.splitLineTitle}>{invoiceLineLabel(item, t)}</Text>
+                      <Text style={styles.splitLineMeta}>{interpolate(t('recordPayment.dueMeta'), { amount: formatLkr(item.outstandingAmount) })}</Text>
                     </View>
                     <TextInput
                       placeholder={`${item.outstandingAmount}`}
@@ -293,16 +307,16 @@ function RecordPaymentContent() {
           </PremiumCard>
 
           <PremiumCard style={styles.formCard}>
-            <Text style={styles.cardTitle}>Payment details</Text>
+            <Text style={styles.cardTitle}>{t('recordPayment.paymentDetails')}</Text>
             <View style={styles.methodBlock}>
-              <Text style={styles.inputLabel}>Payment method</Text>
+              <Text style={styles.inputLabel}>{t('recordPayment.paymentMethod')}</Text>
               <View style={styles.methodRow}>
-                <MethodChip label="Cash" icon="cash" active={method === 'cash'} onPress={() => setMethod('cash')} />
-                <MethodChip label="Bank" icon="bank-outline" active={method === 'bank'} onPress={() => setMethod('bank')} />
-                <MethodChip label="Online" icon="credit-card-outline" active={method === 'online'} onPress={() => setMethod('online')} />
+                <MethodChip label={t('recordPayment.methodCash')} icon="cash" active={method === 'cash'} onPress={() => setMethod('cash')} />
+                <MethodChip label={t('recordPayment.methodBank')} icon="bank-outline" active={method === 'bank'} onPress={() => setMethod('bank')} />
+                <MethodChip label={t('recordPayment.methodOnline')} icon="credit-card-outline" active={method === 'online'} onPress={() => setMethod('online')} />
               </View>
             </View>
-            <FormTextField label="Note" placeholder="Optional payment note" icon="note-text-outline" value={note} onChangeText={setNote} />
+            <FormTextField label={t('recordPayment.noteLabel')} placeholder={t('recordPayment.notePlaceholder')} icon="note-text-outline" value={note} onChangeText={setNote} />
           </PremiumCard>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -310,9 +324,13 @@ function RecordPaymentContent() {
 
         <View style={styles.saveBar}>
           <View>
-            <Text style={styles.saveLabel}>Split total</Text>
+            <Text style={styles.saveLabel}>{t('recordPayment.splitTotal')}</Text>
             <Text style={styles.saveValue}>{formatLkr(splitTotal)}</Text>
-            <Text style={styles.saveMeta}>{splitLineCount} line{splitLineCount === 1 ? '' : 's'} selected</Text>
+            <Text style={styles.saveMeta}>
+              {splitLineCount === 1
+                ? t('recordPayment.linesSelectedSingle')
+                : interpolate(t('recordPayment.linesSelectedMulti'), { count: splitLineCount })}
+            </Text>
           </View>
           <Pressable
             style={[styles.saveButton, (isSaving || splitLineCount === 0) && styles.saveButtonDisabled]}
@@ -324,7 +342,7 @@ function RecordPaymentContent() {
             ) : (
               <>
                 <MaterialCommunityIcons name="receipt-text-check" size={18} color="white" />
-                <Text style={styles.saveButtonText}>Record split</Text>
+                <Text style={styles.saveButtonText}>{t('recordPayment.recordSplit')}</Text>
               </>
             )}
           </Pressable>
@@ -344,8 +362,8 @@ function RecordPaymentContent() {
               </Pressable>
             </Link>
             <View style={styles.headerCopy}>
-              <Text style={styles.title}>Record Payment</Text>
-              <Text style={styles.subtitle}>Choose an outstanding invoice to collect cash or bank payment.</Text>
+              <Text style={styles.title}>{t('recordPayment.title')}</Text>
+              <Text style={styles.subtitle}>{t('recordPayment.subtitlePicker')}</Text>
             </View>
           </View>
 
@@ -355,9 +373,9 @@ function RecordPaymentContent() {
             <PremiumCard>
               <EmptyState
                 icon="cash-check"
-                title="No outstanding invoices"
-                message="All enrolled students are paid up for this month."
-                actionLabel="Back to Fees"
+                title={t('recordPayment.noOutstanding')}
+                message={t('recordPayment.noOutstandingMessage')}
+                actionLabel={t('recordPayment.backToFees')}
                 actionHref="/(tabs)/fees"
               />
             </PremiumCard>
@@ -382,7 +400,7 @@ function RecordPaymentContent() {
           <Text style={styles.errorText}>{error}</Text>
           <Link href="/(tabs)/fees" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to fees</Text>
+              <Text style={styles.retryText}>{t('recordPayment.backToFees')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -404,8 +422,8 @@ function RecordPaymentContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Record Payment</Text>
-            <Text style={styles.subtitle}>Cash-first tuition collection with instant receipt preview.</Text>
+            <Text style={styles.title}>{t('recordPayment.title')}</Text>
+            <Text style={styles.subtitle}>{t('recordPayment.subtitleSingle')}</Text>
           </View>
         </View>
 
@@ -414,7 +432,7 @@ function RecordPaymentContent() {
             <MaterialCommunityIcons name="cash-register" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Selected invoice</Text>
+            <Text style={styles.heroLabel}>{t('recordPayment.selectedInvoice')}</Text>
             <Text style={styles.heroTitle}>{invoice.studentName}</Text>
             <Text style={styles.heroNote}>{invoice.className} • {invoice.month}</Text>
           </View>
@@ -423,24 +441,24 @@ function RecordPaymentContent() {
         <PremiumCard style={styles.invoiceCard}>
           <View style={styles.invoiceHeader}>
             <View>
-              <Text style={styles.cardTitle}>Invoice summary</Text>
-              <Text style={styles.cardSubtitle}>Outstanding balance before payment</Text>
+              <Text style={styles.cardTitle}>{t('recordPayment.invoiceSummary')}</Text>
+              <Text style={styles.cardSubtitle}>{t('recordPayment.outstandingBefore')}</Text>
             </View>
             <View style={styles.monthPill}>
               <Text style={styles.monthText}>{invoice.month}</Text>
             </View>
           </View>
           <View style={styles.figureRow}>
-            <Figure label="Monthly fee" value={formatLkr(invoice.monthlyFee)} />
-            <Figure label="Paid" value={formatLkr(invoice.paidAmount)} />
-            <Figure label="Due" value={formatLkr(invoice.outstandingAmount)} danger />
+            <Figure label={t('recordPayment.monthlyFee')} value={formatLkr(invoice.monthlyFee)} />
+            <Figure label={t('recordPayment.paid')} value={formatLkr(invoice.paidAmount)} />
+            <Figure label={t('recordPayment.due')} value={formatLkr(invoice.outstandingAmount)} danger />
           </View>
         </PremiumCard>
 
         <PremiumCard style={styles.formCard}>
-          <Text style={styles.cardTitle}>Payment details</Text>
+          <Text style={styles.cardTitle}>{t('recordPayment.paymentDetails')}</Text>
           <FormTextField
-            label="Amount received"
+            label={t('recordPayment.amountReceived')}
             placeholder={`${invoice.outstandingAmount}`}
             icon="cash"
             keyboardType="number-pad"
@@ -448,14 +466,14 @@ function RecordPaymentContent() {
             onChangeText={setAmount}
           />
           <View style={styles.methodBlock}>
-            <Text style={styles.inputLabel}>Payment method</Text>
+            <Text style={styles.inputLabel}>{t('recordPayment.paymentMethod')}</Text>
             <View style={styles.methodRow}>
-              <MethodChip label="Cash" icon="cash" active={method === 'cash'} onPress={() => setMethod('cash')} />
-              <MethodChip label="Bank" icon="bank-outline" active={method === 'bank'} onPress={() => setMethod('bank')} />
-              <MethodChip label="Online" icon="credit-card-outline" active={method === 'online'} onPress={() => setMethod('online')} />
+              <MethodChip label={t('recordPayment.methodCash')} icon="cash" active={method === 'cash'} onPress={() => setMethod('cash')} />
+              <MethodChip label={t('recordPayment.methodBank')} icon="bank-outline" active={method === 'bank'} onPress={() => setMethod('bank')} />
+              <MethodChip label={t('recordPayment.methodOnline')} icon="credit-card-outline" active={method === 'online'} onPress={() => setMethod('online')} />
             </View>
           </View>
-          <FormTextField label="Note" placeholder="Optional payment note" icon="note-text-outline" value={note} onChangeText={setNote} />
+          <FormTextField label={t('recordPayment.noteLabel')} placeholder={t('recordPayment.notePlaceholder')} icon="note-text-outline" value={note} onChangeText={setNote} />
         </PremiumCard>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -463,8 +481,8 @@ function RecordPaymentContent() {
         <PremiumCard style={styles.receiptCard}>
           <View style={styles.receiptTopRow}>
             <View>
-              <Text style={styles.cardTitle}>Receipt preview</Text>
-              <Text style={styles.cardSubtitle}>Ready to share after saving</Text>
+              <Text style={styles.cardTitle}>{t('recordPayment.receiptPreview')}</Text>
+              <Text style={styles.cardSubtitle}>{t('recordPayment.receiptReady')}</Text>
             </View>
             {receiptNo ? (
               <View style={styles.receiptNoPill}>
@@ -474,15 +492,15 @@ function RecordPaymentContent() {
           </View>
           <View style={styles.receiptPaper}>
             <View style={styles.receiptLine}>
-              <Text style={styles.receiptLabel}>Student</Text>
+              <Text style={styles.receiptLabel}>{t('recordPayment.receiptStudent')}</Text>
               <Text style={styles.receiptValue}>{invoice.studentName}</Text>
             </View>
             <View style={styles.receiptLine}>
-              <Text style={styles.receiptLabel}>Class</Text>
+              <Text style={styles.receiptLabel}>{t('recordPayment.receiptClass')}</Text>
               <Text style={styles.receiptValue}>{invoice.className}</Text>
             </View>
             <View style={styles.receiptLine}>
-              <Text style={styles.receiptLabel}>Amount</Text>
+              <Text style={styles.receiptLabel}>{t('recordPayment.receiptAmount')}</Text>
               <Text style={styles.receiptAmount}>{formatLkr(paymentAmount)}</Text>
             </View>
           </View>
@@ -493,15 +511,15 @@ function RecordPaymentContent() {
             <MaterialCommunityIcons name="whatsapp" size={24} color={colors.success} />
           </View>
           <View style={styles.whatsappCopy}>
-            <Text style={styles.cardTitle}>Send receipt to parent</Text>
-            <Text style={styles.cardSubtitle}>Share receipt to {invoice.parentPhone} through WhatsApp after recording.</Text>
+            <Text style={styles.cardTitle}>{t('recordPayment.sendReceiptTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{interpolate(t('recordPayment.sendReceiptSubtitle'), { phone: invoice.parentPhone })}</Text>
           </View>
         </PremiumCard>
       </ScrollView>
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Payment total</Text>
+          <Text style={styles.saveLabel}>{t('recordPayment.paymentTotal')}</Text>
           <Text style={styles.saveValue}>{formatLkr(paymentAmount)}</Text>
         </View>
         <Pressable style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={confirmRecord} disabled={isSaving}>
@@ -510,7 +528,7 @@ function RecordPaymentContent() {
           ) : (
             <>
               <MaterialCommunityIcons name="receipt-text-check" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Record</Text>
+              <Text style={styles.saveButtonText}>{t('recordPayment.record')}</Text>
             </>
           )}
         </Pressable>

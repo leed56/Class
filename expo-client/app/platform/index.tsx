@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +13,9 @@ import {
   PlatformInvite,
   PlatformWorkspace,
 } from '@/features/platform/platformService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -22,11 +25,21 @@ function formatDate(value: string) {
 
 export default function PlatformAdminScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [workspaces, setWorkspaces] = useState<PlatformWorkspace[]>([]);
   const [invites, setInvites] = useState<PlatformInvite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  const instituteTypeLabels = useMemo(
+    (): Record<InstituteType, string> => ({
+      solo: t('platformAdmin.typeSolo'),
+      academy: t('platformAdmin.typeAcademy'),
+      institute: t('platformAdmin.typeInstitute'),
+    }),
+    [t],
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -36,11 +49,11 @@ export default function PlatformAdminScreen() {
       setWorkspaces(nextWorkspaces);
       setInvites(nextInvites);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load platform data.');
+      setError(loadError instanceof Error ? loadError.message : t('platformAdmin.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,6 +70,8 @@ export default function PlatformAdminScreen() {
     }
   }
 
+  const openInvites = invites.filter((invite) => !invite.usedAt).length;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -67,22 +82,24 @@ export default function PlatformAdminScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Platform admin</Text>
-            <Text style={styles.subtitle}>Provision customers, invite links and workspace overview.</Text>
+            <Text style={styles.title}>{t('platformAdmin.title')}</Text>
+            <Text style={styles.subtitle}>{t('platformAdmin.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
           <MaterialCommunityIcons name="shield-crown-outline" size={28} color="white" />
-          <Text style={styles.heroTitle}>ClassFlow operator console</Text>
+          <Text style={styles.heroTitle}>{t('platformAdmin.heroTitle')}</Text>
           <Text style={styles.heroNote}>
-            {isLoading ? 'Loading…' : `${workspaces.length} workspaces • ${invites.filter((i) => !i.usedAt).length} open invites`}
+            {isLoading
+              ? t('platformAdmin.heroLoading')
+              : interpolate(t('platformAdmin.heroNote'), { workspaces: workspaces.length, invites: openInvites })}
           </Text>
         </LinearGradient>
 
         <Pressable style={styles.primaryButton} onPress={() => router.push('/platform/invites/new' as Href)}>
           <MaterialCommunityIcons name="link-plus" size={20} color="white" />
-          <Text style={styles.primaryButtonText}>Create customer invite</Text>
+          <Text style={styles.primaryButtonText}>{t('platformAdmin.createInvite')}</Text>
         </Pressable>
 
         {error ? (
@@ -92,22 +109,26 @@ export default function PlatformAdminScreen() {
         ) : null}
 
         <PremiumCard style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Workspaces</Text>
+          <Text style={styles.sectionTitle}>{t('platformAdmin.workspacesTitle')}</Text>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : workspaces.length === 0 ? (
-            <Text style={styles.emptyText}>No workspaces yet.</Text>
+            <Text style={styles.emptyText}>{t('platformAdmin.emptyWorkspaces')}</Text>
           ) : (
             workspaces.map((workspace) => (
               <View key={workspace.workspaceId} style={styles.row}>
                 <View style={styles.rowCopy}>
                   <Text style={styles.rowTitle}>{workspace.workspaceName}</Text>
                   <Text style={styles.rowMeta}>
-                    {workspace.instituteType}
-                    {workspace.academySector ? ` • ${workspace.academySector}` : ''} • {workspace.ownerEmail || 'no owner email'}
+                    {instituteTypeLabels[workspace.instituteType as InstituteType] ?? workspace.instituteType}
+                    {workspace.academySector ? ` • ${workspace.academySector}` : ''} •{' '}
+                    {workspace.ownerEmail || t('platformAdmin.noOwnerEmail')}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    {workspace.memberCount} members • {formatDate(workspace.createdAt)}
+                    {interpolate(t('platformAdmin.membersMeta'), {
+                      count: workspace.memberCount,
+                      date: formatDate(workspace.createdAt),
+                    })}
                   </Text>
                 </View>
               </View>
@@ -116,30 +137,34 @@ export default function PlatformAdminScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Recent invites</Text>
+          <Text style={styles.sectionTitle}>{t('platformAdmin.invitesTitle')}</Text>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : invites.length === 0 ? (
-            <Text style={styles.emptyText}>No invites created yet.</Text>
+            <Text style={styles.emptyText}>{t('platformAdmin.emptyInvites')}</Text>
           ) : (
             invites.map((invite) => (
               <View key={invite.id} style={styles.row}>
                 <View style={styles.rowCopy}>
                   <Text style={styles.rowTitle}>
-                    {invite.instituteType}
+                    {instituteTypeLabels[invite.instituteType as InstituteType] ?? invite.instituteType}
                     {invite.academySector ? ` • ${invite.academySector}` : ''}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    {invite.workspaceNameHint || 'No name hint'}
-                    {invite.email ? ` • locked to ${invite.email}` : ''}
+                    {invite.workspaceNameHint || t('platformAdmin.noNameHint')}
+                    {invite.email ? ` • ${interpolate(t('platformAdmin.lockedToEmail'), { email: invite.email })}` : ''}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    {invite.usedAt ? `Used ${formatDate(invite.usedAt)}` : `Expires ${formatDate(invite.expiresAt)}`}
+                    {invite.usedAt
+                      ? interpolate(t('platformAdmin.inviteUsed'), { date: formatDate(invite.usedAt) })
+                      : interpolate(t('platformAdmin.inviteExpires'), { date: formatDate(invite.expiresAt) })}
                   </Text>
                 </View>
                 {!invite.usedAt ? (
                   <Pressable style={styles.copyButton} onPress={() => void copyInviteLink(invite.token)}>
-                    <Text style={styles.copyButtonText}>{copiedToken === invite.token ? 'Copied' : 'Copy link'}</Text>
+                    <Text style={styles.copyButtonText}>
+                      {copiedToken === invite.token ? t('platformAdmin.copied') : t('platformAdmin.copyLink')}
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>

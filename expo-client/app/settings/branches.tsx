@@ -27,6 +27,8 @@ import { Branch, Hall } from '@/features/locations/models';
 import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
 import { listWorkspaceScheduleConflicts } from '@/features/locations/timetableService';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -39,6 +41,7 @@ export default function BranchesSettingsScreen() {
 }
 
 function BranchesSettingsContent() {
+  const { t } = useI18n();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [branchName, setBranchName] = useState('');
@@ -68,11 +71,11 @@ function BranchesSettingsContent() {
         setSelectedBranchId(nextBranches[0].id);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load branches.');
+      setError(loadError instanceof Error ? loadError.message : t('branches.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedBranchId]);
+  }, [selectedBranchId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,7 +93,7 @@ function BranchesSettingsContent() {
       setSelectedBranchId(branch.id);
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not create branch.');
+      setError(saveError instanceof Error ? saveError.message : t('branches.createBranchFailed'));
     } finally {
       setIsSavingBranch(false);
     }
@@ -105,52 +108,60 @@ function BranchesSettingsContent() {
       setHallName('');
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not create hall.');
+      setError(saveError instanceof Error ? saveError.message : t('branches.createHallFailed'));
     } finally {
       setIsSavingHall(false);
     }
   }
 
   function confirmArchiveBranch(branch: Branch) {
-    Alert.alert('Archive branch', `Hide ${branch.name} and its halls from scheduling?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          setWorkingId(branch.id);
-          try {
-            await archiveBranch(branch.id);
-            await load();
-          } catch (archiveError) {
-            setError(archiveError instanceof Error ? archiveError.message : 'Could not archive branch.');
-          } finally {
-            setWorkingId(null);
-          }
+    Alert.alert(
+      t('branches.archiveBranchTitle'),
+      interpolate(t('branches.archiveBranchMessage'), { name: branch.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('branches.archive'),
+          style: 'destructive',
+          onPress: async () => {
+            setWorkingId(branch.id);
+            try {
+              await archiveBranch(branch.id);
+              await load();
+            } catch (archiveError) {
+              setError(archiveError instanceof Error ? archiveError.message : t('branches.archiveBranchFailed'));
+            } finally {
+              setWorkingId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   function confirmArchiveHall(hall: Hall) {
-    Alert.alert('Archive hall', `Hide ${hall.name} from class scheduling?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          setWorkingId(hall.id);
-          try {
-            await archiveHall(hall.id);
-            await load();
-          } catch (archiveError) {
-            setError(archiveError instanceof Error ? archiveError.message : 'Could not archive hall.');
-          } finally {
-            setWorkingId(null);
-          }
+    Alert.alert(
+      t('branches.archiveHallTitle'),
+      interpolate(t('branches.archiveHallMessage'), { name: hall.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('branches.archive'),
+          style: 'destructive',
+          onPress: async () => {
+            setWorkingId(hall.id);
+            try {
+              await archiveHall(hall.id);
+              await load();
+            } catch (archiveError) {
+              setError(archiveError instanceof Error ? archiveError.message : t('branches.archiveHallFailed'));
+            } finally {
+              setWorkingId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   const hallsForBranch = halls.filter((hall) => hall.branchId === selectedBranchId);
@@ -165,34 +176,34 @@ function BranchesSettingsContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Branches & halls</Text>
-            <Text style={styles.subtitle}>Manage institute locations and detect hall timetable conflicts.</Text>
+            <Text style={styles.title}>{t('branches.title')}</Text>
+            <Text style={styles.subtitle}>{t('branches.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Multi-location ops</Text>
-          <Text style={styles.heroTitle}>One dashboard, many branches</Text>
-          <Text style={styles.heroNote}>Classes link to a hall so collection and attendance roll up by branch.</Text>
+          <Text style={styles.heroLabel}>{t('branches.heroLabel')}</Text>
+          <Text style={styles.heroTitle}>{t('branches.heroTitle')}</Text>
+          <Text style={styles.heroNote}>{t('branches.heroNote')}</Text>
         </LinearGradient>
 
         {conflicts.length > 0 ? <ScheduleConflictBanner conflicts={conflicts} /> : null}
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Add branch</Text>
-          <FormTextField label="Branch name" placeholder="Colombo 07" icon="source-branch" value={branchName} onChangeText={setBranchName} />
-          <FormTextField label="Address (optional)" placeholder="123 Galle Road" icon="map-marker-outline" value={branchAddress} onChangeText={setBranchAddress} />
+          <Text style={styles.cardTitle}>{t('branches.addBranchTitle')}</Text>
+          <FormTextField label={t('branches.branchNameLabel')} placeholder={t('branches.branchNamePlaceholder')} icon="source-branch" value={branchName} onChangeText={setBranchName} />
+          <FormTextField label={t('branches.addressLabel')} placeholder={t('branches.addressPlaceholder')} icon="map-marker-outline" value={branchAddress} onChangeText={setBranchAddress} />
           <Pressable style={[styles.primaryButton, isSavingBranch && styles.primaryButtonDisabled]} onPress={handleCreateBranch} disabled={isSavingBranch || !branchName.trim()}>
-            {isSavingBranch ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.primaryButtonText}>Add branch</Text>}
+            {isSavingBranch ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.primaryButtonText}>{t('branches.addBranch')}</Text>}
           </Pressable>
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Branches</Text>
+          <Text style={styles.cardTitle}>{t('branches.branchesTitle')}</Text>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : branches.length === 0 ? (
-            <Text style={styles.cardHint}>No branches yet.</Text>
+            <Text style={styles.cardHint}>{t('branches.emptyBranches')}</Text>
           ) : (
             branches.map((branch, index) => (
               <View key={branch.id}>
@@ -216,24 +227,26 @@ function BranchesSettingsContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Halls in selected branch</Text>
-          <FormTextField label="Hall name" placeholder="Hall A" icon="door-open" value={hallName} onChangeText={setHallName} />
+          <Text style={styles.cardTitle}>{t('branches.hallsTitle')}</Text>
+          <FormTextField label={t('branches.hallNameLabel')} placeholder={t('branches.hallNamePlaceholder')} icon="door-open" value={hallName} onChangeText={setHallName} />
           <Pressable
             style={[styles.primaryButton, isSavingHall && styles.primaryButtonDisabled]}
             onPress={handleCreateHall}
             disabled={isSavingHall || !hallName.trim() || !selectedBranchId}
           >
-            {isSavingHall ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.primaryButtonText}>Add hall</Text>}
+            {isSavingHall ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.primaryButtonText}>{t('branches.addHall')}</Text>}
           </Pressable>
           {hallsForBranch.length === 0 ? (
-            <Text style={styles.cardHint}>No halls in this branch yet.</Text>
+            <Text style={styles.cardHint}>{t('branches.emptyHalls')}</Text>
           ) : (
             hallsForBranch.map((hall, index) => (
               <View key={hall.id}>
                 <View style={styles.hallRow}>
                   <View>
                     <Text style={styles.hallName}>{hall.name}</Text>
-                    {hall.capacity ? <Text style={styles.branchMeta}>Capacity {hall.capacity}</Text> : null}
+                    {hall.capacity ? (
+                      <Text style={styles.branchMeta}>{interpolate(t('branches.capacity'), { count: hall.capacity })}</Text>
+                    ) : null}
                   </View>
                   {workingId === hall.id ? (
                     <ActivityIndicator color={colors.primary} size="small" />

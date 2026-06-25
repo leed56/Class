@@ -15,6 +15,8 @@ import {
 import { QrScannerPanel } from '@/features/attendance/components/QrScannerPanel';
 import { parseStudentQrPayload } from '@/features/attendance/qrAttendance';
 import { AttendanceStudent } from '@/features/attendance/models';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -34,12 +36,13 @@ export default function ClassAttendanceScanScreen() {
 }
 
 function ClassAttendanceScanContent() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string; sessionDate?: string }>();
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
   const [sessionId, setSessionId] = useState('');
   const [sessionDate, setSessionDate] = useState('');
   const [workspaceId, setWorkspaceId] = useState('');
-  const [classLabel, setClassLabel] = useState('Class');
+  const [classLabel, setClassLabel] = useState(t('classScan.classFallback'));
   const [scanCount, setScanCount] = useState(0);
   const [recentScans, setRecentScans] = useState<ScanEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,13 +75,18 @@ function ClassAttendanceScanContent() {
       setSessionId(sheet.session.id);
       setSessionDate(sheet.session.session_date);
       setWorkspaceId(workspace?.id ?? '');
-      setClassLabel(`${sheet.tuitionClass.subject} Grade ${sheet.tuitionClass.grade}`);
+      setClassLabel(
+        interpolate(t('classScan.classLabel'), {
+          subject: sheet.tuitionClass.subject,
+          grade: sheet.tuitionClass.grade,
+        }),
+      );
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load scanner session.');
+      setError(loadError instanceof Error ? loadError.message : t('classScan.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId, params.sessionDate]);
+  }, [params.classId, params.sessionDate, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -91,15 +99,15 @@ function ClassAttendanceScanContent() {
 
     const payload = parseStudentQrPayload(rawValue);
     if (!payload) {
-      setFlash('Invalid QR code');
+      setFlash(t('classScan.invalidQr'));
       return;
     }
     if (payload.workspaceId !== workspaceId) {
-      setFlash('QR card is from another institute');
+      setFlash(t('classScan.wrongInstitute'));
       return;
     }
     if (!rosterIds.has(payload.studentId)) {
-      setFlash('Student is not enrolled in this class');
+      setFlash(t('classScan.notEnrolled'));
       return;
     }
 
@@ -107,7 +115,7 @@ function ClassAttendanceScanContent() {
     setError(null);
     try {
       await markStudentPresent(sessionId, payload.studentId, attendanceContext);
-      const studentName = studentNames.get(payload.studentId) ?? 'Student';
+      const studentName = studentNames.get(payload.studentId) ?? t('classScan.studentFallback');
       setStudents((current) =>
         current.map((student) =>
           student.id === payload.studentId ? { ...student, attendanceStatus: 'present' } : student,
@@ -123,9 +131,9 @@ function ClassAttendanceScanContent() {
         },
         ...current,
       ].slice(0, 8));
-      setFlash(`${studentName} marked present`);
+      setFlash(interpolate(t('classScan.markedPresent'), { name: studentName }));
     } catch (markError) {
-      setError(markError instanceof Error ? markError.message : 'Could not mark attendance.');
+      setError(markError instanceof Error ? markError.message : t('classScan.markFailed'));
     } finally {
       setIsMarking(false);
       setTimeout(() => setFlash(null), 1500);
@@ -152,15 +160,15 @@ function ClassAttendanceScanContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>QR check-in</Text>
-            <Text style={styles.subtitle}>Scan student cards to mark present for {classLabel}.</Text>
+            <Text style={styles.title}>{t('classScan.title')}</Text>
+            <Text style={styles.subtitle}>{interpolate(t('classScan.subtitle'), { classLabel })}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Fast attendance</Text>
-          <Text style={styles.heroTitle}>{scanCount} scanned</Text>
-          <Text style={styles.heroNote}>{students.length} students in today&apos;s roster</Text>
+          <Text style={styles.heroLabel}>{t('classScan.heroLabel')}</Text>
+          <Text style={styles.heroTitle}>{interpolate(t('classScan.heroTitle'), { count: scanCount })}</Text>
+          <Text style={styles.heroNote}>{interpolate(t('classScan.heroNote'), { count: students.length })}</Text>
         </LinearGradient>
 
         {flash ? (
@@ -178,11 +186,11 @@ function ClassAttendanceScanContent() {
 
         <PremiumCard style={styles.recentCard}>
           <View style={styles.recentHeader}>
-            <Text style={styles.cardTitle}>Recent scans</Text>
+            <Text style={styles.cardTitle}>{t('classScan.recentScans')}</Text>
             <Text style={styles.recentCount}>{recentScans.length}</Text>
           </View>
           {recentScans.length === 0 ? (
-            <Text style={styles.emptyText}>Scanned students will appear here.</Text>
+            <Text style={styles.emptyText}>{t('classScan.recentEmpty')}</Text>
           ) : (
             <View style={styles.recentList}>
               {recentScans.map((item) => (
@@ -198,12 +206,12 @@ function ClassAttendanceScanContent() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>QR session</Text>
-          <Text style={styles.saveValue}>{scanCount} present via scan</Text>
+          <Text style={styles.saveLabel}>{t('classScan.sessionLabel')}</Text>
+          <Text style={styles.saveValue}>{interpolate(t('classScan.sessionValue'), { count: scanCount })}</Text>
         </View>
         <Link href={backHref} asChild>
           <Pressable style={styles.doneButton}>
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneButtonText}>{t('classScan.done')}</Text>
           </Pressable>
         </Link>
       </View>

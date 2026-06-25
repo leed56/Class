@@ -11,13 +11,17 @@ import { buildStudentQrPayload } from '@/features/attendance/qrAttendance';
 import { generateQrDataUrl } from '@/features/attendance/qrCodeImage';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function StudentQrCardScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState(t('studentQrCard.workspaceFallback'));
   const [workspaceId, setWorkspaceId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,9 +39,9 @@ export default function StudentQrCardScreen() {
         getCurrentWorkspace(),
       ]);
       setStudent(nextStudent);
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('studentQrCard.workspaceFallback'));
       if (!workspace?.id || !nextStudent) {
-        setError('Student or workspace not found.');
+        setError(t('studentQrCard.notFound'));
         return;
       }
       setWorkspaceId(workspace.id);
@@ -47,11 +51,11 @@ export default function StudentQrCardScreen() {
       });
       setQrDataUrl(await generateQrDataUrl(nextPayload, 260));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load QR card.');
+      setError(loadError instanceof Error ? loadError.message : t('studentQrCard.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,16 +77,23 @@ export default function StudentQrCardScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Student not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('certificates.studentNotFound')}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to student</Text>
+              <Text style={styles.retryText}>{t('studentQrCard.backToStudent')}</Text>
             </Pressable>
           </Link>
         </View>
       </SafeAreaView>
     );
   }
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[student.medium as Medium] ?? student.medium;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -94,8 +105,8 @@ export default function StudentQrCardScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Student QR ID</Text>
-            <Text style={styles.subtitle}>Print or save this card for fast class check-in.</Text>
+            <Text style={styles.title}>{t('studentQrCard.title')}</Text>
+            <Text style={styles.subtitle}>{t('studentQrCard.subtitle')}</Text>
           </View>
         </View>
 
@@ -103,7 +114,7 @@ export default function StudentQrCardScreen() {
           <Text style={styles.heroLabel}>{workspaceName}</Text>
           <Text style={styles.heroTitle}>{student.name}</Text>
           <Text style={styles.heroNote}>
-            Grade {student.grade} • {student.medium}
+            {interpolate(t('studentQrCard.heroNote'), { grade: student.grade, medium })}
           </Text>
         </LinearGradient>
 
@@ -113,13 +124,13 @@ export default function StudentQrCardScreen() {
           ) : (
             <ActivityIndicator color={colors.primary} size="large" />
           )}
-          <Text style={styles.qrHint}>Scan at class attendance to mark present instantly.</Text>
+          <Text style={styles.qrHint}>{t('studentQrCard.qrHint')}</Text>
         </PremiumCard>
 
         <PremiumCard style={styles.metaCard}>
-          <MetaRow label="Student" value={student.name} />
-          <MetaRow label="Institute" value={workspaceName} />
-          <MetaRow label="Workspace ID" value={workspaceId.slice(0, 8) + '…'} />
+          <MetaRow label={t('studentQrCard.studentLabel')} value={student.name} />
+          <MetaRow label={t('studentQrCard.instituteLabel')} value={workspaceName} />
+          <MetaRow label={t('studentQrCard.workspaceIdLabel')} value={workspaceId.slice(0, 8) + '…'} />
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>

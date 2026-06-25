@@ -11,9 +11,12 @@ import {
 } from '@/features/courses/schoolSubjectModel';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
+
+const MEDIUM_VALUES = ['English', 'Sinhala', 'Tamil'] as const;
 
 type Props = {
   subjectName: string;
@@ -38,25 +41,31 @@ export function SchoolClassForm({
   onSessionTypeChange,
   showBuildingHint = false,
 }: Props) {
+  const { t } = useI18n();
   const preview = buildSchoolClassSubject(subjectName, sessionType);
+
+  const mediumLabels = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  } as const;
+
+  const sessionLabels = SCHOOL_SESSION_OPTIONS.map((item) => item.label);
+  const selectedSessionLabel = getSchoolSessionLabel(sessionType);
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.hint}>
-        {showBuildingHint
-          ? 'Tuition building: pick your subject, grade, medium and session. Students pay you — not the building admin.'
-          : 'Any school subject, any grade up to A/L, all mediums. Type your own subject if it is not listed.'}
-      </Text>
+      <Text style={styles.hint}>{showBuildingHint ? t('classForm.schoolHintBuilding') : t('classForm.schoolHintSolo')}</Text>
 
       <FormTextField
-        label="Subject name"
-        placeholder="e.g. Combined Maths, Sinhala Literature, ICT"
+        label={t('classForm.subjectNameLabel')}
+        placeholder={t('classForm.subjectNamePlaceholder')}
         icon="book-open-page-variant"
         value={subjectName}
         onChangeText={onSubjectNameChange}
       />
 
-      <Text style={styles.chipLabel}>Quick pick subject</Text>
+      <Text style={styles.chipLabel}>{t('classForm.quickPickSubject')}</Text>
       <View style={styles.subjectGrid}>
         {COMMON_SCHOOL_SUBJECTS.map((item) => {
           const active = subjectName === item;
@@ -75,23 +84,26 @@ export function SchoolClassForm({
       </View>
 
       <ChoiceChipGroup
-        label="Grade (1–13, up to A/L)"
+        label={t('classForm.gradeLabel')}
         selected={grade}
         options={[...SCHOOL_GRADE_OPTIONS]}
         onSelect={(value) => onGradeChange(value as SchoolGrade)}
       />
 
       <ChoiceChipGroup
-        label="Medium"
-        selected={medium}
-        options={['English', 'Sinhala', 'Tamil']}
-        onSelect={(value) => onMediumChange(value as Medium)}
+        label={t('classForm.mediumLabel')}
+        selected={mediumLabels[medium]}
+        options={MEDIUM_VALUES.map((value) => mediumLabels[value])}
+        onSelect={(label) => {
+          const match = MEDIUM_VALUES.find((value) => mediumLabels[value] === label);
+          if (match) onMediumChange(match);
+        }}
       />
 
       <ChoiceChipGroup
-        label="Class type"
-        selected={getSchoolSessionLabel(sessionType)}
-        options={SCHOOL_SESSION_OPTIONS.map((item) => item.label)}
+        label={t('classForm.classTypeLabel')}
+        selected={selectedSessionLabel}
+        options={sessionLabels}
         onSelect={(label) => {
           const match = SCHOOL_SESSION_OPTIONS.find((item) => item.label === label);
           if (match) onSessionTypeChange(match.value);
@@ -100,7 +112,7 @@ export function SchoolClassForm({
 
       {preview ? (
         <View style={styles.preview}>
-          <Text style={styles.previewLabel}>Class label</Text>
+          <Text style={styles.previewLabel}>{t('classForm.classLabelPreview')}</Text>
           <Text style={styles.previewValue}>{preview}</Text>
         </View>
       ) : null}

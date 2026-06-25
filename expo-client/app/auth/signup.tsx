@@ -8,10 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PremiumCard } from '@/components/PremiumCard';
 import { signUpTeacher } from '@/features/auth/authService';
 import { readInviteToken, saveInviteToken } from '@/features/platform/inviteStorage';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function SignupScreen() {
+  const { t } = useI18n();
   const { invite } = useLocalSearchParams<{ invite?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +36,7 @@ export default function SignupScreen() {
 
   async function handleSignup() {
     if (!email.trim() || password.length < 6) {
-      setError('Use a valid email and a password with at least 6 characters.');
+      setError(t('auth.passwordInvalid'));
       return;
     }
 
@@ -50,16 +52,16 @@ export default function SignupScreen() {
         return;
       }
 
-      setSuccessMessage('Account created. Check your email to confirm, then sign in.');
+      setSuccessMessage(t('auth.signupSuccess'));
     } catch (authError) {
-      setError(authError instanceof Error ? authError.message : 'Could not create account. Please try again.');
+      setError(authError instanceof Error ? authError.message : t('auth.signupFailed'));
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/auth/login" asChild>
@@ -68,8 +70,8 @@ export default function SignupScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Create teacher account</Text>
-            <Text style={styles.subtitle}>Start with a free workspace. Upgrade later when billing is ready.</Text>
+            <Text style={styles.title}>{t('auth.signupTitle')}</Text>
+            <Text style={styles.subtitle}>{t('auth.signupSubtitle')}</Text>
           </View>
         </View>
 
@@ -78,25 +80,40 @@ export default function SignupScreen() {
             <MaterialCommunityIcons name="crown-outline" size={29} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Premium launch foundation</Text>
-            <Text style={styles.heroTitle}>Your tuition operating system starts here.</Text>
+            <Text style={styles.heroLabel}>{t('auth.signupHeroLabel')}</Text>
+            <Text style={styles.heroTitle}>{t('auth.signupHeroTitle')}</Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('auth.email')}</Text>
             <View style={styles.inputWrap}>
               <MaterialCommunityIcons name="email-outline" size={19} color={colors.textSecondary} />
-              <TextInput value={email} onChangeText={setEmail} placeholder="teacher@classflow.lk" placeholderTextColor={colors.textSecondary} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t('auth.emailPlaceholder')}
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.input}
+              />
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('auth.password')}</Text>
             <View style={styles.inputWrap}>
               <MaterialCommunityIcons name="lock-outline" size={19} color={colors.textSecondary} />
-              <TextInput value={password} onChangeText={setPassword} placeholder="Minimum 6 characters" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t('auth.passwordPlaceholder')}
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry
+                style={styles.input}
+              />
             </View>
           </View>
 
@@ -105,13 +122,13 @@ export default function SignupScreen() {
 
           <Pressable style={[styles.primaryButton, isLoading && styles.disabledButton]} onPress={handleSignup} disabled={isLoading}>
             {isLoading ? <ActivityIndicator color="white" /> : <MaterialCommunityIcons name="account-plus" size={19} color="white" />}
-            <Text style={styles.primaryButtonText}>{isLoading ? 'Creating...' : 'Create Account'}</Text>
+            <Text style={styles.primaryButtonText}>{isLoading ? t('auth.creating') : t('auth.createAccount')}</Text>
           </Pressable>
 
           {successMessage ? (
             <Link href="/auth/login" asChild>
               <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Go to Sign In</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.goToSignIn')}</Text>
               </Pressable>
             </Link>
           ) : null}

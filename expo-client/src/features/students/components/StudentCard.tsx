@@ -4,10 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
+import { formatStudentMeta } from '@/features/students/studentProfileModel';
+import { useI18n } from '@/i18n/I18nProvider';
+import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-import { formatStudentMeta } from '@/features/students/studentProfileModel';
-import { InstituteType } from '@/lib/database.types';
 import { Student } from '../types';
 import { FeeStatusBadge } from './FeeStatusBadge';
 
@@ -29,6 +30,7 @@ function getTrendColor(percent: number) {
 }
 
 export function StudentCard({ student, href, workspaceType, academySector }: StudentCardProps) {
+  const { t } = useI18n();
   const trendColor = getTrendColor(student.attendancePercent);
   const meta = formatStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector);
 
@@ -52,12 +54,12 @@ export function StudentCard({ student, href, workspaceType, academySector }: Stu
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Attendance</Text>
+            <Text style={styles.statLabel}>{t('students.avgAttendance')}</Text>
             <Text style={[styles.statValue, { color: trendColor }]}>{student.attendancePercent}%</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Outstanding</Text>
+            <Text style={styles.statLabel}>{t('students.outstanding')}</Text>
             <Text style={[styles.statValue, { color: student.outstandingAmount > 0 ? colors.danger : colors.success }]}>{formatLkr(student.outstandingAmount)}</Text>
           </View>
         </View>
@@ -70,7 +72,7 @@ export function StudentCard({ student, href, workspaceType, academySector }: Stu
           <View style={[styles.consentBadge, { backgroundColor: student.consentCaptured ? colors.successSoft : colors.warningSoft }]}>
             <MaterialCommunityIcons name={student.consentCaptured ? 'shield-check-outline' : 'shield-alert-outline'} size={14} color={student.consentCaptured ? colors.success : colors.warning} />
             <Text style={[styles.consentText, { color: student.consentCaptured ? colors.success : colors.warning }]}>
-              {student.consentCaptured ? 'Consent' : 'Need consent'}
+              {student.consentCaptured ? t('common.consent') : t('common.needConsent')}
             </Text>
           </View>
         </View>

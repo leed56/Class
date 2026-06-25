@@ -14,6 +14,9 @@ import { EnrolledStudentRow } from '@/features/enrollment/components/EnrolledStu
 import { ClassRosterEntry, listClassRoster, unenrollStudentFromClass } from '@/features/enrollment/enrollmentService';
 import { listInvoicesForMonth } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -23,6 +26,7 @@ function formatLkr(amount: number) {
 
 export default function ClassDetailScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
   const [tuitionClass, setTuitionClass] = useState<TuitionClass | null>(null);
   const [roster, setRoster] = useState<ClassRosterEntry[]>([]);
@@ -44,13 +48,13 @@ export default function ClassDetailScreen() {
       setTuitionClass(nextClass);
       setRoster(nextRoster);
       setInvoices(nextInvoices.filter((invoice) => invoice.classId === params.classId));
-      if (!nextClass) setError('Class not found.');
+      if (!nextClass) setError(t('classDetail.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load class.');
+      setError(loadError instanceof Error ? loadError.message : t('classDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId]);
+  }, [params.classId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,18 +68,21 @@ export default function ClassDetailScreen() {
       await unenrollStudentFromClass(params.classId, studentId);
       await loadClass();
     } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : 'Could not remove student.');
+      setError(removeError instanceof Error ? removeError.message : t('classDetail.removeFailed'));
     }
   }
 
   function confirmArchive() {
     if (!tuitionClass) return;
     Alert.alert(
-      'Archive class?',
-      `${tuitionClass.subject} G${tuitionClass.grade} will be hidden from active lists. History stays saved.`,
+      t('classDetail.archiveConfirmTitle'),
+      interpolate(t('classDetail.archiveConfirmMessage'), {
+        subject: tuitionClass.subject,
+        grade: tuitionClass.grade,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Archive', style: 'destructive', onPress: handleArchive },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('classDetail.archiveButton'), style: 'destructive', onPress: handleArchive },
       ],
     );
   }
@@ -88,7 +95,7 @@ export default function ClassDetailScreen() {
       await archiveClass(params.classId);
       router.replace('/(tabs)/classes');
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : 'Could not archive class.');
+      setError(archiveError instanceof Error ? archiveError.message : t('classDetail.archiveFailed'));
     } finally {
       setIsArchiving(false);
     }
@@ -108,10 +115,10 @@ export default function ClassDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Class not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('classDetail.notFound')}</Text>
           <Link href="/(tabs)/classes" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to classes</Text>
+              <Text style={styles.retryText}>{t('classDetail.backToClasses')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -122,6 +129,11 @@ export default function ClassDetailScreen() {
   if (!tuitionClass) return null;
 
   const capacityPercent = Math.round((tuitionClass.enrolledCount / tuitionClass.capacity) * 100);
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -135,7 +147,11 @@ export default function ClassDetailScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.title}>{tuitionClass.subject}</Text>
             <Text style={styles.subtitle}>
-              Grade {tuitionClass.grade} • {tuitionClass.medium} • {tuitionClass.day}
+              {interpolate(t('classDetail.gradeMediumDay'), {
+                grade: tuitionClass.grade,
+                medium: mediumLabels[tuitionClass.medium],
+                day: tuitionClass.day,
+              })}
             </Text>
           </View>
           <Link href={`/classes/edit/${params.classId}` as Href} asChild>
@@ -155,60 +171,64 @@ export default function ClassDetailScreen() {
             </View>
             <View style={styles.rosterBadge}>
               <Text style={styles.rosterBadgeValue}>{tuitionClass.enrolledCount}</Text>
-              <Text style={styles.rosterBadgeLabel}>enrolled</Text>
+              <Text style={styles.rosterBadgeLabel}>{t('classDetail.enrolled')}</Text>
             </View>
           </View>
           <View style={styles.heroProgressTrack}>
             <View style={[styles.heroProgressFill, { width: `${Math.min(capacityPercent, 100)}%` }]} />
           </View>
           <Text style={styles.heroNote}>
-            {tuitionClass.enrolledCount}/{tuitionClass.capacity} capacity • {formatLkr(tuitionClass.monthlyFee)} monthly
+            {interpolate(t('classDetail.capacityNote'), {
+              enrolled: tuitionClass.enrolledCount,
+              capacity: tuitionClass.capacity,
+              fee: `${formatLkr(tuitionClass.monthlyFee)} ${t('classDetail.monthlySuffix')}`,
+            })}
           </Text>
         </LinearGradient>
 
         <View style={styles.actionRow}>
           <NavPressable href={`/classes/${params.classId}/attendance-history` as Href} style={styles.secondaryAction}>
             <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>History</Text>
+            <Text style={styles.secondaryActionText}>{t('classDetail.history')}</Text>
           </NavPressable>
           <NavPressable href={`/classes/${params.classId}/certificates` as Href} style={styles.secondaryAction}>
             <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>Certificates</Text>
+            <Text style={styles.secondaryActionText}>{t('classDetail.certificates')}</Text>
           </NavPressable>
           <Pressable
             style={styles.secondaryAction}
             onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}
           >
             <MaterialCommunityIcons name="account-multiple-plus" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>Enroll Student</Text>
+            <Text style={styles.secondaryActionText}>{t('classDetail.enrollStudent')}</Text>
           </Pressable>
         </View>
 
         <View style={styles.primaryActionRow}>
           <NavPressable href={`/classes/${params.classId}/attendance` as Href} style={styles.primaryActionFull}>
             <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-            <Text style={styles.primaryActionText}>Take Attendance</Text>
+            <Text style={styles.primaryActionText}>{t('classDetail.takeAttendance')}</Text>
           </NavPressable>
           <NavPressable href={`/classes/${params.classId}/scan` as Href} style={styles.qrAction}>
             <MaterialCommunityIcons name="qrcode-scan" size={18} color={colors.primary} />
-            <Text style={styles.qrActionText}>QR Scan</Text>
+            <Text style={styles.qrActionText}>{t('classDetail.qrScan')}</Text>
           </NavPressable>
         </View>
 
         <PremiumCard>
-          <Text style={styles.cardTitle}>Class snapshot</Text>
+          <Text style={styles.cardTitle}>{t('classDetail.snapshotTitle')}</Text>
           <View style={styles.statsRow}>
-            <Stat label="Roster" value={`${tuitionClass.enrolledCount}`} color={colors.primary} />
-            <Stat label="Monthly fee" value={formatLkr(tuitionClass.monthlyFee)} color={colors.textPrimary} />
-            <Stat label="Attendance" value={`${tuitionClass.attendanceAverage}%`} color={colors.success} />
-            <Stat label="Collected" value={`${tuitionClass.collectionPercent}%`} color={colors.primary} />
+            <Stat label={t('classDetail.statRoster')} value={`${tuitionClass.enrolledCount}`} color={colors.primary} />
+            <Stat label={t('classDetail.statMonthlyFee')} value={formatLkr(tuitionClass.monthlyFee)} color={colors.textPrimary} />
+            <Stat label={t('classDetail.statAttendance')} value={`${tuitionClass.attendanceAverage}%`} color={colors.success} />
+            <Stat label={t('classDetail.statCollected')} value={`${tuitionClass.collectionPercent}%`} color={colors.primary} />
           </View>
         </PremiumCard>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Enrolled students</Text>
+          <Text style={styles.sectionTitle}>{t('classDetail.enrolledStudents')}</Text>
           <Pressable onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}>
-            <Text style={styles.sectionAction}>+ Enroll</Text>
+            <Text style={styles.sectionAction}>{t('classDetail.enrollAction')}</Text>
           </Pressable>
         </View>
 
@@ -218,9 +238,9 @@ export default function ClassDetailScreen() {
           <PremiumCard>
             <EmptyState
               icon="account-group-outline"
-              title="Build your class roster"
-              message="Enroll students who already exist in your registry. You can add new students first, then enroll them here."
-              actionLabel="Enroll Students"
+              title={t('classDetail.emptyTitle')}
+              message={t('classDetail.emptyMessage')}
+              actionLabel={t('classDetail.emptyAction')}
               actionHref={`/classes/${params.classId}/enroll` as Href}
             />
           </PremiumCard>
@@ -243,13 +263,13 @@ export default function ClassDetailScreen() {
 
         <Pressable style={styles.addStudentLink} onPress={() => router.push('/students/new')}>
           <MaterialCommunityIcons name="account-plus-outline" size={18} color={colors.primary} />
-          <Text style={styles.addStudentText}>Add a new student to registry</Text>
+          <Text style={styles.addStudentText}>{t('classDetail.addStudentLink')}</Text>
         </Pressable>
 
         <PremiumCard style={styles.archiveCard}>
           <View style={styles.archiveCopy}>
-            <Text style={styles.archiveTitle}>Archive class</Text>
-            <Text style={styles.archiveText}>Hide finished or inactive classes without deleting roster, attendance or fee history.</Text>
+            <Text style={styles.archiveTitle}>{t('classDetail.archiveTitle')}</Text>
+            <Text style={styles.archiveText}>{t('classDetail.archiveText')}</Text>
           </View>
           <Pressable style={[styles.archiveButton, isArchiving && styles.archiveButtonDisabled]} onPress={confirmArchive} disabled={isArchiving}>
             {isArchiving ? (
@@ -257,7 +277,7 @@ export default function ClassDetailScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="archive-outline" size={18} color={colors.danger} />
-                <Text style={styles.archiveButtonText}>Archive</Text>
+                <Text style={styles.archiveButtonText}>{t('classDetail.archiveButton')}</Text>
               </>
             )}
           </Pressable>

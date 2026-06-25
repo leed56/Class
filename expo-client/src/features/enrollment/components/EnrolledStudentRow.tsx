@@ -1,9 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { FeeStatus } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { FeeStatus, Medium } from '@/lib/database.types';
 import { Student } from '@/features/students/types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -15,27 +18,38 @@ type EnrolledStudentRowProps = {
   onRemove: () => void;
 };
 
-const feeStatusConfig: Record<FeeStatus, { label: string; color: string; background: string; dot: string }> = {
-  paid: { label: 'Paid', color: colors.success, background: colors.successSoft, dot: colors.success },
-  partial: { label: 'Partial', color: colors.warning, background: colors.warningSoft, dot: colors.warning },
-  pending: { label: 'Fee pending', color: colors.warning, background: colors.warningSoft, dot: colors.warning },
-  overdue: { label: 'Overdue', color: colors.danger, background: colors.dangerSoft, dot: colors.danger },
-};
-
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
 export function EnrolledStudentRow({ student, monthlyFee, feeStatus = 'pending', onRemove }: EnrolledStudentRowProps) {
   const router = useRouter();
+  const { t } = useI18n();
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[student.medium as Medium] ?? student.medium;
+
+  const feeStatusConfig = useMemo(
+    (): Record<FeeStatus, { label: string; color: string; background: string; dot: string }> => ({
+      paid: { label: t('common.paid'), color: colors.success, background: colors.successSoft, dot: colors.success },
+      partial: { label: t('common.partial'), color: colors.warning, background: colors.warningSoft, dot: colors.warning },
+      pending: { label: t('common.feePending'), color: colors.warning, background: colors.warningSoft, dot: colors.warning },
+      overdue: { label: t('common.overdue'), color: colors.danger, background: colors.dangerSoft, dot: colors.danger },
+    }),
+    [t],
+  );
 
   function confirmRemove() {
     Alert.alert(
-      'Remove from class?',
-      `${student.name} will stay in your registry but leave this class roster.`,
+      t('classDetail.removeStudentTitle'),
+      interpolate(t('classDetail.removeStudentMessage'), { name: student.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: onRemove },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('classDetail.removeStudentAction'), style: 'destructive', onPress: onRemove },
       ],
     );
   }
@@ -53,7 +67,13 @@ export function EnrolledStudentRow({ student, monthlyFee, feeStatus = 'pending',
         </View>
         <View style={styles.copy}>
           <Text style={styles.name} numberOfLines={1}>{student.name}</Text>
-          <Text style={styles.meta} numberOfLines={1}>Grade {student.grade} • {student.medium} • {student.parentPhone}</Text>
+          <Text style={styles.meta} numberOfLines={1}>
+            {interpolate(t('common.gradePhoneMeta'), {
+              grade: student.grade,
+              medium,
+              phone: student.parentPhone,
+            })}
+          </Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
       </Pressable>
@@ -61,7 +81,7 @@ export function EnrolledStudentRow({ student, monthlyFee, feeStatus = 'pending',
       <View style={styles.footerRow}>
         <View style={styles.feePill}>
           <MaterialCommunityIcons name="cash" size={14} color={colors.primary} />
-          <Text style={styles.feeText}>{formatLkr(monthlyFee)}/mo</Text>
+          <Text style={styles.feeText}>{formatLkr(monthlyFee)}{t('common.perMonth')}</Text>
         </View>
         <View style={[styles.statusPill, { backgroundColor: feeStatusStyle.background }]}>
           <View style={[styles.statusDot, { backgroundColor: feeStatusStyle.dot }]} />

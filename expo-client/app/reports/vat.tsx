@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getVatSummary, VatSummary } from '@/features/vat/localVatStore';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -21,6 +23,7 @@ function formatDateRange(start: string, end: string) {
 }
 
 export default function VatReportScreen() {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<VatSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +36,7 @@ export default function VatReportScreen() {
         const nextSummary = await getVatSummary();
         if (isMounted) setSummary(nextSummary);
       } catch (vatError) {
-        if (isMounted) setError(vatError instanceof Error ? vatError.message : 'Could not load local VAT data.');
+        if (isMounted) setError(vatError instanceof Error ? vatError.message : t('vatReport.loadFailed'));
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -44,7 +47,7 @@ export default function VatReportScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -56,8 +59,8 @@ export default function VatReportScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>VAT Quarter</Text>
-            <Text style={styles.subtitle}>Local SQLite calculation for output VAT, supplier input VAT and status.</Text>
+            <Text style={styles.title}>{t('vatReport.title')}</Text>
+            <Text style={styles.subtitle}>{t('vatReport.subtitle')}</Text>
           </View>
           <View style={styles.iconButtonDisabled}>
             <MaterialCommunityIcons name="cloud-lock-outline" size={22} color={colors.textSecondary} />
@@ -67,15 +70,15 @@ export default function VatReportScreen() {
         {isLoading ? (
           <PremiumCard style={styles.loadingCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadingTitle}>Reading local VAT ledger</Text>
-            <Text style={styles.loadingText}>Calculating the current quarter from SQLite records.</Text>
+            <Text style={styles.loadingTitle}>{t('vatReport.loadingTitle')}</Text>
+            <Text style={styles.loadingText}>{t('vatReport.loadingText')}</Text>
           </PremiumCard>
         ) : null}
 
         {error ? (
           <PremiumCard style={styles.errorCard}>
             <MaterialCommunityIcons name="database-alert-outline" size={28} color={colors.danger} />
-            <Text style={styles.errorTitle}>VAT data unavailable</Text>
+            <Text style={styles.errorTitle}>{t('vatReport.errorTitle')}</Text>
             <Text style={styles.errorText}>{error}</Text>
           </PremiumCard>
         ) : null}
@@ -87,6 +90,7 @@ export default function VatReportScreen() {
 }
 
 function VatDashboard({ summary }: { summary: VatSummary }) {
+  const { t } = useI18n();
   const isPayable = summary.netPayable > 0;
 
   return (
@@ -103,22 +107,22 @@ function VatDashboard({ summary }: { summary: VatSummary }) {
         </View>
         <Text style={styles.heroLabel}>{summary.quarterLabel} • {formatDateRange(summary.quarterStart, summary.quarterEnd)}</Text>
         <Text style={styles.heroTitle}>{formatLkr(summary.netPayable)}</Text>
-        <Text style={styles.heroNote}>{isPayable ? 'Estimated net VAT before filing review' : 'No net payable detected from current local data'}</Text>
+        <Text style={styles.heroNote}>{isPayable ? t('vatReport.heroPayableNote') : t('vatReport.heroBalancedNote')}</Text>
       </LinearGradient>
 
       <View style={styles.summaryGrid}>
-        <MetricCard label="Output VAT" value={formatLkr(summary.outputVat)} note={`${formatLkr(summary.taxableRevenue)} taxable revenue`} icon="arrow-up-bold-circle-outline" color={colors.danger} />
-        <MetricCard label="Input VAT" value={formatLkr(summary.inputVat)} note={`${summary.confirmedSupplierBills} confirmed supplier bills`} icon="arrow-down-bold-circle-outline" color={colors.success} />
+        <MetricCard label={t('vatReport.outputVat')} value={formatLkr(summary.outputVat)} note={interpolate(t('vatReport.taxableRevenue'), { amount: formatLkr(summary.taxableRevenue) })} icon="arrow-up-bold-circle-outline" color={colors.danger} />
+        <MetricCard label={t('vatReport.inputVat')} value={formatLkr(summary.inputVat)} note={interpolate(t('vatReport.confirmedBills'), { count: summary.confirmedSupplierBills })} icon="arrow-down-bold-circle-outline" color={colors.success} />
       </View>
 
       <PremiumCard style={styles.netCard}>
         <View style={styles.netHeaderRow}>
           <View>
-            <Text style={styles.cardTitle}>Net payable</Text>
-            <Text style={styles.cardSubtitle}>Output VAT minus confirmed supplier input VAT</Text>
+            <Text style={styles.cardTitle}>{t('vatReport.netPayable')}</Text>
+            <Text style={styles.cardSubtitle}>{t('vatReport.netSubtitle')}</Text>
           </View>
           <View style={[styles.netBadge, { backgroundColor: isPayable ? colors.warningSoft : colors.successSoft }]}>
-            <Text style={[styles.netBadgeText, { color: isPayable ? colors.warning : colors.success }]}>{isPayable ? 'Payable' : 'Balanced'}</Text>
+            <Text style={[styles.netBadgeText, { color: isPayable ? colors.warning : colors.success }]}>{isPayable ? t('vatReport.payable') : t('vatReport.balanced')}</Text>
           </View>
         </View>
         <Text style={styles.netValue}>{formatLkr(summary.netPayable)}</Text>
@@ -137,7 +141,7 @@ function VatDashboard({ summary }: { summary: VatSummary }) {
             <MaterialCommunityIcons name="shield-check-outline" size={23} color={colors.primary} />
           </View>
           <View style={styles.confidenceCopy}>
-            <Text style={styles.cardTitle}>Confidence & status</Text>
+            <Text style={styles.cardTitle}>{t('vatReport.confidenceTitle')}</Text>
             <Text style={styles.cardSubtitle}>{summary.statusNote}</Text>
           </View>
           <Text style={styles.confidenceScore}>{summary.confidenceScore}%</Text>
@@ -146,32 +150,32 @@ function VatDashboard({ summary }: { summary: VatSummary }) {
           <View style={[styles.progressFill, { width: `${summary.confidenceScore}%` }]} />
         </View>
         <View style={styles.statusRow}>
-          <StatusChip label={`${summary.confirmedSupplierBills} confirmed`} icon="check-circle-outline" tone="success" />
-          <StatusChip label={`${summary.pendingSupplierBills} pending`} icon="clock-alert-outline" tone={summary.pendingSupplierBills ? 'warning' : 'success'} />
+          <StatusChip label={interpolate(t('vatReport.confirmedChip'), { count: summary.confirmedSupplierBills })} icon="check-circle-outline" tone="success" />
+          <StatusChip label={interpolate(t('vatReport.pendingChip'), { count: summary.pendingSupplierBills })} icon="clock-alert-outline" tone={summary.pendingSupplierBills ? 'warning' : 'success'} />
         </View>
       </PremiumCard>
 
       <PremiumCard style={styles.supplierCard}>
         <View style={styles.netHeaderRow}>
           <View>
-            <Text style={styles.cardTitle}>Supplier input VAT</Text>
-            <Text style={styles.cardSubtitle}>Only confirmed supplier bills are included.</Text>
+            <Text style={styles.cardTitle}>{t('vatReport.supplierTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('vatReport.supplierSubtitle')}</Text>
           </View>
           <MaterialCommunityIcons name="file-document-check-outline" size={24} color={colors.success} />
         </View>
-        <ValueRow label="Confirmed spend" value={formatLkr(summary.confirmedSupplierSpend)} />
+        <ValueRow label={t('vatReport.confirmedSpend')} value={formatLkr(summary.confirmedSupplierSpend)} />
         <View style={styles.divider} />
-        <ValueRow label="Claimable input VAT" value={formatLkr(summary.inputVat)} />
+        <ValueRow label={t('vatReport.claimableInput')} value={formatLkr(summary.inputVat)} />
       </PremiumCard>
 
       <View style={styles.exportGrid}>
-        <DisabledExportButton icon="file-pdf-box" label="Export PDF" />
-        <DisabledExportButton icon="file-delimited-outline" label="Export CSV" />
+        <DisabledExportButton icon="file-pdf-box" label={t('vatReport.exportPdf')} lockedLabel={t('vatReport.locked')} />
+        <DisabledExportButton icon="file-delimited-outline" label={t('vatReport.exportCsv')} lockedLabel={t('vatReport.locked')} />
       </View>
 
       <PremiumCard style={styles.disclaimerCard}>
         <MaterialCommunityIcons name="information-outline" size={21} color={colors.info} />
-        <Text style={styles.disclaimerText}>Exports are disabled until review, filing rules and accountant approval workflow are completed.</Text>
+        <Text style={styles.disclaimerText}>{t('vatReport.disclaimer')}</Text>
       </PremiumCard>
     </>
   );
@@ -211,12 +215,12 @@ function ValueRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DisabledExportButton({ icon, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }) {
+function DisabledExportButton({ icon, label, lockedLabel }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; lockedLabel: string }) {
   return (
     <View style={styles.disabledExportButton}>
       <MaterialCommunityIcons name={icon} size={21} color={colors.textSecondary} />
       <Text style={styles.disabledExportText}>{label}</Text>
-      <Text style={styles.disabledExportSubtext}>Locked</Text>
+      <Text style={styles.disabledExportSubtext}>{lockedLabel}</Text>
     </View>
   );
 }

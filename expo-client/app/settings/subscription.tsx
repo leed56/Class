@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -13,6 +15,7 @@ const freeLimit = 30;
 const usagePercent = Math.round((currentStudents / freeLimit) * 100);
 
 export default function SubscriptionScreen() {
+  const { t } = useI18n();
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -23,8 +26,8 @@ export default function SubscriptionScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Subscription</Text>
-            <Text style={styles.subtitle}>Manage limits, plan features and billing readiness for ClassFlow.</Text>
+            <Text style={styles.title}>{t('subscription.title')}</Text>
+            <Text style={styles.subtitle}>{t('subscription.subtitle')}</Text>
           </View>
           <View style={styles.iconButton}>
             <MaterialCommunityIcons name="crown-outline" size={22} color={colors.primary} />
@@ -36,17 +39,17 @@ export default function SubscriptionScreen() {
             <MaterialCommunityIcons name="crown-outline" size={31} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Current plan</Text>
-            <Text style={styles.heroTitle}>Free teacher workspace</Text>
-            <Text style={styles.heroNote}>{currentStudents}/{freeLimit} students used • Upgrade-ready SaaS foundation</Text>
+            <Text style={styles.heroLabel}>{t('subscription.currentPlan')}</Text>
+            <Text style={styles.heroTitle}>{t('subscription.freePlan')}</Text>
+            <Text style={styles.heroNote}>{interpolate(t('subscription.heroNote'), { used: currentStudents, limit: freeLimit })}</Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.usageCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Usage summary</Text>
-              <Text style={styles.cardSubtitle}>Student limit controls for the Free plan</Text>
+              <Text style={styles.cardTitle}>{t('subscription.usageTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('subscription.usageSubtitle')}</Text>
             </View>
             <Text style={styles.usagePercent}>{usagePercent}%</Text>
           </View>
@@ -54,21 +57,21 @@ export default function SubscriptionScreen() {
             <View style={[styles.progressFill, { width: `${usagePercent}%` }]} />
           </View>
           <View style={styles.usageStatsRow}>
-            <UsageFigure label="Students" value={`${currentStudents}`} />
-            <UsageFigure label="Limit" value={`${freeLimit}`} />
-            <UsageFigure label="Remaining" value={`${freeLimit - currentStudents}`} />
+            <UsageFigure label={t('subscription.students')} value={`${currentStudents}`} />
+            <UsageFigure label={t('subscription.limit')} value={`${freeLimit}`} />
+            <UsageFigure label={t('subscription.remaining')} value={`${freeLimit - currentStudents}`} />
           </View>
         </PremiumCard>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Plans</Text>
-          <Text style={styles.sectionAction}>Compare</Text>
+          <Text style={styles.sectionTitle}>{t('subscription.plansTitle')}</Text>
+          <Text style={styles.sectionAction}>{t('subscription.compare')}</Text>
         </View>
 
         <View style={styles.planList}>
-          <PlanCard title="Free" price="LKR 0" badge="Current" description="For early teacher testing and small student lists." color={colors.primary} features={['30 students', 'Attendance tracking', 'Cash fee records']} />
-          <PlanCard title="Starter" price="LKR 1,500/mo" badge="Recommended" description="For solo tuition teachers ready to run monthly operations." color={colors.success} features={['300 students', 'WhatsApp reminders', 'Receipt sharing']} featured />
-          <PlanCard title="Institute" price="Custom" badge="Later" description="For multi-teacher institutes with branches and admin controls." color={colors.warning} features={['Multiple teachers', 'Branch reports', 'Advanced exports']} />
+          <PlanCard title={t('subscription.freeTitle')} price={t('subscription.freePrice')} badge={t('subscription.badgeCurrent')} description={t('subscription.freeDesc')} color={colors.primary} features={[t('subscription.freeFeature1'), t('subscription.freeFeature2'), t('subscription.freeFeature3')]} />
+          <PlanCard title={t('subscription.starterTitle')} price={t('subscription.starterPrice')} badge={t('subscription.badgeRecommended')} description={t('subscription.starterDesc')} color={colors.success} features={[t('subscription.starterFeature1'), t('subscription.starterFeature2'), t('subscription.starterFeature3')]} featured />
+          <PlanCard title={t('subscription.instituteTitle')} price={t('subscription.institutePrice')} badge={t('subscription.badgeLater')} description={t('subscription.instituteDesc')} color={colors.warning} features={[t('subscription.instituteFeature1'), t('subscription.instituteFeature2'), t('subscription.instituteFeature3')]} />
         </View>
 
         <PremiumCard style={styles.billingCard}>
@@ -76,33 +79,33 @@ export default function SubscriptionScreen() {
             <MaterialCommunityIcons name="credit-card-clock-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.billingCopy}>
-            <Text style={styles.cardTitle}>Billing placeholder</Text>
-            <Text style={styles.cardSubtitle}>Payments can be connected later through local gateways or manual invoice collection.</Text>
+            <Text style={styles.cardTitle}>{t('subscription.billingTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('subscription.billingSubtitle')}</Text>
           </View>
-          <View style={styles.phaseBadge}><Text style={styles.phaseBadgeText}>Later</Text></View>
+          <View style={styles.phaseBadge}><Text style={styles.phaseBadgeText}>{t('subscription.badgeLater')}</Text></View>
         </PremiumCard>
 
         <PremiumCard style={styles.featureCard}>
-          <Text style={styles.cardTitle}>Feature availability</Text>
-          <Text style={styles.cardSubtitle}>Clear SaaS gates for production without blocking MVP usage.</Text>
-          <FeatureRow label="Attendance and student management" state="Included" included />
+          <Text style={styles.cardTitle}>{t('subscription.featureTitle')}</Text>
+          <Text style={styles.cardSubtitle}>{t('subscription.featureSubtitle')}</Text>
+          <FeatureRow label={t('subscription.featureAttendance')} state={t('subscription.included')} included />
           <View style={styles.divider} />
-          <FeatureRow label="Fee records and receipt preview" state="Included" included />
+          <FeatureRow label={t('subscription.featureFees')} state={t('subscription.included')} included />
           <View style={styles.divider} />
-          <FeatureRow label="Automated WhatsApp reminders" state="Starter" />
+          <FeatureRow label={t('subscription.featureWhatsapp')} state={t('subscription.starter')} />
           <View style={styles.divider} />
-          <FeatureRow label="Institute admin dashboard" state="Institute" />
+          <FeatureRow label={t('subscription.featureInstitute')} state={t('subscription.institute')} />
         </PremiumCard>
       </ScrollView>
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Recommended upgrade</Text>
-          <Text style={styles.saveValue}>Starter plan</Text>
+          <Text style={styles.saveLabel}>{t('subscription.recommendedUpgrade')}</Text>
+          <Text style={styles.saveValue}>{t('subscription.starterPlan')}</Text>
         </View>
         <View style={styles.saveButton}>
           <MaterialCommunityIcons name="rocket-launch-outline" size={18} color="white" />
-          <Text style={styles.saveButtonText}>Upgrade</Text>
+          <Text style={styles.saveButtonText}>{t('subscription.upgrade')}</Text>
         </View>
       </View>
     </SafeAreaView>

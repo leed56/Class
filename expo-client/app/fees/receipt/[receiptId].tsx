@@ -10,6 +10,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getPaymentByReceiptNo } from '@/features/fees/feeService';
 import { PaymentRecord } from '@/features/fees/models';
 import { buildReceiptMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -19,8 +20,9 @@ function formatLkr(amount: number) {
 
 export default function ReceiptDetailScreen() {
   const params = useLocalSearchParams<{ receiptId: string }>();
+  const { t } = useI18n();
   const [payment, setPayment] = useState<PaymentRecord | null>(null);
-  const [workspaceName, setWorkspaceName] = useState('ClassFlow Tuition');
+  const [workspaceName, setWorkspaceName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,14 +36,14 @@ export default function ReceiptDetailScreen() {
         getCurrentWorkspace(),
       ]);
       setPayment(nextPayment);
-      if (workspace?.name) setWorkspaceName(workspace.name);
-      if (!nextPayment) setError('Receipt not found.');
+      setWorkspaceName(workspace?.name ?? t('receiptDetail.workspaceFallback'));
+      if (!nextPayment) setError(t('receiptDetail.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load receipt.');
+      setError(loadError instanceof Error ? loadError.message : t('receiptDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.receiptId]);
+  }, [params.receiptId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,10 +82,10 @@ export default function ReceiptDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Receipt not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('receiptDetail.notFound')}</Text>
           <Link href="/(tabs)/fees" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to fees</Text>
+              <Text style={styles.retryText}>{t('receiptDetail.backToFees')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -101,8 +103,8 @@ export default function ReceiptDetailScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Receipt</Text>
-            <Text style={styles.subtitle}>Share, print or review a tuition payment receipt.</Text>
+            <Text style={styles.title}>{t('receiptDetail.title')}</Text>
+            <Text style={styles.subtitle}>{t('receiptDetail.subtitle')}</Text>
           </View>
           <View style={styles.iconButton}>
             <MaterialCommunityIcons name="dots-horizontal" size={22} color={colors.textPrimary} />
@@ -114,7 +116,7 @@ export default function ReceiptDetailScreen() {
             <MaterialCommunityIcons name="receipt-text-check" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Payment receipt</Text>
+            <Text style={styles.heroLabel}>{t('receiptDetail.heroLabel')}</Text>
             <Text style={styles.heroTitle}>{payment.receiptNo}</Text>
             <Text style={styles.heroNote}>{payment.paidAt} • {payment.method.toUpperCase()}</Text>
           </View>
@@ -127,25 +129,25 @@ export default function ReceiptDetailScreen() {
             </View>
             <View style={styles.teacherCopy}>
               <Text style={styles.teacherName}>{workspaceName}</Text>
-              <Text style={styles.teacherMeta}>Premium tuition receipt</Text>
+              <Text style={styles.teacherMeta}>{t('receiptDetail.premiumReceipt')}</Text>
             </View>
           </View>
 
           <View style={styles.receiptStatusPill}>
             <MaterialCommunityIcons name="check-decagram" size={18} color={colors.success} />
-            <Text style={styles.receiptStatusText}>Payment recorded successfully</Text>
+            <Text style={styles.receiptStatusText}>{t('receiptDetail.paymentRecorded')}</Text>
           </View>
 
           <View style={styles.amountBlock}>
-            <Text style={styles.amountLabel}>Amount paid</Text>
+            <Text style={styles.amountLabel}>{t('receiptDetail.amountPaid')}</Text>
             <Text style={styles.amountValue}>{formatLkr(payment.amount)}</Text>
           </View>
 
           <View style={styles.detailsBox}>
-            <ReceiptLine label="Student" value={payment.studentName} />
+            <ReceiptLine label={t('receiptDetail.student')} value={payment.studentName} />
             {payment.allocations.length > 1 ? (
               <View style={styles.allocationBlock}>
-                <Text style={styles.allocationTitle}>Applied to</Text>
+                <Text style={styles.allocationTitle}>{t('receiptDetail.appliedTo')}</Text>
                 {payment.allocations.map((line, index) => (
                   <View key={`${line.label}-${index}`} style={styles.allocationRow}>
                     <Text style={styles.allocationLabel}>{line.label}</Text>
@@ -154,17 +156,17 @@ export default function ReceiptDetailScreen() {
                 ))}
               </View>
             ) : (
-              <ReceiptLine label="Class" value={payment.className} />
+              <ReceiptLine label={t('receiptDetail.class')} value={payment.className} />
             )}
-            <ReceiptLine label="Receipt no" value={payment.receiptNo} />
-            <ReceiptLine label="Paid date" value={payment.paidAt} />
-            <ReceiptLine label="Method" value={payment.method.toUpperCase()} />
-            {payment.note ? <ReceiptLine label="Note" value={payment.note} /> : null}
+            <ReceiptLine label={t('receiptDetail.receiptNo')} value={payment.receiptNo} />
+            <ReceiptLine label={t('receiptDetail.paidDate')} value={payment.paidAt} />
+            <ReceiptLine label={t('receiptDetail.method')} value={payment.method.toUpperCase()} />
+            {payment.note ? <ReceiptLine label={t('receiptDetail.note')} value={payment.note} /> : null}
           </View>
 
           <View style={styles.footerNote}>
             <MaterialCommunityIcons name="shield-check-outline" size={17} color={colors.primary} />
-            <Text style={styles.footerNoteText}>This receipt is generated from the teacher workspace and can be shared with the parent.</Text>
+            <Text style={styles.footerNoteText}>{t('receiptDetail.footerNote')}</Text>
           </View>
         </PremiumCard>
 
@@ -174,11 +176,11 @@ export default function ReceiptDetailScreen() {
               <MaterialCommunityIcons name="whatsapp" size={24} color={colors.success} />
             </View>
             <View style={styles.shareCopy}>
-              <Text style={styles.cardTitle}>Share with parent</Text>
-              <Text style={styles.cardSubtitle}>Send this receipt through WhatsApp after payment confirmation.</Text>
+              <Text style={styles.cardTitle}>{t('receiptDetail.shareTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('receiptDetail.shareSubtitle')}</Text>
             </View>
             <View style={styles.shareButtonSmall}>
-              <Text style={styles.shareButtonSmallText}>Share</Text>
+              <Text style={styles.shareButtonSmallText}>{t('receiptDetail.share')}</Text>
             </View>
           </PremiumCard>
         </Pressable>
@@ -186,12 +188,12 @@ export default function ReceiptDetailScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Receipt total</Text>
+          <Text style={styles.saveLabel}>{t('receiptDetail.receiptTotal')}</Text>
           <Text style={styles.saveValue}>{formatLkr(payment.amount)}</Text>
         </View>
         <Pressable style={styles.saveButton} onPress={shareReceipt}>
           <MaterialCommunityIcons name="share-variant" size={18} color="white" />
-          <Text style={styles.saveButtonText}>Share Receipt</Text>
+          <Text style={styles.saveButtonText}>{t('receiptDetail.shareReceipt')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

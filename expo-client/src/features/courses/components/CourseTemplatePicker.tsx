@@ -15,12 +15,16 @@ import {
   SCHOOL_EXAM_LEVEL_OPTIONS,
   ExamLevel,
 } from '@/features/courses/slCourseModel';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 type Props = {
   sector: AcademySector;
   onSectorChange: (sector: AcademySector) => void;
+  /** When true, sector is fixed to the workspace — only that vertical's templates are shown. */
+  lockSector?: boolean;
   selectedTemplateId: string | null;
   examLevel: ExamLevel;
   onExamLevelChange: (level: ExamLevel) => void;
@@ -34,11 +38,13 @@ function formatLkr(amount: number) {
 export function CourseTemplatePicker({
   sector,
   onSectorChange,
+  lockSector = false,
   selectedTemplateId,
   examLevel,
   onExamLevelChange,
   onSelectTemplate,
 }: Props) {
+  const { t } = useI18n();
   const [maritimeTrack, setMaritimeTrack] = useState<MaritimeTrack>('officer_cadet');
   const sectorInfo = getSectorInfo(sector);
 
@@ -56,43 +62,64 @@ export function CourseTemplatePicker({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Academy sector</Text>
-      <Text style={styles.hint}>
-        Sri Lankan institutes run many verticals — pick what your academy actually teaches.
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorRow}>
-        {ACADEMY_SECTORS.map((item) => {
-          const active = sector === item.id;
-          return (
-            <Pressable
-              key={item.id}
-              style={[styles.sectorChip, active && styles.sectorChipActive]}
-              onPress={() => handleSectorChange(item.id)}
-            >
-              <MaterialCommunityIcons
-                name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                size={14}
-                color={active ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[styles.sectorChipText, active && styles.sectorChipTextActive]} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {lockSector ? (
+        <>
+          <Text style={styles.label}>{t('classForm.sectorLockedLabel')}</Text>
+          <Text style={styles.hint}>{t('classForm.sectorLockedHint')}</Text>
+          {sectorInfo ? (
+            <View style={[styles.sectorNote, styles.sectorNoteLocked]}>
+              <View style={styles.sectorLockedRow}>
+                <MaterialCommunityIcons
+                  name={sectorInfo.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.sectorNoteTitle}>{sectorInfo.label}</Text>
+                <MaterialCommunityIcons name="lock-outline" size={14} color={colors.textMuted} />
+              </View>
+              <Text style={styles.sectorNoteCopy}>{sectorInfo.subtitle}</Text>
+            </View>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Text style={styles.label}>{t('classForm.sectorLabel')}</Text>
+          <Text style={styles.hint}>{t('classForm.sectorHint')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorRow}>
+            {ACADEMY_SECTORS.map((item) => {
+              const active = sector === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[styles.sectorChip, active && styles.sectorChipActive]}
+                  onPress={() => handleSectorChange(item.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                    size={14}
+                    color={active ? colors.primary : colors.textSecondary}
+                  />
+                  <Text style={[styles.sectorChipText, active && styles.sectorChipTextActive]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
+      )}
 
-      {sectorInfo ? (
+      {!lockSector && sectorInfo ? (
         <View style={styles.sectorNote}>
           <Text style={styles.sectorNoteTitle}>{sectorInfo.label}</Text>
           <Text style={styles.sectorNoteCopy}>{sectorInfo.subtitle}</Text>
-          <Text style={styles.sectorExamples}>e.g. {sectorInfo.examples}</Text>
+          <Text style={styles.sectorExamples}>{interpolate(t('classForm.sectorExamples'), { examples: sectorInfo.examples })}</Text>
         </View>
       ) : null}
 
       {sector === 'school_tuition' ? (
         <>
-          <Text style={styles.label}>Exam level</Text>
+          <Text style={styles.label}>{t('classForm.examLevelLabel')}</Text>
           <View style={styles.levelRow}>
             {SCHOOL_EXAM_LEVEL_OPTIONS.map((level) => {
               const active = examLevel === level;
@@ -112,10 +139,8 @@ export function CourseTemplatePicker({
 
       {sector === 'maritime' ? (
         <>
-          <Text style={styles.label}>Maritime programme track</Text>
-          <Text style={styles.hint}>
-            Based on MSTI, CINEC & SMTI — officer cadet, ratings, STCW, simulators & CoP prep.
-          </Text>
+          <Text style={styles.label}>{t('classForm.maritimeTrackLabel')}</Text>
+          <Text style={styles.hint}>{t('classForm.maritimeTrackHint')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trackRow}>
             {MARITIME_TRACKS.map((track) => {
               const active = maritimeTrack === track.id;
@@ -136,10 +161,10 @@ export function CourseTemplatePicker({
         </>
       ) : null}
 
-      <Text style={styles.label}>Course programme</Text>
+      <Text style={styles.label}>{t('classForm.courseProgrammeLabel')}</Text>
       <View style={styles.templateList}>
         {templates.length === 0 ? (
-          <Text style={styles.emptyText}>No presets for this filter. Type a custom programme name below.</Text>
+          <Text style={styles.emptyText}>{t('classForm.noPresets')}</Text>
         ) : (
           templates.map((template) => {
             const active = selectedTemplateId === template.id;
@@ -165,7 +190,10 @@ export function CourseTemplatePicker({
                 <View style={styles.templateCopy}>
                   <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>{template.label}</Text>
                   <Text style={styles.templateMeta}>
-                    {template.medium} • from {formatLkr(template.suggestedFee)}
+                    {interpolate(t('classForm.templateMeta'), {
+                      medium: template.medium,
+                      fee: formatLkr(template.suggestedFee),
+                    })}
                     {template.intakeLabel ? ` • ${template.intakeLabel}` : ''}
                     {maritimeMeta}
                   </Text>
@@ -208,6 +236,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 2,
   },
+  sectorNoteLocked: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  sectorLockedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   sectorNoteTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: '900' },
   sectorNoteCopy: { color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   sectorExamples: { color: colors.textMuted, fontSize: 10, fontWeight: '700', fontStyle: 'italic' },

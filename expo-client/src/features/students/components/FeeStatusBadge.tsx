@@ -1,21 +1,28 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius } from '@/theme/spacing';
 import { StudentFeeStatus } from '../types';
-
-const statusConfig: Record<StudentFeeStatus, { label: string; color: string; background: string }> = {
-  paid: { label: 'Paid', color: colors.success, background: colors.successSoft },
-  partial: { label: 'Partial', color: colors.warning, background: colors.warningSoft },
-  pending: { label: 'Pending', color: colors.danger, background: colors.dangerSoft },
-  overdue: { label: 'Overdue', color: colors.danger, background: colors.dangerSoft },
-};
 
 type FeeStatusBadgeProps = {
   status: StudentFeeStatus;
 };
 
 export function FeeStatusBadge({ status }: FeeStatusBadgeProps) {
+  const { t } = useI18n();
+
+  const statusConfig = useMemo(
+    (): Record<StudentFeeStatus, { label: string; color: string; background: string }> => ({
+      paid: { label: t('common.paid'), color: colors.success, background: colors.successSoft },
+      partial: { label: t('common.partial'), color: colors.warning, background: colors.warningSoft },
+      pending: { label: t('common.pending'), color: colors.danger, background: colors.dangerSoft },
+      overdue: { label: t('common.overdue'), color: colors.danger, background: colors.dangerSoft },
+    }),
+    [t],
+  );
+
   const config = statusConfig[status];
 
   return (

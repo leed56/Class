@@ -3,12 +3,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
+type ChipOption = string | { value: string; label: string };
+
 type Props = {
   label: string;
-  options: string[];
+  options: ChipOption[];
   selected: string;
   onSelect?: (value: string) => void;
 };
+
+function resolveOption(option: ChipOption) {
+  return typeof option === 'string' ? { value: option, label: option } : option;
+}
 
 export function ChoiceChipGroup({ label, options, selected, onSelect }: Props) {
   return (
@@ -16,15 +22,16 @@ export function ChoiceChipGroup({ label, options, selected, onSelect }: Props) {
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
         {options.map((option) => {
-          const active = option === selected;
+          const { value, label: optionLabel } = resolveOption(option);
+          const active = value === selected;
           return (
             <Pressable
-              key={option}
+              key={value}
               style={[styles.chip, active && styles.activeChip]}
-              onPress={() => onSelect?.(option)}
+              onPress={() => onSelect?.(value)}
               disabled={!onSelect}
             >
-              <Text style={[styles.chipText, active && styles.activeChipText]}>{option}</Text>
+              <Text style={[styles.chipText, active && styles.activeChipText]}>{optionLabel}</Text>
             </Pressable>
           );
         })}

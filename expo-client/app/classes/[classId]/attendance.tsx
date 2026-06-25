@@ -18,7 +18,9 @@ import {
   syncOfflineAttendanceForSession,
 } from '@/features/attendance/attendanceService';
 import { AttendanceSession, AttendanceStatus, AttendanceStudent } from '@/features/attendance/models';
-import { AttendanceSessionRow } from '@/lib/database.types';
+import { AttendanceSessionRow, Medium } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -34,6 +36,7 @@ export default function ClassAttendanceScreen() {
 
 function ClassAttendanceContent() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string; sessionDate?: string }>();
   const [session, setSession] = useState<AttendanceSessionRow | null>(null);
   const [sessionView, setSessionView] = useState<AttendanceSession | null>(null);
@@ -61,11 +64,11 @@ function ClassAttendanceContent() {
       setStudents(sheet.students);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load attendance.');
+      setError(loadError instanceof Error ? loadError.message : t('classAttendance.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId, params.sessionDate]);
+  }, [params.classId, params.sessionDate, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,7 +101,7 @@ function ClassAttendanceContent() {
       const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (markError) {
-      setError(markError instanceof Error ? markError.message : 'Could not update attendance.');
+      setError(markError instanceof Error ? markError.message : t('classAttendance.updateFailed'));
     }
   }
 
@@ -116,7 +119,7 @@ function ClassAttendanceContent() {
       const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (bulkError) {
-      setError(bulkError instanceof Error ? bulkError.message : 'Could not mark all present.');
+      setError(bulkError instanceof Error ? bulkError.message : t('classAttendance.bulkFailed'));
     }
   }
 
@@ -132,10 +135,10 @@ function ClassAttendanceContent() {
       );
       await loadSheet();
       if (result.failed > 0) {
-        setError(`${result.synced} marks synced. ${result.failed} still waiting.`);
+        setError(interpolate(t('classAttendance.syncPartial'), { synced: result.synced, failed: result.failed }));
       }
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : 'Could not sync attendance.');
+      setError(syncError instanceof Error ? syncError.message : t('classAttendance.syncFailed'));
     } finally {
       setIsSyncing(false);
     }
@@ -144,7 +147,7 @@ function ClassAttendanceContent() {
   async function handleSave() {
     if (!session || !attendanceContext) return;
     if (markedCount === 0) {
-      Alert.alert('Nothing to save', 'Mark at least one student before saving this session.');
+      Alert.alert(t('classAttendance.saveNothingTitle'), t('classAttendance.saveNothingMessage'));
       return;
     }
 
@@ -173,7 +176,7 @@ function ClassAttendanceContent() {
 
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save attendance.');
+      setError(saveError instanceof Error ? saveError.message : t('classAttendance.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -196,7 +199,7 @@ function ClassAttendanceContent() {
           <Text style={styles.errorText}>{error}</Text>
           <Link href={`/classes/${params.classId}` as Href} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to class</Text>
+              <Text style={styles.retryText}>{t('classAttendance.backToClass')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -205,6 +208,13 @@ function ClassAttendanceContent() {
   }
 
   if (!sessionView) return null;
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const mediumLabel = mediumLabels[sessionView.medium as Medium] ?? sessionView.medium;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -216,10 +226,8 @@ function ClassAttendanceContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>{params.sessionDate ? 'Attendance Session' : 'Take Attendance'}</Text>
-            <Text style={styles.subtitle}>
-              {sessionView.date} • Tap each student to cycle Present → Late → Absent.
-            </Text>
+            <Text style={styles.title}>{params.sessionDate ? t('classAttendance.sessionTitle') : t('classAttendance.title')}</Text>
+            <Text style={styles.subtitle}>{interpolate(t('classAttendance.subtitle'), { date: sessionView.date })}</Text>
           </View>
           <View style={styles.headerActions}>
             <Link
@@ -250,10 +258,15 @@ function ClassAttendanceContent() {
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>{sessionView.date}</Text>
             <Text style={styles.heroTitle}>
-              {sessionView.subject} Grade {sessionView.grade}
+              {interpolate(t('classAttendance.gradeSubject'), { subject: sessionView.subject, grade: sessionView.grade })}
             </Text>
             <Text style={styles.heroNote}>
-              {sessionView.startTime} - {sessionView.endTime} • {sessionView.hall} • {sessionView.medium}
+              {interpolate(t('classAttendance.heroMeta'), {
+                start: sessionView.startTime,
+                end: sessionView.endTime,
+                hall: sessionView.hall,
+                medium: mediumLabel,
+              })}
             </Text>
           </View>
         </LinearGradient>
@@ -262,33 +275,35 @@ function ClassAttendanceContent() {
           <PremiumCard>
             <EmptyState
               icon="account-group-outline"
-              title="No students enrolled"
-              message="Enroll students in this class before taking attendance."
-              actionLabel="Enroll Students"
+              title={t('classAttendance.emptyTitle')}
+              message={t('classAttendance.emptyMessage')}
+              actionLabel={t('classAttendance.emptyAction')}
               actionHref={`/classes/${params.classId}/enroll` as Href}
             />
           </PremiumCard>
         ) : (
           <>
             <View style={styles.summaryRow}>
-              <SummaryBox label="Present" value={`${presentCount}`} color={colors.success} />
-              <SummaryBox label="Late" value={`${lateCount}`} color={colors.warning} />
-              <SummaryBox label="Absent" value={`${absentCount}`} color={colors.danger} />
+              <SummaryBox label={t('classAttendance.present')} value={`${presentCount}`} color={colors.success} />
+              <SummaryBox label={t('classAttendance.late')} value={`${lateCount}`} color={colors.warning} />
+              <SummaryBox label={t('classAttendance.absent')} value={`${absentCount}`} color={colors.danger} />
             </View>
 
             {pendingSyncCount > 0 ? (
               <PremiumCard style={styles.syncCard}>
                 <View style={styles.syncCopy}>
-                  <Text style={styles.cardTitle}>Offline queue</Text>
+                  <Text style={styles.cardTitle}>{t('classAttendance.offlineQueue')}</Text>
                   <Text style={styles.cardSubtitle}>
-                    {pendingSyncCount} attendance mark{pendingSyncCount === 1 ? '' : 's'} waiting to sync.
+                    {pendingSyncCount === 1
+                      ? t('classAttendance.offlineQueueSingle')
+                      : interpolate(t('classAttendance.offlineQueueMulti'), { count: pendingSyncCount })}
                   </Text>
                 </View>
                 <Pressable style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]} onPress={handleSync} disabled={isSyncing}>
                   {isSyncing ? (
                     <ActivityIndicator color="white" size="small" />
                   ) : (
-                    <Text style={styles.syncButtonText}>Sync now</Text>
+                    <Text style={styles.syncButtonText}>{t('classAttendance.syncNow')}</Text>
                   )}
                 </Pressable>
               </PremiumCard>
@@ -297,9 +312,9 @@ function ClassAttendanceContent() {
             <PremiumCard style={styles.progressCard}>
               <View style={styles.progressTopRow}>
                 <View>
-                  <Text style={styles.cardTitle}>Marking progress</Text>
+                  <Text style={styles.cardTitle}>{t('classAttendance.markingProgress')}</Text>
                   <Text style={styles.cardSubtitle}>
-                    {markedCount} of {students.length} students marked
+                    {interpolate(t('classAttendance.markedMeta'), { marked: markedCount, total: students.length })}
                   </Text>
                 </View>
                 <Text style={styles.progressPercent}>{completionPercent}%</Text>
@@ -310,23 +325,23 @@ function ClassAttendanceContent() {
             </PremiumCard>
 
             <View style={styles.quickRow}>
-              <FilterChip label="All" active={filter === 'all'} onPress={() => setFilter('all')} />
-              <FilterChip label="Unmarked" active={filter === 'unmarked'} onPress={() => setFilter('unmarked')} />
-              <FilterChip label="Fees pending" active={filter === 'fees'} onPress={() => setFilter('fees')} />
+              <FilterChip label={t('classAttendance.filterAll')} active={filter === 'all'} onPress={() => setFilter('all')} />
+              <FilterChip label={t('classAttendance.filterUnmarked')} active={filter === 'unmarked'} onPress={() => setFilter('unmarked')} />
+              <FilterChip label={t('classAttendance.filterFees')} active={filter === 'fees'} onPress={() => setFilter('fees')} />
             </View>
 
             {error ? <Text style={styles.inlineError}>{error}</Text> : null}
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Student list</Text>
+              <Text style={styles.sectionTitle}>{t('classAttendance.studentList')}</Text>
               <Pressable onPress={handleBulkPresent}>
-                <Text style={styles.sectionAction}>Bulk present</Text>
+                <Text style={styles.sectionAction}>{t('classAttendance.bulkPresent')}</Text>
               </Pressable>
             </View>
 
             <PremiumCard style={styles.listCard}>
               {filteredStudents.length === 0 ? (
-                <Text style={styles.emptyFilter}>No students match this filter.</Text>
+                <Text style={styles.emptyFilter}>{t('classAttendance.emptyFilter')}</Text>
               ) : (
                 filteredStudents.map((student, index) => (
                   <View key={student.id}>
@@ -346,9 +361,9 @@ function ClassAttendanceContent() {
       {students.length > 0 ? (
         <View style={styles.saveBar}>
           <View>
-            <Text style={styles.saveLabel}>{isSaved ? 'Session saved' : 'Session status'}</Text>
+            <Text style={styles.saveLabel}>{isSaved ? t('classAttendance.sessionSaved') : t('classAttendance.sessionStatus')}</Text>
             <Text style={styles.saveValue}>
-              {markedCount}/{students.length} marked
+              {interpolate(t('classAttendance.markedFooter'), { marked: markedCount, total: students.length })}
             </Text>
           </View>
           <Pressable style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving}>
@@ -357,7 +372,7 @@ function ClassAttendanceContent() {
             ) : (
               <>
                 <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
-                <Text style={styles.saveButtonText}>{isSaved ? 'Update' : 'Save'}</Text>
+                <Text style={styles.saveButtonText}>{isSaved ? t('classAttendance.update') : t('classAttendance.save')}</Text>
               </>
             )}
           </Pressable>

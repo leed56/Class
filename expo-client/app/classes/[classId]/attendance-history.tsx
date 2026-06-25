@@ -13,12 +13,15 @@ import {
   listClassAttendanceSessions,
 } from '@/features/attendance/attendanceService';
 import { getClassById } from '@/features/classes/classService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function ClassAttendanceHistoryScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
-  const [classLabel, setClassLabel] = useState('Class');
+  const [classLabel, setClassLabel] = useState('');
   const [sessions, setSessions] = useState<AttendanceSessionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,20 +35,30 @@ export default function ClassAttendanceHistoryScreen() {
         getClassById(params.classId),
         listClassAttendanceSessions(params.classId),
       ]);
-      setClassLabel(tuitionClass ? `${tuitionClass.subject} G${tuitionClass.grade}` : 'Class');
+      setClassLabel(
+        tuitionClass
+          ? interpolate(t('attendanceHistory.classLabel'), { subject: tuitionClass.subject, grade: tuitionClass.grade })
+          : t('attendanceHistory.classFallback'),
+      );
       setSessions(nextSessions);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load attendance history.');
+      setError(loadError instanceof Error ? loadError.message : t('attendanceHistory.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId]);
+  }, [params.classId, t]);
 
   useFocusEffect(
     useCallback(() => {
       loadHistory();
     }, [loadHistory]),
   );
+
+  const heroTitle = isLoading
+    ? t('attendanceHistory.sessionsLoading')
+    : sessions.length === 1
+      ? t('attendanceHistory.sessionsSingle')
+      : interpolate(t('attendanceHistory.sessionsMulti'), { count: sessions.length });
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -57,8 +70,8 @@ export default function ClassAttendanceHistoryScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Attendance History</Text>
-            <Text style={styles.subtitle}>Review past sessions and open any day to see marks.</Text>
+            <Text style={styles.title}>{t('attendanceHistory.title')}</Text>
+            <Text style={styles.subtitle}>{t('attendanceHistory.subtitle')}</Text>
           </View>
         </View>
 
@@ -68,61 +81,67 @@ export default function ClassAttendanceHistoryScreen() {
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>{classLabel}</Text>
-            <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : `${sessions.length} recorded sessions`}</Text>
-            <Text style={styles.heroNote}>Present, late and absent counts for each class day.</Text>
+            <Text style={styles.heroTitle}>{heroTitle}</Text>
+            <Text style={styles.heroNote}>{t('attendanceHistory.heroNote')}</Text>
           </View>
         </LinearGradient>
 
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading session history…</Text>
+            <Text style={styles.stateText}>{t('attendanceHistory.loadingHistory')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadHistory}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : sessions.length === 0 ? (
           <PremiumCard>
             <EmptyState
               icon="clipboard-text-clock-outline"
-              title="No sessions yet"
-              message="Take attendance for this class and saved sessions will appear here."
-              actionLabel="Take Attendance"
+              title={t('attendanceHistory.emptyTitle')}
+              message={t('attendanceHistory.emptyMessage')}
+              actionLabel={t('attendanceHistory.emptyAction')}
               actionHref={`/classes/${params.classId}/attendance` as Href}
             />
           </PremiumCard>
         ) : (
           <View style={styles.list}>
-            {sessions.map((session) => (
-              <NavPressable
-                key={session.id}
-                href={`/classes/${params.classId}/attendance?sessionDate=${session.sessionDate}` as Href}
-              >
-                <PremiumCard style={styles.sessionCard}>
-                  <View style={styles.sessionTopRow}>
-                    <View style={styles.sessionIcon}>
-                      <MaterialCommunityIcons name="calendar-check" size={22} color={colors.primary} />
+            {sessions.map((session) => {
+              const status =
+                session.status === 'saved' || session.status === 'synced'
+                  ? t('attendanceHistory.statusSaved')
+                  : t('attendanceHistory.statusDraft');
+              return (
+                <NavPressable
+                  key={session.id}
+                  href={`/classes/${params.classId}/attendance?sessionDate=${session.sessionDate}` as Href}
+                >
+                  <PremiumCard style={styles.sessionCard}>
+                    <View style={styles.sessionTopRow}>
+                      <View style={styles.sessionIcon}>
+                        <MaterialCommunityIcons name="calendar-check" size={22} color={colors.primary} />
+                      </View>
+                      <View style={styles.sessionCopy}>
+                        <Text style={styles.sessionDate}>{session.displayDate}</Text>
+                        <Text style={styles.sessionMeta}>
+                          {interpolate(t('attendanceHistory.sessionMeta'), { count: session.markedCount, status })}
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
                     </View>
-                    <View style={styles.sessionCopy}>
-                      <Text style={styles.sessionDate}>{session.displayDate}</Text>
-                      <Text style={styles.sessionMeta}>
-                        {session.markedCount} marked • {session.status === 'saved' || session.status === 'synced' ? 'Saved' : 'Draft'}
-                      </Text>
+                    <View style={styles.countRow}>
+                      <CountPill label={t('classAttendance.present')} value={session.presentCount} color={colors.success} />
+                      <CountPill label={t('classAttendance.late')} value={session.lateCount} color={colors.warning} />
+                      <CountPill label={t('classAttendance.absent')} value={session.absentCount} color={colors.danger} />
                     </View>
-                    <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
-                  </View>
-                  <View style={styles.countRow}>
-                    <CountPill label="Present" value={session.presentCount} color={colors.success} />
-                    <CountPill label="Late" value={session.lateCount} color={colors.warning} />
-                    <CountPill label="Absent" value={session.absentCount} color={colors.danger} />
-                  </View>
-                </PremiumCard>
-              </NavPressable>
-            ))}
+                  </PremiumCard>
+                </NavPressable>
+              );
+            })}
           </View>
         )}
       </ScrollView>

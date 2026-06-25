@@ -7,11 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { isPilotDemoAuthEnabled } from '@/features/auth/demoAuth';
 import { ensureDemoWorkspace, isDemoAccountEmail, isDemoAcademyAccountEmail, isDemoItAcademyAccountEmail, isDemoMaritimeAccountEmail } from '@/features/auth/demoSetupService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
 export default function IndexScreen() {
+  const { t } = useI18n();
   const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function IndexScreen() {
 
     async function routeBySession() {
       if (!isSupabaseConfigured) {
-        setSetupError('Supabase environment variables are missing in Vercel. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY, then redeploy.');
+        setSetupError(t('auth.bootstrapSetupError'));
         return;
       }
 
@@ -79,7 +81,7 @@ export default function IndexScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -88,8 +90,8 @@ export default function IndexScreen() {
           <MaterialCommunityIcons name={setupError ? 'alert-circle-outline' : 'school'} size={30} color="white" />
         </View>
         {setupError ? null : <ActivityIndicator color={colors.primary} />}
-        <Text style={styles.title}>{setupError ? 'Setup needed' : 'Loading ClassFlow'}</Text>
-        <Text style={styles.subtitle}>{setupError ?? 'Checking your secure teacher workspace...'}</Text>
+        <Text style={styles.title}>{setupError ? t('auth.bootstrapSetupTitle') : t('auth.bootstrapLoadingTitle')}</Text>
+        <Text style={styles.subtitle}>{setupError ?? t('auth.bootstrapLoadingSubtitle')}</Text>
       </View>
     </SafeAreaView>
   );

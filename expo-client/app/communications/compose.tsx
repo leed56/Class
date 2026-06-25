@@ -16,6 +16,8 @@ import { getClassById } from '@/features/classes/classService';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { buildAbsenceAlertMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -28,6 +30,7 @@ type ComposeTarget = {
 
 export default function MessageComposeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{
     flow?: string;
     sessionId?: string;
@@ -41,9 +44,9 @@ export default function MessageComposeScreen() {
     messageType?: string;
   }>();
 
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState('');
   const [absenceTemplate, setAbsenceTemplate] = useState('');
-  const [classLabel, setClassLabel] = useState('Class');
+  const [classLabel, setClassLabel] = useState('');
   const [sessionDateLabel, setSessionDateLabel] = useState('');
   const [targets, setTargets] = useState<ComposeTarget[]>([]);
   const [index, setIndex] = useState(0);
@@ -62,7 +65,9 @@ export default function MessageComposeScreen() {
     setError(null);
     try {
       const workspace = await getCurrentWorkspace();
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      const workspaceFallback = t('compose.workspaceFallback');
+      const classFallback = t('compose.classFallback');
+      setWorkspaceName(workspace?.name ?? workspaceFallback);
       setAbsenceTemplate(workspace?.absence_alert_template ?? '');
 
       if (params.flow === 'absence_batch' && params.classId && params.sessionId && params.studentIds) {
@@ -70,7 +75,8 @@ export default function MessageComposeScreen() {
           getClassById(params.classId),
           loadAttendanceSheet(params.classId, params.sessionDate),
         ]);
-        setClassLabel(tuitionClass ? `${tuitionClass.subject} Grade ${tuitionClass.grade}` : 'Class');
+        const resolvedClassLabel = tuitionClass ? `${tuitionClass.subject} Grade ${tuitionClass.grade}` : classFallback;
+        setClassLabel(resolvedClassLabel);
         setSessionDateLabel(sheet.sessionView.date);
 
         const ids = params.studentIds.split(',').filter(Boolean);
@@ -90,9 +96,9 @@ export default function MessageComposeScreen() {
         if (nextTargets[0]) {
           setMessageBody(
             buildAbsenceAlertMessage({
-              workspaceName: workspace?.name ?? 'Your workspace',
+              workspaceName: workspace?.name ?? workspaceFallback,
               studentName: nextTargets[0].studentName,
-              className: tuitionClass ? `${tuitionClass.subject} Grade ${tuitionClass.grade}` : 'Class',
+              className: resolvedClassLabel,
               sessionDate: sheet.sessionView.date,
               template: workspace?.absence_alert_template,
             }),
@@ -105,7 +111,7 @@ export default function MessageComposeScreen() {
         setTargets([
           {
             studentId: params.studentId ?? 'custom',
-            studentName: 'Parent',
+            studentName: t('compose.parentFallback'),
             parentPhone: params.parentPhone,
             consentCaptured: true,
           },
@@ -114,13 +120,13 @@ export default function MessageComposeScreen() {
         return;
       }
 
-      setError('Nothing to compose.');
+      setError(t('compose.nothingToCompose'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load composer.');
+      setError(loadError instanceof Error ? loadError.message : t('compose.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId, params.flow, params.initialBody, params.parentPhone, params.sessionDate, params.sessionId, params.studentId, params.studentIds]);
+  }, [params.classId, params.flow, params.initialBody, params.parentPhone, params.sessionDate, params.sessionId, params.studentId, params.studentIds, t]);
 
   useEffect(() => {
     load();
@@ -140,18 +146,18 @@ export default function MessageComposeScreen() {
   }, [absenceTemplate, classLabel, current, index, params.flow, sessionDateLabel, workspaceName]);
 
   const progressLabel = useMemo(() => {
-    if (targets.length <= 1) return '1 message';
-    return `${index + 1} of ${targets.length}`;
-  }, [index, targets.length]);
+    if (targets.length <= 1) return t('compose.progressSingle');
+    return interpolate(t('compose.progressMulti'), { current: index + 1, total: targets.length });
+  }, [index, targets.length, t]);
 
   async function handleSend() {
     if (!current) return;
     if (!current.consentCaptured) {
-      Alert.alert('Consent required', 'Capture parent consent before sending automated messages.');
+      Alert.alert(t('compose.consentAlertTitle'), t('compose.consentAlertMessage'));
       return;
     }
     if (!messageBody.trim()) {
-      setError('Message cannot be empty.');
+      setError(t('compose.emptyMessage'));
       return;
     }
 
@@ -174,8 +180,8 @@ export default function MessageComposeScreen() {
 
       const opened = await openWhatsAppChat(current.parentPhone, messageBody.trim());
       if (!opened) {
-        await updateMessageDeliveryStatus(activeDeliveryId, 'failed', 'Could not open WhatsApp.');
-        setError('Could not open WhatsApp.');
+        await updateMessageDeliveryStatus(activeDeliveryId, 'failed', t('compose.whatsappFailed'));
+        setError(t('compose.whatsappFailed'));
         return;
       }
 
@@ -189,7 +195,7 @@ export default function MessageComposeScreen() {
           sendError instanceof Error ? sendError.message : 'Send failed.',
         );
       }
-      setError(sendError instanceof Error ? sendError.message : 'Could not send message.');
+      setError(sendError instanceof Error ? sendError.message : t('compose.sendFailed'));
     } finally {
       setIsSending(false);
       setDeliveryId(null);
@@ -209,7 +215,7 @@ export default function MessageComposeScreen() {
       });
       goNext();
     } catch (skipError) {
-      setError(skipError instanceof Error ? skipError.message : 'Could not skip message.');
+      setError(skipError instanceof Error ? skipError.message : t('compose.skipFailed'));
     }
   }
 
@@ -239,7 +245,7 @@ export default function MessageComposeScreen() {
           <Text style={styles.errorText}>{error}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Go back</Text>
+              <Text style={styles.retryText}>{t('compose.goBack')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -259,8 +265,8 @@ export default function MessageComposeScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Message composer</Text>
-            <Text style={styles.subtitle}>Edit the message before sending to parents via WhatsApp.</Text>
+            <Text style={styles.title}>{t('compose.title')}</Text>
+            <Text style={styles.subtitle}>{t('compose.subtitle')}</Text>
           </View>
         </View>
 
@@ -273,18 +279,18 @@ export default function MessageComposeScreen() {
         {!current.consentCaptured ? (
           <PremiumCard style={styles.warningCard}>
             <MaterialCommunityIcons name="shield-alert-outline" size={22} color={colors.warning} />
-            <Text style={styles.warningText}>Parent consent is not captured. Sending is blocked for this student.</Text>
+            <Text style={styles.warningText}>{t('compose.consentBlocked')}</Text>
           </PremiumCard>
         ) : null}
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Message</Text>
+          <Text style={styles.cardTitle}>{t('compose.messageTitle')}</Text>
           <TextInput
             value={messageBody}
             onChangeText={setMessageBody}
             multiline
             style={styles.messageInput}
-            placeholder="Write your parent message"
+            placeholder={t('compose.messagePlaceholder')}
             placeholderTextColor={colors.textSecondary}
           />
         </PremiumCard>
@@ -294,12 +300,12 @@ export default function MessageComposeScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Remaining</Text>
+          <Text style={styles.saveLabel}>{t('compose.remaining')}</Text>
           <Text style={styles.saveValue}>{remaining}</Text>
         </View>
         <View style={styles.actions}>
           <Pressable style={styles.skipButton} onPress={handleSkip} disabled={isSending}>
-            <Text style={styles.skipButtonText}>Skip</Text>
+            <Text style={styles.skipButtonText}>{t('compose.skip')}</Text>
           </Pressable>
           <Pressable
             style={[styles.saveButton, (isSending || !current.consentCaptured) && styles.saveButtonDisabled]}
@@ -311,7 +317,7 @@ export default function MessageComposeScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="whatsapp" size={18} color="white" />
-                <Text style={styles.saveButtonText}>Send</Text>
+                <Text style={styles.saveButtonText}>{t('compose.send')}</Text>
               </>
             )}
           </Pressable>

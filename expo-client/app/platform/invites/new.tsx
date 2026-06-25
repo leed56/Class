@@ -1,25 +1,21 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { ACADEMY_SECTORS, AcademySector } from '@/features/courses/slCourseModel';
 import { buildInviteUrl, createPlatformInvite } from '@/features/platform/platformService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const instituteTypes: { value: InstituteType; label: string }[] = [
-  { value: 'solo', label: 'Solo tutor' },
-  { value: 'academy', label: 'Academy' },
-  { value: 'institute', label: 'Tuition building' },
-];
-
 export default function NewPlatformInviteScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [instituteType, setInstituteType] = useState<InstituteType>('academy');
   const [academySector, setAcademySector] = useState('maritime');
   const [workspaceNameHint, setWorkspaceNameHint] = useState('');
@@ -28,6 +24,15 @@ export default function NewPlatformInviteScreen() {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const instituteTypes = useMemo(
+    (): { value: InstituteType; label: string }[] => [
+      { value: 'solo', label: t('settingsEdit.typeSolo') },
+      { value: 'academy', label: t('settingsEdit.typeAcademy') },
+      { value: 'institute', label: t('settingsEdit.typeInstitute') },
+    ],
+    [t],
+  );
 
   async function handleCreate() {
     setSubmitting(true);
@@ -43,7 +48,7 @@ export default function NewPlatformInviteScreen() {
       });
       setInviteUrl(buildInviteUrl(result.token));
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not create invite.');
+      setError(saveError instanceof Error ? saveError.message : t('platformInvite.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -64,18 +69,18 @@ export default function NewPlatformInviteScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Customer invite</Text>
-            <Text style={styles.subtitle}>Pre-set workspace type and sector for assisted onboarding.</Text>
+            <Text style={styles.title}>{t('platformInvite.title')}</Text>
+            <Text style={styles.subtitle}>{t('platformInvite.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroTitle}>Provision a new customer</Text>
-          <Text style={styles.heroNote}>Share the link after signup — onboarding will lock type and sector.</Text>
+          <Text style={styles.heroTitle}>{t('platformInvite.heroTitle')}</Text>
+          <Text style={styles.heroNote}>{t('platformInvite.heroNote')}</Text>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.label}>Workspace type</Text>
+          <Text style={styles.label}>{t('platformInvite.workspaceTypeLabel')}</Text>
           <View style={styles.chipRow}>
             {instituteTypes.map((option) => (
               <Pressable
@@ -90,7 +95,7 @@ export default function NewPlatformInviteScreen() {
 
           {instituteType === 'academy' ? (
             <>
-              <Text style={styles.label}>Academy sector</Text>
+              <Text style={styles.label}>{t('platformInvite.academySectorLabel')}</Text>
               <View style={styles.chipRow}>
                 {ACADEMY_SECTORS.map((sector) => (
                   <Pressable
@@ -105,31 +110,31 @@ export default function NewPlatformInviteScreen() {
             </>
           ) : null}
 
-          <Text style={styles.label}>Suggested workspace name</Text>
+          <Text style={styles.label}>{t('platformInvite.workspaceNameLabel')}</Text>
           <TextInput
             value={workspaceNameHint}
             onChangeText={setWorkspaceNameHint}
-            placeholder="Colombo Maritime Academy"
+            placeholder={t('platformInvite.workspaceNamePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             style={styles.input}
           />
 
-          <Text style={styles.label}>Lock to email (optional)</Text>
+          <Text style={styles.label}>{t('platformInvite.emailLabel')}</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="director@academy.lk"
+            placeholder={t('platformInvite.emailPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             keyboardType="email-address"
             style={styles.input}
           />
 
-          <Text style={styles.label}>Internal note (optional)</Text>
+          <Text style={styles.label}>{t('platformInvite.noteLabel')}</Text>
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Pilot customer — June 2026"
+            placeholder={t('platformInvite.notePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             style={styles.input}
           />
@@ -139,20 +144,20 @@ export default function NewPlatformInviteScreen() {
 
         {inviteUrl ? (
           <PremiumCard style={styles.successCard}>
-            <Text style={styles.successTitle}>Invite created</Text>
+            <Text style={styles.successTitle}>{t('platformInvite.successTitle')}</Text>
             <Text style={styles.successUrl}>{inviteUrl}</Text>
             <View style={styles.successActions}>
               <Pressable style={styles.copyButton} onPress={() => void copyLink()}>
-                <Text style={styles.copyButtonText}>Copy link</Text>
+                <Text style={styles.copyButtonText}>{t('platformInvite.copyLink')}</Text>
               </Pressable>
               <Pressable style={styles.doneButton} onPress={() => router.replace('/platform/index' as Href)}>
-                <Text style={styles.doneButtonText}>Back to admin</Text>
+                <Text style={styles.doneButtonText}>{t('platformInvite.backToAdmin')}</Text>
               </Pressable>
             </View>
           </PremiumCard>
         ) : (
           <Pressable style={[styles.createButton, submitting && styles.createButtonDisabled]} onPress={() => void handleCreate()} disabled={submitting}>
-            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.createButtonText}>Generate invite link</Text>}
+            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.createButtonText}>{t('platformInvite.generateLink')}</Text>}
           </Pressable>
         )}
       </ScrollView>

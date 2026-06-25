@@ -22,21 +22,20 @@ import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup'
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-function certificateTypeLabel(type: CertificateType) {
-  return type === 'completion' ? 'Completion' : 'Achievement';
-}
-
 export default function StudentCertificatesScreen() {
   const params = useLocalSearchParams<{ studentId: string }>();
+  const { t } = useI18n();
   const [student, setStudent] = useState<Student | null>(null);
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [items, setItems] = useState<StudentCertificate[]>([]);
   const [certificateType, setCertificateType] = useState<CertificateType>('completion');
-  const [title, setTitle] = useState('Course Completion Certificate');
+  const [title, setTitle] = useState(t('certificates.completionDefaultTitle'));
   const [note, setNote] = useState('');
   const [eligibility, setEligibility] = useState<CertificateEligibility | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +45,16 @@ export default function StudentCertificatesScreen() {
 
   const backHref = (`/students/${params.studentId}` as Href);
   const isEnabled = workspaceType !== 'solo';
-  const typeChoice = useMemo(() => certificateTypeLabel(certificateType), [certificateType]);
+
+  const typeLabels = useMemo(
+    () => ({
+      completion: t('certificates.typeCompletion'),
+      achievement: t('certificates.typeAchievement'),
+    }),
+    [t],
+  );
+
+  const typeChoice = typeLabels[certificateType];
 
   const load = useCallback(async () => {
     if (!params.studentId) return;
@@ -67,13 +75,13 @@ export default function StudentCertificatesScreen() {
       } else {
         setEligibility(null);
       }
-      if (!nextStudent) setLoadError('Student not found.');
+      if (!nextStudent) setLoadError(t('certificates.studentNotFound'));
     } catch (loadError) {
-      setLoadError(loadError instanceof Error ? loadError.message : 'Could not load certifications.');
+      setLoadError(loadError instanceof Error ? loadError.message : t('certificates.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,9 +90,13 @@ export default function StudentCertificatesScreen() {
   );
 
   function handleTypeSelect(label: string) {
-    const nextType: CertificateType = label === 'Achievement' ? 'achievement' : 'completion';
+    const nextType: CertificateType = label === typeLabels.achievement ? 'achievement' : 'completion';
     setCertificateType(nextType);
-    setTitle(nextType === 'completion' ? 'Course Completion Certificate' : 'Achievement Certificate');
+    setTitle(
+      nextType === 'completion'
+        ? t('certificates.completionDefaultTitle')
+        : t('certificates.achievementDefaultTitle'),
+    );
   }
 
   async function handleIssue() {
@@ -101,7 +113,7 @@ export default function StudentCertificatesScreen() {
       setNote('');
       await load();
     } catch (issueError) {
-      setFormError(issueError instanceof Error ? issueError.message : 'Could not issue certificate.');
+      setFormError(issueError instanceof Error ? issueError.message : t('certificates.issueFailed'));
     } finally {
       setIsIssuing(false);
     }
@@ -110,15 +122,18 @@ export default function StudentCertificatesScreen() {
   function confirmIssue() {
     if (!student) return;
     if (eligibility && !eligibility.eligible) {
-      setFormError(eligibility.blockers[0] ?? 'Student is not eligible for certification.');
+      setFormError(eligibility.blockers[0] ?? t('certificates.notEligible'));
       return;
     }
     Alert.alert(
-      'Issue certificate?',
-      `${certificateTypeLabel(certificateType)} for ${student.name} will be recorded now.`,
+      t('certificates.confirmIssueTitle'),
+      interpolate(t('certificates.confirmIssueMessage'), {
+        type: typeLabels[certificateType],
+        name: student.name,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Issue', onPress: handleIssue },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('certificates.issueButton'), onPress: handleIssue },
       ],
     );
   }
@@ -137,10 +152,10 @@ export default function StudentCertificatesScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{loadError ?? 'Student not found.'}</Text>
+          <Text style={styles.errorText}>{loadError ?? t('certificates.studentNotFound')}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to student</Text>
+              <Text style={styles.retryText}>{t('certificates.backToStudent')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -158,8 +173,8 @@ export default function StudentCertificatesScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Certifications</Text>
-            <Text style={styles.subtitle}>Issue and track certificates for academy and institute students.</Text>
+            <Text style={styles.title}>{t('certificates.studentTitle')}</Text>
+            <Text style={styles.subtitle}>{t('certificates.studentSubtitle')}</Text>
           </View>
         </View>
 
@@ -167,9 +182,9 @@ export default function StudentCertificatesScreen() {
           <PremiumCard>
             <EmptyState
               icon="certificate-outline"
-              title="Available for academy and institute"
-              message="Switch your workspace type from Settings to enable certifications."
-              actionLabel="Back to student"
+              title={t('certificates.academyOnlyTitle')}
+              message={t('certificates.academyOnlyMessage')}
+              actionLabel={t('certificates.backToStudent')}
               actionHref={backHref}
             />
           </PremiumCard>
@@ -177,13 +192,13 @@ export default function StudentCertificatesScreen() {
           <>
             {eligibility ? (
               <PremiumCard style={styles.eligibilityCard}>
-                <Text style={styles.cardTitle}>Eligibility</Text>
+                <Text style={styles.cardTitle}>{t('certificates.eligibilityTitle')}</Text>
                 <View style={styles.eligibilityRow}>
-                  <Text style={styles.eligibilityLabel}>Attendance</Text>
+                  <Text style={styles.eligibilityLabel}>{t('certificates.attendanceLabel')}</Text>
                   <Text style={styles.eligibilityValue}>{eligibility.attendancePercent}%</Text>
                 </View>
                 <View style={styles.eligibilityRow}>
-                  <Text style={styles.eligibilityLabel}>Outstanding fees</Text>
+                  <Text style={styles.eligibilityLabel}>{t('certificates.outstandingFees')}</Text>
                   <Text style={styles.eligibilityValue}>LKR {eligibility.outstandingAmount.toLocaleString('en-LK')}</Text>
                 </View>
                 <View
@@ -198,7 +213,7 @@ export default function StudentCertificatesScreen() {
                       { color: eligibility.eligible ? colors.success : colors.danger },
                     ]}
                   >
-                    {eligibility.eligible ? 'Eligible to certify' : 'Blocked by rules'}
+                    {eligibility.eligible ? t('certificates.eligibleToCertify') : t('certificates.blockedByRules')}
                   </Text>
                 </View>
                 {!eligibility.eligible ? (
@@ -208,23 +223,23 @@ export default function StudentCertificatesScreen() {
             ) : null}
 
             <PremiumCard style={styles.formCard}>
-              <Text style={styles.cardTitle}>Issue certificate</Text>
+              <Text style={styles.cardTitle}>{t('certificates.issueSectionTitle')}</Text>
               <ChoiceChipGroup
-                label="Type"
-                options={['Completion', 'Achievement']}
+                label={t('certificates.typeLabel')}
+                options={[typeLabels.completion, typeLabels.achievement]}
                 selected={typeChoice}
                 onSelect={handleTypeSelect}
               />
               <FormTextField
-                label="Title"
-                placeholder="Certificate title"
+                label={t('certificates.titleLabel')}
+                placeholder={t('certificates.titlePlaceholder')}
                 icon="certificate-outline"
                 value={title}
                 onChangeText={setTitle}
               />
               <FormTextField
-                label="Note (optional)"
-                placeholder="Batch, term, or exam details"
+                label={t('certificates.noteLabel')}
+                placeholder={t('certificates.notePlaceholderStudent')}
                 icon="note-text-outline"
                 value={note}
                 onChangeText={setNote}
@@ -240,7 +255,7 @@ export default function StudentCertificatesScreen() {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="certificate" size={18} color="white" />
-                    <Text style={styles.issueButtonText}>Issue certificate</Text>
+                    <Text style={styles.issueButtonText}>{t('certificates.issueButton')}</Text>
                   </>
                 )}
               </Pressable>
@@ -248,11 +263,11 @@ export default function StudentCertificatesScreen() {
 
             <PremiumCard style={styles.listCard}>
               <View style={styles.listHeader}>
-                <Text style={styles.cardTitle}>Issued certificates</Text>
+                <Text style={styles.cardTitle}>{t('certificates.issuedListTitle')}</Text>
                 <Text style={styles.countText}>{items.length}</Text>
               </View>
               {items.length === 0 ? (
-                <Text style={styles.emptyText}>No certificates issued yet for this student.</Text>
+                <Text style={styles.emptyText}>{t('certificates.noIssuedYet')}</Text>
               ) : (
                 <View style={styles.list}>
                   {items.map((item) => (
@@ -269,12 +284,12 @@ export default function StudentCertificatesScreen() {
                           <Text style={styles.rowTitle}>{item.title}</Text>
                           {isCertificateRevoked(item) ? (
                             <View style={styles.revokedBadge}>
-                              <Text style={styles.revokedBadgeText}>Revoked</Text>
+                              <Text style={styles.revokedBadgeText}>{t('certificates.revoked')}</Text>
                             </View>
                           ) : null}
                         </View>
                         <Text style={styles.rowMeta}>
-                          {certificateTypeLabel(item.certificateType)} • {item.serialNo} • {formatCertificateDate(item.issuedOn)}
+                          {typeLabels[item.certificateType]} • {item.serialNo} • {formatCertificateDate(item.issuedOn)}
                         </Text>
                         {item.note ? <Text style={styles.rowNote}>{item.note}</Text> : null}
                       </View>

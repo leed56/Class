@@ -13,13 +13,18 @@ import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById, listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { InvoiceType } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 type ChargeType = Extract<InvoiceType, 'material' | 'exam'>;
 
+const GENERAL_CLASS = 'General';
+
 export default function IssueChargeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId?: string }>();
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState(params.studentId ?? '');
@@ -28,7 +33,7 @@ export default function IssueChargeScreen() {
   const [chargeType, setChargeType] = useState<ChargeType>('material');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [classLabel, setClassLabel] = useState('General');
+  const [classLabel, setClassLabel] = useState(GENERAL_CLASS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,19 +55,20 @@ export default function IssueChargeScreen() {
         ]);
         setSelectedStudent(student);
         setEnrollments(nextEnrollments);
-        setClassLabel('General');
+        setClassLabel(GENERAL_CLASS);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load students.');
+      setError(loadError instanceof Error ? loadError.message : t('issueCharge.loadStudentsFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
-  const classOptions = ['General', ...enrollments.map((entry) => `${entry.tuitionClass.subject} G${entry.tuitionClass.grade}`)];
+  const classValues = [GENERAL_CLASS, ...enrollments.map((entry) => `${entry.tuitionClass.subject} G${entry.tuitionClass.grade}`)];
+  const classLabels = [t('issueCharge.generalClass'), ...enrollments.map((entry) => `${entry.tuitionClass.subject} G${entry.tuitionClass.grade}`)];
 
   function resolveClassId(label: string) {
-    if (label === 'General') return null;
+    if (label === GENERAL_CLASS) return null;
     const entry = enrollments.find((item) => `${item.tuitionClass.subject} G${item.tuitionClass.grade}` === label);
     return entry?.tuitionClass.id ?? null;
   }
@@ -81,15 +87,15 @@ export default function IssueChargeScreen() {
       ]);
       setSelectedStudent(student);
       setEnrollments(nextEnrollments);
-      setClassLabel('General');
+      setClassLabel(GENERAL_CLASS);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+      setError(loadError instanceof Error ? loadError.message : t('issueCharge.loadStudentFailed'));
     }
   }
 
   async function handleSave() {
     if (!selectedStudentId) {
-      setError('Select a student first.');
+      setError(t('issueCharge.selectStudentFirst'));
       return;
     }
 
@@ -105,7 +111,7 @@ export default function IssueChargeScreen() {
       });
       router.replace(`/fees/record-payment?studentId=${selectedStudentId}&invoiceId=${invoiceId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not issue charge.');
+      setError(saveError instanceof Error ? saveError.message : t('issueCharge.issueFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -114,11 +120,15 @@ export default function IssueChargeScreen() {
   function confirmSave() {
     if (!selectedStudent) return;
     Alert.alert(
-      'Issue charge?',
-      `Add ${chargeType === 'material' ? 'material' : 'exam'} fee of LKR ${Number(amount || 0).toLocaleString('en-LK')} for ${selectedStudent.name}.`,
+      t('issueCharge.confirmTitle'),
+      interpolate(t('issueCharge.confirmMessage'), {
+        type: chargeType === 'material' ? t('issueCharge.material') : t('issueCharge.exam'),
+        amount: `LKR ${Number(amount || 0).toLocaleString('en-LK')}`,
+        name: selectedStudent.name,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Issue', onPress: handleSave },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('issueCharge.issueButton'), onPress: handleSave },
       ],
     );
   }
@@ -139,10 +149,10 @@ export default function IssueChargeScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>Add a student before issuing material or exam charges.</Text>
+          <Text style={styles.errorText}>{t('issueCharge.noStudents')}</Text>
           <Link href="/students/new" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Add student</Text>
+              <Text style={styles.retryText}>{t('issueCharge.addStudent')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -160,8 +170,8 @@ export default function IssueChargeScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Issue Charge</Text>
-            <Text style={styles.subtitle}>Bill students for books, papers, model exams and other one-time fees.</Text>
+            <Text style={styles.title}>{t('issueCharge.title')}</Text>
+            <Text style={styles.subtitle}>{t('issueCharge.subtitle')}</Text>
           </View>
         </View>
 
@@ -170,17 +180,17 @@ export default function IssueChargeScreen() {
             <MaterialCommunityIcons name="file-document-plus-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>One-time invoice</Text>
-            <Text style={styles.heroTitle}>{selectedStudent?.name ?? 'Select student'}</Text>
-            <Text style={styles.heroNote}>Material kits, past papers, term tests and exam fees</Text>
+            <Text style={styles.heroLabel}>{t('issueCharge.heroLabel')}</Text>
+            <Text style={styles.heroTitle}>{selectedStudent?.name ?? t('issueCharge.selectStudent')}</Text>
+            <Text style={styles.heroNote}>{t('issueCharge.heroNote')}</Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.formCard}>
-          <Text style={styles.cardTitle}>Student</Text>
+          <Text style={styles.cardTitle}>{t('issueCharge.studentCard')}</Text>
           {!params.studentId ? (
             <View style={styles.chipGroup}>
-              <Text style={styles.chipLabel}>Choose student</Text>
+              <Text style={styles.chipLabel}>{t('issueCharge.chooseStudent')}</Text>
               <View style={styles.chipRow}>
                 {students.map((student) => {
                   const active = student.id === selectedStudentId;
@@ -204,31 +214,31 @@ export default function IssueChargeScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.formCard}>
-          <Text style={styles.cardTitle}>Charge type</Text>
+          <Text style={styles.cardTitle}>{t('issueCharge.chargeTypeTitle')}</Text>
           <View style={styles.typeRow}>
             <TypeChip
-              label="Material"
+              label={t('issueCharge.material')}
               icon="notebook-outline"
               active={chargeType === 'material'}
               onPress={() => setChargeType('material')}
             />
             <TypeChip
-              label="Exam"
+              label={t('issueCharge.exam')}
               icon="file-certificate-outline"
               active={chargeType === 'exam'}
               onPress={() => setChargeType('exam')}
             />
           </View>
           <FormTextField
-            label="Description"
-            placeholder={chargeType === 'material' ? 'e.g. Term 2 workbook + past papers' : 'e.g. March model exam'}
+            label={t('issueCharge.descriptionLabel')}
+            placeholder={chargeType === 'material' ? t('issueCharge.materialPlaceholder') : t('issueCharge.examPlaceholder')}
             icon="text-box-outline"
             value={description}
             onChangeText={setDescription}
           />
           <FormTextField
-            label="Amount (LKR)"
-            placeholder="1500"
+            label={t('issueCharge.amountLabel')}
+            placeholder={t('issueCharge.amountPlaceholder')}
             icon="cash"
             keyboardType="number-pad"
             value={amount}
@@ -238,13 +248,16 @@ export default function IssueChargeScreen() {
 
         {enrollments.length > 0 ? (
           <PremiumCard style={styles.formCard}>
-            <Text style={styles.cardTitle}>Link to class (optional)</Text>
-            <Text style={styles.cardSubtitle}>Helps group charges with the relevant subject on receipts.</Text>
+            <Text style={styles.cardTitle}>{t('issueCharge.linkClassTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('issueCharge.linkClassSubtitle')}</Text>
             <ChoiceChipGroup
-              label="Class"
-              options={classOptions}
-              selected={classLabel}
-              onSelect={setClassLabel}
+              label={t('issueCharge.classLabel')}
+              options={classLabels}
+              selected={classLabel === GENERAL_CLASS ? t('issueCharge.generalClass') : classLabel}
+              onSelect={(label) => {
+                const index = classLabels.indexOf(label);
+                if (index >= 0) setClassLabel(classValues[index] ?? GENERAL_CLASS);
+              }}
             />
           </PremiumCard>
         ) : null}
@@ -254,7 +267,7 @@ export default function IssueChargeScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Charge total</Text>
+          <Text style={styles.saveLabel}>{t('issueCharge.chargeTotal')}</Text>
           <Text style={styles.saveValue}>LKR {Number(amount || 0).toLocaleString('en-LK')}</Text>
         </View>
         <Pressable style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={confirmSave} disabled={isSaving}>
@@ -263,7 +276,7 @@ export default function IssueChargeScreen() {
           ) : (
             <>
               <MaterialCommunityIcons name="file-send-outline" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Issue & collect</Text>
+              <Text style={styles.saveButtonText}>{t('issueCharge.issueCollect')}</Text>
             </>
           )}
         </Pressable>

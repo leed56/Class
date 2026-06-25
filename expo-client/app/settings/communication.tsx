@@ -7,10 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCommunicationStats } from '@/features/communications/communicationService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function CommunicationSetupScreen() {
+  const { t } = useI18n();
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0, skipped: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,8 +42,8 @@ export default function CommunicationSetupScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Communication</Text>
-            <Text style={styles.subtitle}>WhatsApp, SMS fallback, message templates and parent consent controls.</Text>
+            <Text style={styles.title}>{t('communication.title')}</Text>
+            <Text style={styles.subtitle}>{t('communication.subtitle')}</Text>
           </View>
           <View style={styles.iconButton}>
             <MaterialCommunityIcons name="message-cog-outline" size={22} color={colors.primary} />
@@ -52,19 +55,25 @@ export default function CommunicationSetupScreen() {
             <MaterialCommunityIcons name="whatsapp" size={31} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Parent communication</Text>
-            <Text style={styles.heroTitle}>WhatsApp-first alerts</Text>
+            <Text style={styles.heroLabel}>{t('communication.heroLabel')}</Text>
+            <Text style={styles.heroTitle}>{t('communication.heroTitle')}</Text>
             <Text style={styles.heroNote}>
-              {isLoading ? 'Loading delivery stats…' : `${stats.sent} sent • ${stats.failed} failed • ${stats.skipped} skipped`}
+              {isLoading
+                ? t('communication.heroNoteLoading')
+                : interpolate(t('communication.heroNoteStats'), {
+                    sent: stats.sent,
+                    failed: stats.failed,
+                    skipped: stats.skipped,
+                  })}
             </Text>
           </View>
         </LinearGradient>
 
         <View style={styles.statusRow}>
-          <StatusCard label="WhatsApp" value="Active" icon="whatsapp" color={colors.success} />
+          <StatusCard label={t('communication.whatsapp')} value={t('communication.active')} icon="whatsapp" color={colors.success} />
           <Link href="/settings/delivery-log" asChild>
             <Pressable style={styles.statusCardPressable}>
-              <StatusCard label="Delivery log" value={`${stats.total}`} icon="message-text-clock-outline" color={colors.info} />
+              <StatusCard label={t('communication.deliveryLog')} value={`${stats.total}`} icon="message-text-clock-outline" color={colors.info} />
             </Pressable>
           </Link>
         </View>
@@ -72,34 +81,34 @@ export default function CommunicationSetupScreen() {
         <PremiumCard style={styles.integrationCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Integration status</Text>
-              <Text style={styles.cardSubtitle}>Designed for ReachWA first, then SMS fallback if parents are offline.</Text>
+              <Text style={styles.cardTitle}>{t('communication.integrationTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('communication.integrationSubtitle')}</Text>
             </View>
             <View style={styles.phasePill}>
-              <Text style={styles.phasePillText}>Live</Text>
+              <Text style={styles.phasePillText}>{t('communication.live')}</Text>
             </View>
           </View>
-          <IntegrationStep title="Absence alert composer" state="Active" icon="account-alert-outline" />
+          <IntegrationStep title={t('communication.stepAbsence')} state={t('communication.stateActive')} icon="account-alert-outline" />
           <View style={styles.divider} />
-          <IntegrationStep title="Delivery log with retry" state="Active" icon="message-text-clock-outline" />
+          <IntegrationStep title={t('communication.stepDelivery')} state={t('communication.stateActive')} icon="message-text-clock-outline" />
           <View style={styles.divider} />
-          <IntegrationStep title="Offline attendance queue" state="Active" icon="cloud-sync-outline" />
+          <IntegrationStep title={t('communication.stepOffline')} state={t('communication.stateActive')} icon="cloud-sync-outline" />
           <View style={styles.divider} />
-          <IntegrationStep title="Fee reminder delivery log" state="Active" icon="cash-clock" />
+          <IntegrationStep title={t('communication.stepFeeLog')} state={t('communication.stateActive')} icon="cash-clock" />
           <View style={styles.divider} />
-          <IntegrationStep title="Enable SMS fallback" state="Text.lk ready" icon="cellphone-message" />
+          <IntegrationStep title={t('communication.stepSms')} state={t('communication.stateTextLkReady')} icon="cellphone-message" />
         </PremiumCard>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Message templates</Text>
-          <Text style={styles.sectionAction}>Edit all</Text>
+          <Text style={styles.sectionTitle}>{t('communication.templatesTitle')}</Text>
+          <Text style={styles.sectionAction}>{t('communication.editAll')}</Text>
         </View>
 
         <View style={styles.templateList}>
-          <TemplateCard title="Fee reminder" subtitle="Polite pending-fee reminder with class and month" icon="cash-clock" color={colors.danger} sample="Dear parent, June class fee is still pending for Kavindu. Thank you." />
-          <TemplateCard title="Absence alert" subtitle="Sent after attendance save for absent students" icon="account-alert-outline" color={colors.warning} sample="Dear parent, your child was marked absent from today's class." />
-          <TemplateCard title="Class announcement" subtitle="Schedule change, holiday or extra class message" icon="bullhorn-outline" color={colors.primary} sample="Tomorrow's class will start at 10:30 AM in Hall A." />
-          <TemplateCard title="Receipt message" subtitle="Share receipt number and amount after payment" icon="receipt-text-check-outline" color={colors.success} sample="Payment received. Receipt RCPT-0004 has been generated." />
+          <TemplateCard title={t('communication.tplFeeReminder')} subtitle={t('communication.tplFeeReminderSub')} icon="cash-clock" color={colors.danger} sample={t('communication.tplFeeSample')} />
+          <TemplateCard title={t('communication.tplAbsence')} subtitle={t('communication.tplAbsenceSub')} icon="account-alert-outline" color={colors.warning} sample={t('communication.tplAbsenceSample')} />
+          <TemplateCard title={t('communication.tplAnnouncement')} subtitle={t('communication.tplAnnouncementSub')} icon="bullhorn-outline" color={colors.primary} sample={t('communication.tplAnnouncementSample')} />
+          <TemplateCard title={t('communication.tplReceipt')} subtitle={t('communication.tplReceiptSub')} icon="receipt-text-check-outline" color={colors.success} sample={t('communication.tplReceiptSample')} />
         </View>
 
         <PremiumCard style={styles.consentCard}>
@@ -107,8 +116,8 @@ export default function CommunicationSetupScreen() {
             <MaterialCommunityIcons name="shield-check-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.consentCopy}>
-            <Text style={styles.cardTitle}>Consent safety gate</Text>
-            <Text style={styles.cardSubtitle}>Only parents with captured communication consent should receive automated messages in production.</Text>
+            <Text style={styles.cardTitle}>{t('communication.consentTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('communication.consentSubtitle')}</Text>
           </View>
           <View style={styles.consentBadge}>
             <Text style={styles.consentBadgeText}>{stats.sent}</Text>
@@ -116,13 +125,13 @@ export default function CommunicationSetupScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.rulesCard}>
-          <Text style={styles.cardTitle}>Send rules</Text>
-          <Text style={styles.cardSubtitle}>Teacher-friendly defaults for respectful parent communication.</Text>
-          <RuleRow icon="clock-outline" label="Quiet hours" value="After 8:00 PM blocked" />
+          <Text style={styles.cardTitle}>{t('communication.sendRulesTitle')}</Text>
+          <Text style={styles.cardSubtitle}>{t('communication.sendRulesSubtitle')}</Text>
+          <RuleRow icon="clock-outline" label={t('communication.ruleQuietHours')} value={t('communication.ruleQuietHoursValue')} />
           <View style={styles.divider} />
-          <RuleRow icon="account-check-outline" label="Consent required" value="Enabled" />
+          <RuleRow icon="account-check-outline" label={t('communication.ruleConsent')} value={t('communication.ruleConsentValue')} />
           <View style={styles.divider} />
-          <RuleRow icon="message-reply-text-outline" label="Reply handling" value="Teacher phone first" />
+          <RuleRow icon="message-reply-text-outline" label={t('communication.ruleReply')} value={t('communication.ruleReplyValue')} />
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Href, Link, useFocusEffect, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,15 +11,10 @@ import {
   listMessageDeliveries,
   MessageDelivery,
 } from '@/features/communications/communicationService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-function statusLabel(status: MessageDelivery['status']) {
-  if (status === 'sent') return 'Sent';
-  if (status === 'failed') return 'Failed';
-  if (status === 'skipped') return 'Skipped';
-  return 'Draft';
-}
 
 function statusColor(status: MessageDelivery['status']) {
   if (status === 'sent') return colors.success;
@@ -43,10 +38,18 @@ function formatWhen(value: string) {
 
 export default function DeliveryLogScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [items, setItems] = useState<MessageDelivery[]>([]);
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0, skipped: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  function statusLabel(status: MessageDelivery['status']) {
+    if (status === 'sent') return t('deliveryLog.statusSent');
+    if (status === 'failed') return t('deliveryLog.statusFailed');
+    if (status === 'skipped') return t('deliveryLog.statusSkipped');
+    return t('deliveryLog.statusDraft');
+  }
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -56,11 +59,11 @@ export default function DeliveryLogScreen() {
       setItems(deliveries);
       setStats(nextStats);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load delivery log.');
+      setError(loadError instanceof Error ? loadError.message : t('deliveryLog.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,16 +104,20 @@ export default function DeliveryLogScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Delivery log</Text>
-            <Text style={styles.subtitle}>Sent, failed, skipped and retryable parent messages.</Text>
+            <Text style={styles.title}>{t('deliveryLog.title')}</Text>
+            <Text style={styles.subtitle}>{t('deliveryLog.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Communication audit</Text>
-          <Text style={styles.heroTitle}>{stats.sent} sent</Text>
+          <Text style={styles.heroLabel}>{t('deliveryLog.heroLabel')}</Text>
+          <Text style={styles.heroTitle}>{interpolate(t('deliveryLog.heroTitle'), { sent: stats.sent })}</Text>
           <Text style={styles.heroNote}>
-            {stats.failed} failed • {stats.skipped} skipped • {stats.total} total
+            {interpolate(t('deliveryLog.heroNote'), {
+              failed: stats.failed,
+              skipped: stats.skipped,
+              total: stats.total,
+            })}
           </Text>
         </LinearGradient>
 
@@ -118,7 +125,7 @@ export default function DeliveryLogScreen() {
 
         <PremiumCard style={styles.listCard}>
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No parent messages logged yet.</Text>
+            <Text style={styles.emptyText}>{t('deliveryLog.empty')}</Text>
           ) : (
             <View style={styles.list}>
               {items.map((item) => (
@@ -139,7 +146,7 @@ export default function DeliveryLogScreen() {
                     <Text style={styles.rowTime}>{formatWhen(item.sentAt ?? item.createdAt)}</Text>
                     {item.status === 'failed' ? (
                       <Pressable onPress={() => retryDelivery(item)}>
-                        <Text style={styles.retryLink}>Retry</Text>
+                        <Text style={styles.retryLink}>{t('deliveryLog.retry')}</Text>
                       </Pressable>
                     ) : null}
                   </View>

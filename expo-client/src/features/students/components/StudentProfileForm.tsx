@@ -7,9 +7,12 @@ import {
   SCHOOL_STUDENT_GRADE_OPTIONS,
   usesSchoolStudentFields,
 } from '@/features/students/studentProfileModel';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
+
+const MEDIUM_VALUES = ['English', 'Sinhala', 'Tamil'] as const;
 
 type Props = {
   workspaceType: InstituteType;
@@ -36,13 +39,20 @@ export function StudentProfileForm({
   onGradeChange,
   onMediumChange,
 }: Props) {
+  const { t } = useI18n();
   const schoolMode = usesSchoolStudentFields(workspaceType, academySector);
+
+  const mediumLabels = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  } as const;
 
   return (
     <View style={styles.wrap}>
       <FormTextField
-        label="Student name"
-        placeholder="Kavindu Perera"
+        label={t('studentForm.studentNameLabel')}
+        placeholder={t('studentForm.studentNamePlaceholder')}
         icon="account-outline"
         value={fullName}
         onChangeText={onFullNameChange}
@@ -50,14 +60,14 @@ export function StudentProfileForm({
       {schoolMode ? (
         <>
           <FormTextField
-            label="School"
-            placeholder="Ananda College"
+            label={t('studentForm.schoolLabel')}
+            placeholder={t('studentForm.schoolPlaceholder')}
             icon="school-outline"
             value={school}
             onChangeText={onSchoolChange}
           />
           <ChoiceChipGroup
-            label="Grade (1–13, up to A/L)"
+            label={t('studentForm.gradeLabel')}
             selected={grade}
             options={SCHOOL_STUDENT_GRADE_OPTIONS}
             onSelect={onGradeChange}
@@ -65,12 +75,10 @@ export function StudentProfileForm({
         </>
       ) : (
         <>
-          <Text style={styles.hint}>
-            Professional academy — no school grade. Enrol trainees by programme, not O/L/A/L class.
-          </Text>
+          <Text style={styles.hint}>{t('studentForm.academyHint')}</Text>
           <FormTextField
-            label="Entry qualification (optional)"
-            placeholder="e.g. O/L passed, deck rating applicant, NVQ 4"
+            label={t('studentForm.entryQualificationLabel')}
+            placeholder={t('studentForm.entryQualificationPlaceholder')}
             icon="certificate-outline"
             value={school}
             onChangeText={onSchoolChange}
@@ -78,10 +86,13 @@ export function StudentProfileForm({
         </>
       )}
       <ChoiceChipGroup
-        label="Medium"
-        selected={medium}
-        options={['English', 'Sinhala', 'Tamil']}
-        onSelect={(value) => onMediumChange(value as Medium)}
+        label={t('studentForm.mediumLabel')}
+        selected={mediumLabels[medium]}
+        options={MEDIUM_VALUES.map((value) => mediumLabels[value])}
+        onSelect={(label) => {
+          const match = MEDIUM_VALUES.find((value) => mediumLabels[value] === label);
+          if (match) onMediumChange(match);
+        }}
       />
     </View>
   );

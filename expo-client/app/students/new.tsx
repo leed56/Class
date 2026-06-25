@@ -13,12 +13,14 @@ import {
 } from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { createStudent } from '@/features/students/studentService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function NewStudentScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>('school_tuition');
   const [fullName, setFullName] = useState('');
@@ -55,7 +57,7 @@ export default function NewStudentScreen() {
       });
       router.replace('/(tabs)/students');
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save student.');
+      setError(saveError instanceof Error ? saveError.message : t('studentForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -71,11 +73,11 @@ export default function NewStudentScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Add Student</Text>
+            <Text style={styles.title}>{t('studentForm.addTitle')}</Text>
             <Text style={styles.subtitle}>
               {workspaceType === 'academy' && academySector !== 'school_tuition'
-                ? 'Register a trainee for your academy programme — no school grade needed.'
-                : 'Create a complete profile for attendance, fees and parent communication.'}
+                ? t('studentForm.subtitleAcademy')
+                : t('studentForm.subtitleSchool')}
             </Text>
           </View>
         </View>
@@ -85,14 +87,14 @@ export default function NewStudentScreen() {
             <MaterialCommunityIcons name="account-plus" size={28} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Premium student profile</Text>
-            <Text style={styles.heroTitle}>Register once. Use everywhere.</Text>
-            <Text style={styles.heroNote}>Attendance, fees, receipts and reminders will use this record.</Text>
+            <Text style={styles.heroLabel}>{t('studentForm.heroLabel')}</Text>
+            <Text style={styles.heroTitle}>{t('studentForm.heroTitle')}</Text>
+            <Text style={styles.heroNote}>{t('studentForm.heroNote')}</Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Student details</Text>
+          <Text style={styles.cardTitle}>{t('studentForm.studentDetails')}</Text>
           <StudentProfileForm
             workspaceType={workspaceType}
             academySector={academySector}
@@ -108,9 +110,9 @@ export default function NewStudentScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Parent contact</Text>
-          <FormTextField label="Parent name" placeholder="Mrs. Perera" icon="account-heart-outline" value={parentName} onChangeText={setParentName} />
-          <FormTextField label="Parent phone" placeholder="+94 77 123 4567" icon="phone-outline" keyboardType="phone-pad" value={parentPhone} onChangeText={setParentPhone} />
+          <Text style={styles.cardTitle}>{t('studentForm.parentContact')}</Text>
+          <FormTextField label={t('studentForm.parentNameLabel')} placeholder={t('studentForm.parentNamePlaceholder')} icon="account-heart-outline" value={parentName} onChangeText={setParentName} />
+          <FormTextField label={t('studentForm.parentPhoneLabel')} placeholder={t('studentForm.parentPhonePlaceholder')} icon="phone-outline" keyboardType="phone-pad" value={parentPhone} onChangeText={setParentPhone} />
         </PremiumCard>
 
         <PremiumCard style={styles.consentCard}>
@@ -119,8 +121,8 @@ export default function NewStudentScreen() {
               <MaterialCommunityIcons name="shield-check-outline" size={23} color={colors.primary} />
             </View>
             <View style={styles.consentCopy}>
-              <Text style={styles.consentTitle}>Parent consent</Text>
-              <Text style={styles.consentText}>Capture permission to store student details and send parent communication.</Text>
+              <Text style={styles.consentTitle}>{t('studentForm.consentTitle')}</Text>
+              <Text style={styles.consentText}>{t('studentForm.consentText')}</Text>
             </View>
           </View>
           <Pressable
@@ -133,7 +135,7 @@ export default function NewStudentScreen() {
               color={consentCaptured ? colors.success : colors.warning}
             />
             <Text style={[styles.consentPillText, !consentCaptured && styles.consentPillTextPending]}>
-              {consentCaptured ? 'Consent captured' : 'Tap to capture consent'}
+              {consentCaptured ? t('studentForm.consentCaptured') : t('studentForm.consentTap')}
             </Text>
           </Pressable>
         </PremiumCard>
@@ -143,8 +145,8 @@ export default function NewStudentScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Profile quality</Text>
-          <Text style={styles.saveValue}>{consentCaptured ? 'Ready to save' : 'Consent required'}</Text>
+          <Text style={styles.saveLabel}>{t('studentForm.profileQuality')}</Text>
+          <Text style={styles.saveValue}>{consentCaptured ? t('studentForm.readyToSave') : t('studentForm.consentRequired')}</Text>
         </View>
         <Pressable style={[styles.saveButton, submitting && styles.saveButtonDisabled]} onPress={handleSave} disabled={submitting}>
           {submitting ? (
@@ -152,7 +154,7 @@ export default function NewStudentScreen() {
           ) : (
             <>
               <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Save Student</Text>
+              <Text style={styles.saveButtonText}>{t('studentForm.saveStudent')}</Text>
             </>
           )}
         </Pressable>

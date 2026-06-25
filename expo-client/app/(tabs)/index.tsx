@@ -19,7 +19,7 @@ import {
   getTeacherDisplayName,
   getTeacherInitials,
 } from '@/features/auth/teacherProfile';
-import { formatLocalizedTodayDate, getLocalizedTimeGreeting, interpolate } from '@/i18n';
+import { formatLocalizedTodayDate, formatWeekdayName, getCanonicalWeekday, getLocalizedTimeGreeting, interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
@@ -99,7 +99,8 @@ export default function HomeScreen() {
     }, [loadDashboard]),
   );
 
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todayName = getCanonicalWeekday();
+  const todayLabel = formatWeekdayName(locale, todayName);
   const todayClasses = useMemo(() => classes.filter((item) => item.day === todayName), [classes, todayName]);
   const nextClass = todayClasses.find((item) => item.state !== 'completed') ?? todayClasses[0] ?? classes[0];
   const teacherName = getTeacherDisplayName(user);
@@ -256,7 +257,7 @@ export default function HomeScreen() {
             <PremiumCard style={styles.panelCard}>
               <Text style={styles.cardTitle}>{t('common.todaysSchedule')}</Text>
               {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayName })}</Text>
+                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayLabel })}</Text>
               ) : (
                 todayClasses.map((item) => (
                   <ScheduleRow
@@ -349,7 +350,7 @@ export default function HomeScreen() {
             <PremiumCard>
               <Text style={styles.cardTitle}>{t('common.todaysSchedule')}</Text>
               {todayClasses.length === 0 ? (
-                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayName })}</Text>
+                <Text style={styles.emptyCopy}>{interpolate(t('dashboard.noClassesToday'), { day: todayLabel })}</Text>
               ) : (
                 todayClasses.map((item) => (
                   <ScheduleRow

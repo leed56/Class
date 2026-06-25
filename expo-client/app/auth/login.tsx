@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/core/auth/AuthProvider';
+import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_ACADEMY_EMAIL,
@@ -83,7 +84,7 @@ export default function LoginScreen() {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setError('Supabase is not configured yet.');
+      setError(t('auth.supabaseNotConfigured'));
       return;
     }
 
@@ -98,7 +99,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(email);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : 'Could not finish sign in.');
+      setError(routeError instanceof Error ? routeError.message : t('auth.signInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -116,7 +117,7 @@ export default function LoginScreen() {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setError('Supabase is not configured yet.');
+      setError(t('auth.supabaseNotConfigured'));
       return;
     }
 
@@ -138,7 +139,7 @@ export default function LoginScreen() {
       }
       if (!signUpResult.data.session) {
         setSubmitting(false);
-        setError('Demo account created. Confirm the email in Supabase Auth, then retry demo login.');
+        setError(t('auth.demoAccountCreated'));
         return;
       }
     }
@@ -146,7 +147,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(DEMO_TEACHER_EMAIL);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : 'Could not finish demo sign in.');
+      setError(routeError instanceof Error ? routeError.message : t('auth.demoSignInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +165,7 @@ export default function LoginScreen() {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setError('Supabase is not configured yet.');
+      setError(t('auth.supabaseNotConfigured'));
       return;
     }
 
@@ -186,7 +187,7 @@ export default function LoginScreen() {
       }
       if (!signUpResult.data.session) {
         setSubmitting(false);
-        setError('Demo academy account created. Confirm the email in Supabase Auth, then retry.');
+        setError(t('auth.demoAcademyAccountCreated'));
         return;
       }
     }
@@ -194,7 +195,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(DEMO_ACADEMY_EMAIL);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : 'Could not finish academy demo sign in.');
+      setError(routeError instanceof Error ? routeError.message : t('auth.demoAcademySignInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -212,7 +213,7 @@ export default function LoginScreen() {
 
     const supabase = getSupabase();
     if (!supabase) {
-      setError('Supabase is not configured yet.');
+      setError(t('auth.supabaseNotConfigured'));
       return;
     }
 
@@ -228,7 +229,7 @@ export default function LoginScreen() {
       }
       if (!signUpResult.data.session) {
         setSubmitting(false);
-        setError('Demo account created. Confirm the email in Supabase Auth, then retry.');
+        setError(t('auth.demoAccountCreated'));
         return;
       }
     }
@@ -236,7 +237,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(demoEmail);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : 'Could not finish demo sign in.');
+      setError(routeError instanceof Error ? routeError.message : t('auth.demoSignInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -257,18 +258,18 @@ export default function LoginScreen() {
           <View style={styles.pilotBanner}>
             <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
             <View style={styles.pilotCopy}>
-              <Text style={styles.pilotTitle}>Pilot demos</Text>
+              <Text style={styles.pilotTitle}>{t('auth.pilotDemosTitle')}</Text>
               <Text style={styles.pilotText}>
-                Institute: {DEMO_TEACHER_EMAIL} / {DEMO_TEACHER_PASSWORD}
+                {interpolate(t('auth.pilotInstitute'), { email: DEMO_TEACHER_EMAIL, password: DEMO_TEACHER_PASSWORD })}
               </Text>
               <Text style={styles.pilotText}>
-                Academy: {DEMO_ACADEMY_EMAIL} / {DEMO_ACADEMY_PASSWORD}
+                {interpolate(t('auth.pilotAcademy'), { email: DEMO_ACADEMY_EMAIL, password: DEMO_ACADEMY_PASSWORD })}
               </Text>
               <Text style={styles.pilotText}>
-                Maritime: {DEMO_MARITIME_EMAIL} / {DEMO_MARITIME_PASSWORD}
+                {interpolate(t('auth.pilotMaritime'), { email: DEMO_MARITIME_EMAIL, password: DEMO_MARITIME_PASSWORD })}
               </Text>
               <Text style={styles.pilotText}>
-                IT: {DEMO_IT_ACADEMY_EMAIL} / {DEMO_IT_ACADEMY_PASSWORD}
+                {interpolate(t('auth.pilotIt'), { email: DEMO_IT_ACADEMY_EMAIL, password: DEMO_IT_ACADEMY_PASSWORD })}
               </Text>
             </View>
           </View>
@@ -285,7 +286,7 @@ export default function LoginScreen() {
           <Text style={styles.formTitle}>{t('auth.teacherSignIn')}</Text>
           <FormTextField
             label={t('auth.email')}
-            placeholder="teacher@example.com"
+            placeholder={t('auth.loginEmailPlaceholder')}
             icon="email-outline"
             keyboardType="email-address"
             value={email}
@@ -293,7 +294,7 @@ export default function LoginScreen() {
           />
           <FormTextField
             label={t('auth.password')}
-            placeholder="Your password"
+            placeholder={t('auth.loginPasswordPlaceholder')}
             icon="lock-outline"
             secureTextEntry
             value={password}
@@ -310,24 +311,24 @@ export default function LoginScreen() {
           {isPilotDemoAuthEnabled() && isSupabaseConfigured ? (
             <>
               <Pressable style={styles.secondaryButton} onPress={handleDemoAcademyLogin} disabled={submitting}>
-                <Text style={styles.secondaryButtonText}>Try sample academy onboarding</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.tryAcademyOnboarding')}</Text>
               </Pressable>
               <Pressable style={styles.secondaryButton} onPress={handleDemoAdminLogin} disabled={submitting}>
-                <Text style={styles.secondaryButtonText}>Quick demo institute login</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.quickDemoInstitute')}</Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryButton}
                 onPress={() => void handleSectorDemoLogin(DEMO_MARITIME_EMAIL, DEMO_MARITIME_PASSWORD, 'maritime')}
                 disabled={submitting}
               >
-                <Text style={styles.secondaryButtonText}>Maritime academy demo</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.maritimeDemo')}</Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryButton}
                 onPress={() => void handleSectorDemoLogin(DEMO_IT_ACADEMY_EMAIL, DEMO_IT_ACADEMY_PASSWORD, 'it')}
                 disabled={submitting}
               >
-                <Text style={styles.secondaryButtonText}>IT academy demo</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.itDemo')}</Text>
               </Pressable>
             </>
           ) : null}

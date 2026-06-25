@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,19 +22,11 @@ import {
 } from '@/features/certificates/certificateService';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { buildCertificateMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-function certificateTypeLabel(value: StudentCertificate['certificateType']) {
-  return value === 'completion' ? 'Completion' : 'Achievement';
-}
-
-function printActionLabel(action: CertificatePrint['action']) {
-  if (action === 'download') return 'Downloaded PDF';
-  if (action === 'share') return 'Shared via WhatsApp';
-  return 'Reprinted PDF';
-}
 
 function formatPrintTime(value: string) {
   return new Date(value).toLocaleString('en-LK', {
@@ -47,11 +39,12 @@ function formatPrintTime(value: string) {
 }
 
 export default function CertificateDetailScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string; certificateId: string }>();
   const { hasPermission } = useWorkspaceRole();
   const [student, setStudent] = useState<Student | null>(null);
   const [certificate, setCertificate] = useState<StudentCertificate | null>(null);
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState(t('certificateDetail.workspaceFallback'));
   const [template, setTemplate] = useState(getCertificateTemplateFromWorkspace(null));
   const [prints, setPrints] = useState<CertificatePrint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +53,23 @@ export default function CertificateDetailScreen() {
 
   const backHref = (`/students/${params.studentId}/certificates` as Href);
   const revoked = certificate ? isCertificateRevoked(certificate) : false;
+
+  const typeLabels = useMemo(
+    () => ({
+      completion: t('certificates.typeCompletion'),
+      achievement: t('certificates.typeAchievement'),
+    }),
+    [t],
+  );
+
+  const printActionLabels = useMemo(
+    (): Record<CertificatePrint['action'], string> => ({
+      download: t('certificateDetail.printDownload'),
+      share: t('certificateDetail.printShare'),
+      reprint: t('certificateDetail.printReprint'),
+    }),
+    [t],
+  );
 
   const load = useCallback(async () => {
     if (!params.studentId || !params.certificateId) return;
@@ -74,18 +84,18 @@ export default function CertificateDetailScreen() {
       ]);
       setStudent(nextStudent);
       setCertificate(nextCertificate);
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('certificateDetail.workspaceFallback'));
       setTemplate(getCertificateTemplateFromWorkspace(workspace));
       setPrints(nextPrints);
       if (!nextStudent || !nextCertificate) {
-        setError('Certificate not found.');
+        setError(t('certificateDetail.notFound'));
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load certificate.');
+      setError(loadError instanceof Error ? loadError.message : t('certificateDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.certificateId, params.studentId]);
+  }, [params.certificateId, params.studentId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -119,7 +129,7 @@ export default function CertificateDetailScreen() {
       await logCertificatePrint(certificate.id, isReprint ? 'reprint' : 'download');
       await load();
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Could not export certificate PDF.');
+      setError(downloadError instanceof Error ? downloadError.message : t('certificateDetail.exportFailed'));
     } finally {
       setIsWorking(false);
     }
@@ -128,14 +138,14 @@ export default function CertificateDetailScreen() {
   async function shareCertificate() {
     if (!student || !certificate) return;
     if (revoked) {
-      setError('Revoked certificates cannot be shared.');
+      setError(t('certificateDetail.shareBlockedError'));
       return;
     }
 
     const message = buildCertificateMessage({
       workspaceName,
       studentName: student.name,
-      certificateType: certificateTypeLabel(certificate.certificateType),
+      certificateType: typeLabels[certificate.certificateType],
       title: certificate.title,
       serialNo: certificate.serialNo,
       issuedOn: formatCertificateDate(certificate.issuedOn),
@@ -147,36 +157,32 @@ export default function CertificateDetailScreen() {
       await logCertificatePrint(certificate.id, 'share');
       await load();
     } catch (logError) {
-      setError(logError instanceof Error ? logError.message : 'Share sent but history was not saved.');
+      setError(logError instanceof Error ? logError.message : t('certificateDetail.shareLogFailed'));
     }
   }
 
   function confirmRevoke() {
     if (!certificate || revoked) return;
-    Alert.alert(
-      'Revoke certificate?',
-      'Parents should no longer treat this certificate as valid. PDF exports will show a revoked watermark.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Revoke',
-          style: 'destructive',
-          onPress: async () => {
-            setIsWorking(true);
-            setError(null);
-            try {
-              const updated = await revokeCertificate(certificate.id);
-              setCertificate(updated);
-              await load();
-            } catch (revokeError) {
-              setError(revokeError instanceof Error ? revokeError.message : 'Could not revoke certificate.');
-            } finally {
-              setIsWorking(false);
-            }
-          },
+    Alert.alert(t('certificateDetail.revokeConfirmTitle'), t('certificateDetail.revokeConfirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('certificateDetail.revoke'),
+        style: 'destructive',
+        onPress: async () => {
+          setIsWorking(true);
+          setError(null);
+          try {
+            const updated = await revokeCertificate(certificate.id);
+            setCertificate(updated);
+            await load();
+          } catch (revokeError) {
+            setError(revokeError instanceof Error ? revokeError.message : t('certificateDetail.revokeFailed'));
+          } finally {
+            setIsWorking(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   }
 
   if (isLoading) {
@@ -193,10 +199,10 @@ export default function CertificateDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Certificate not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('certificateDetail.notFound')}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to certificates</Text>
+              <Text style={styles.retryText}>{t('certificateDetail.backToCertificates')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -216,8 +222,8 @@ export default function CertificateDetailScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Certificate</Text>
-            <Text style={styles.subtitle}>Download PDF, share with parents, or revoke if issued in error.</Text>
+            <Text style={styles.title}>{t('certificateDetail.title')}</Text>
+            <Text style={styles.subtitle}>{t('certificateDetail.subtitle')}</Text>
           </View>
         </View>
 
@@ -226,15 +232,13 @@ export default function CertificateDetailScreen() {
           style={styles.hero}
         >
           <View style={styles.heroIcon}>
-            <MaterialCommunityIcons
-              name="certificate-outline"
-              size={30}
-              color="white"
-            />
+            <MaterialCommunityIcons name="certificate-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>
-              {revoked ? 'Revoked certificate' : `${certificateTypeLabel(certificate.certificateType)} certificate`}
+              {revoked
+                ? t('certificateDetail.heroRevoked')
+                : interpolate(t('certificateDetail.heroActive'), { type: typeLabels[certificate.certificateType] })}
             </Text>
             <Text style={styles.heroTitle}>{certificate.serialNo}</Text>
             <Text style={styles.heroNote}>{formatCertificateDate(certificate.issuedOn)}</Text>
@@ -245,9 +249,9 @@ export default function CertificateDetailScreen() {
           <PremiumCard style={styles.revokedCard}>
             <MaterialCommunityIcons name="alert-circle-outline" size={22} color={colors.danger} />
             <View style={styles.revokedCopy}>
-              <Text style={styles.revokedTitle}>This certificate has been revoked</Text>
+              <Text style={styles.revokedTitle}>{t('certificateDetail.revokedTitle')}</Text>
               <Text style={styles.revokedText}>
-                {certificate.revokeReason?.trim() || 'Sharing and new parent confirmations are blocked.'}
+                {certificate.revokeReason?.trim() || t('certificateDetail.revokedDefaultNote')}
               </Text>
             </View>
           </PremiumCard>
@@ -257,16 +261,19 @@ export default function CertificateDetailScreen() {
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{workspaceName}</Text>
             <View style={styles.pill}>
-              <Text style={styles.pillText}>{certificateTypeLabel(certificate.certificateType)}</Text>
+              <Text style={styles.pillText}>{typeLabels[certificate.certificateType]}</Text>
             </View>
           </View>
           <View style={styles.details}>
-            <DetailRow label="Student" value={student.name} />
-            <DetailRow label="Title" value={certificate.title} />
-            <DetailRow label="Serial" value={certificate.serialNo} />
-            <DetailRow label="Issued on" value={formatCertificateDate(certificate.issuedOn)} />
-            <DetailRow label="Signatory" value={template.signatoryName.trim() || 'Not set'} />
-            {certificate.note ? <DetailRow label="Note" value={certificate.note} /> : null}
+            <DetailRow label={t('certificateDetail.studentLabel')} value={student.name} />
+            <DetailRow label={t('certificateDetail.titleLabel')} value={certificate.title} />
+            <DetailRow label={t('certificateDetail.serialLabel')} value={certificate.serialNo} />
+            <DetailRow label={t('certificateDetail.issuedOnLabel')} value={formatCertificateDate(certificate.issuedOn)} />
+            <DetailRow
+              label={t('certificateDetail.signatoryLabel')}
+              value={template.signatoryName.trim() || t('certificateDetail.notSet')}
+            />
+            {certificate.note ? <DetailRow label={t('certificateDetail.noteLabel')} value={certificate.note} /> : null}
           </View>
         </PremiumCard>
 
@@ -276,14 +283,16 @@ export default function CertificateDetailScreen() {
               <MaterialCommunityIcons name="whatsapp" size={24} color={revoked ? colors.textSecondary : colors.success} />
             </View>
             <View style={styles.shareCopy}>
-              <Text style={styles.cardTitle}>Share with parent</Text>
+              <Text style={styles.cardTitle}>{t('certificateDetail.shareTitle')}</Text>
               <Text style={styles.shareSubtitle}>
-                {revoked ? 'Revoked certificates cannot be shared.' : `Send confirmation to ${student.parentPhone}.`}
+                {revoked
+                  ? t('certificateDetail.shareBlocked')
+                  : interpolate(t('certificateDetail.shareSubtitle'), { phone: student.parentPhone })}
               </Text>
             </View>
             {!revoked ? (
               <View style={styles.shareButtonSmall}>
-                <Text style={styles.shareButtonSmallText}>Share</Text>
+                <Text style={styles.shareButtonSmallText}>{t('certificateDetail.share')}</Text>
               </View>
             ) : null}
           </PremiumCard>
@@ -291,16 +300,16 @@ export default function CertificateDetailScreen() {
 
         <PremiumCard style={styles.historyCard}>
           <View style={styles.historyHeader}>
-            <Text style={styles.cardTitle}>Reprint history</Text>
+            <Text style={styles.cardTitle}>{t('certificateDetail.historyTitle')}</Text>
             <Text style={styles.historyCount}>{prints.length}</Text>
           </View>
           {prints.length === 0 ? (
-            <Text style={styles.historyEmpty}>No downloads or shares recorded yet.</Text>
+            <Text style={styles.historyEmpty}>{t('certificateDetail.historyEmpty')}</Text>
           ) : (
             <View style={styles.historyList}>
               {prints.map((item) => (
                 <View key={item.id} style={styles.historyRow}>
-                  <Text style={styles.historyAction}>{printActionLabel(item.action)}</Text>
+                  <Text style={styles.historyAction}>{printActionLabels[item.action]}</Text>
                   <Text style={styles.historyTime}>{formatPrintTime(item.createdAt)}</Text>
                 </View>
               ))}
@@ -313,8 +322,8 @@ export default function CertificateDetailScreen() {
             <PremiumCard style={styles.revokeCard}>
               <MaterialCommunityIcons name="cancel" size={22} color={colors.danger} />
               <View style={styles.revokedCopy}>
-                <Text style={styles.revokeTitle}>Revoke certificate</Text>
-                <Text style={styles.revokeText}>Use if issued in error. PDF exports will show a revoked watermark.</Text>
+                <Text style={styles.revokeTitle}>{t('certificateDetail.revokeTitle')}</Text>
+                <Text style={styles.revokeText}>{t('certificateDetail.revokeText')}</Text>
               </View>
             </PremiumCard>
           </Pressable>
@@ -325,7 +334,9 @@ export default function CertificateDetailScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>{revoked ? 'Revoked' : 'Certificate PDF'}</Text>
+          <Text style={styles.saveLabel}>
+            {revoked ? t('certificateDetail.saveLabelRevoked') : t('certificateDetail.saveLabelActive')}
+          </Text>
           <Text style={styles.saveValue}>{certificate.serialNo}</Text>
         </View>
         <View style={styles.saveActions}>
@@ -335,7 +346,7 @@ export default function CertificateDetailScreen() {
               onPress={() => handleDownloadPdf(true)}
               disabled={isWorking}
             >
-              <Text style={styles.secondaryButtonText}>Reprint</Text>
+              <Text style={styles.secondaryButtonText}>{t('certificateDetail.reprint')}</Text>
             </Pressable>
           ) : null}
           <Pressable
@@ -348,7 +359,7 @@ export default function CertificateDetailScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="file-download-outline" size={18} color="white" />
-                <Text style={styles.saveButtonText}>Download PDF</Text>
+                <Text style={styles.saveButtonText}>{t('certificateDetail.downloadPdf')}</Text>
               </>
             )}
           </Pressable>

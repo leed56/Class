@@ -21,6 +21,8 @@ import { InstituteType } from '@/lib/database.types';
 import { sendLoggedFeeReminder } from '@/features/fees/feeReminderService';
 import { LanguageCode } from '@/lib/database.types';
 import { buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -28,21 +30,25 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-function invoiceLedgerLabel(invoice: FeeInvoice) {
-  if (invoice.invoiceType === 'admission') return 'Admission fee';
-  if (invoice.invoiceType === 'material') return 'Material fee';
-  if (invoice.invoiceType === 'exam') return 'Exam fee';
-  return `${invoice.className} • ${invoice.month}`;
+function invoiceLedgerLabel(
+  invoice: FeeInvoice,
+  t: (key: string) => string,
+) {
+  if (invoice.invoiceType === 'admission') return t('studentProfile.admissionFee');
+  if (invoice.invoiceType === 'material') return t('studentProfile.materialFee');
+  if (invoice.invoiceType === 'exam') return t('studentProfile.examFee');
+  return interpolate(t('studentProfile.classMonth'), { className: invoice.className, month: invoice.month });
 }
 
 export default function StudentProfileScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const { hasPermission } = useWorkspaceRole();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
   const [openInvoices, setOpenInvoices] = useState<FeeInvoice[]>([]);
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceLanguage, setWorkspaceLanguage] = useState<LanguageCode>('en');
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>('school_tuition');
@@ -64,17 +70,17 @@ export default function StudentProfileScreen() {
       setStudent(nextStudent);
       setEnrollments(nextEnrollments);
       setOpenInvoices(invoices);
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setWorkspaceLanguage(workspace?.default_language ?? 'en');
       setWorkspaceType(workspace?.institute_type ?? 'solo');
       setAcademySector(workspace?.academy_sector ?? 'school_tuition');
-      if (!nextStudent) setError('Student not found.');
+      if (!nextStudent) setError(t('studentForm.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+      setError(loadError instanceof Error ? loadError.message : t('studentForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,11 +112,11 @@ export default function StudentProfileScreen() {
   function confirmArchive() {
     if (!student) return;
     Alert.alert(
-      'Archive student?',
-      `${student.name} will be hidden from active lists. Attendance, fees and receipts stay saved.`,
+      t('studentProfile.archiveConfirmTitle'),
+      interpolate(t('studentProfile.archiveConfirmMessage'), { name: student.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Archive', style: 'destructive', onPress: handleArchive },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('studentProfile.archiveButton'), style: 'destructive', onPress: handleArchive },
       ],
     );
   }
@@ -123,7 +129,7 @@ export default function StudentProfileScreen() {
       await archiveStudent(student.id);
       router.replace('/(tabs)/students');
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : 'Could not archive student.');
+      setError(archiveError instanceof Error ? archiveError.message : t('studentProfile.archiveFailed'));
     } finally {
       setIsArchiving(false);
     }
@@ -143,10 +149,10 @@ export default function StudentProfileScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Student not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('studentForm.notFound')}</Text>
           <Link href="/(tabs)/students" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to students</Text>
+              <Text style={styles.retryText}>{t('studentForm.backToStudents')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -164,8 +170,8 @@ export default function StudentProfileScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Student Profile</Text>
-            <Text style={styles.subtitle}>Attendance, fees, parent communication and consent in one place.</Text>
+            <Text style={styles.title}>{t('studentProfile.title')}</Text>
+            <Text style={styles.subtitle}>{t('studentProfile.subtitle')}</Text>
           </View>
           <Link href={`/students/edit/${student.id}` as Href} asChild>
             <Pressable style={styles.iconButton}>
@@ -195,28 +201,28 @@ export default function StudentProfileScreen() {
         <View style={styles.actionRow}>
           <ProfileAction
             icon="clipboard-check-outline"
-            label="Attendance"
+            label={t('studentProfile.actionAttendance')}
             color={colors.primary}
             href={`/students/${student.id}/attendance` as Href}
           />
           <ProfileAction
             icon="qrcode"
-            label="QR ID"
+            label={t('studentProfile.actionQrId')}
             color={colors.info}
             href={`/students/${student.id}/qr-card` as Href}
           />
           <ProfileAction
             icon="cash-plus"
-            label="Payment"
+            label={t('studentProfile.actionPayment')}
             color={colors.success}
             href={openInvoices.length > 0 ? (`/fees/record-payment?studentId=${student.id}` as Href) : undefined}
           />
-          <ProfileAction icon="whatsapp" label="Message" color={colors.warning} onPress={messageParent} />
+          <ProfileAction icon="whatsapp" label={t('studentProfile.actionMessage')} color={colors.warning} onPress={messageParent} />
         </View>
 
         <View style={styles.metricsRow}>
           <PremiumCard style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Attendance</Text>
+            <Text style={styles.metricLabel}>{t('studentProfile.metricAttendance')}</Text>
             <Text style={[styles.metricValue, { color: student.attendancePercent >= 80 ? colors.success : colors.danger }]}>
               {student.attendancePercent}%
             </Text>
@@ -225,23 +231,25 @@ export default function StudentProfileScreen() {
             </View>
           </PremiumCard>
           <PremiumCard style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Outstanding</Text>
+            <Text style={styles.metricLabel}>{t('studentProfile.metricOutstanding')}</Text>
             <Text style={[styles.metricValue, { color: student.outstandingAmount > 0 ? colors.danger : colors.success }]}>
               {formatLkr(student.outstandingAmount)}
             </Text>
-            <Text style={styles.metricNote}>{student.outstandingAmount > 0 ? 'Follow up on pending fees' : 'Fees up to date this month'}</Text>
+            <Text style={styles.metricNote}>
+              {student.outstandingAmount > 0 ? t('studentProfile.outstandingFollowUp') : t('studentProfile.feesUpToDate')}
+            </Text>
           </PremiumCard>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Enrolled classes</Text>
+          <Text style={styles.sectionTitle}>{t('studentProfile.enrolledClasses')}</Text>
           <Text style={styles.sectionCount}>{enrollments.length}</Text>
         </View>
 
         {enrollments.length === 0 ? (
           <PremiumCard>
-            <Text style={styles.emptyClassesTitle}>Not enrolled yet</Text>
-            <Text style={styles.emptyClassesCopy}>Open a class and use Enroll Student to add this student to a roster.</Text>
+            <Text style={styles.emptyClassesTitle}>{t('studentProfile.notEnrolledTitle')}</Text>
+            <Text style={styles.emptyClassesCopy}>{t('studentProfile.notEnrolledCopy')}</Text>
           </PremiumCard>
         ) : (
           <View style={styles.classList}>
@@ -254,8 +262,8 @@ export default function StudentProfileScreen() {
         <PremiumCard style={styles.parentCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Parent communication</Text>
-              <Text style={styles.cardSubtitle}>Main guardian contact for receipts and reminders</Text>
+              <Text style={styles.cardTitle}>{t('studentProfile.parentCommTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('studentProfile.parentCommSubtitle')}</Text>
             </View>
             <MaterialCommunityIcons name="phone-message-outline" size={24} color={colors.primary} />
           </View>
@@ -269,7 +277,7 @@ export default function StudentProfileScreen() {
             </View>
             <Pressable style={styles.whatsappPill} onPress={messageParent}>
               <MaterialCommunityIcons name="whatsapp" size={15} color={colors.success} />
-              <Text style={styles.whatsappText}>Message</Text>
+              <Text style={styles.whatsappText}>{t('studentProfile.actionMessage')}</Text>
             </Pressable>
           </View>
         </PremiumCard>
@@ -277,22 +285,25 @@ export default function StudentProfileScreen() {
         <PremiumCard style={styles.invoiceCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Fee ledger</Text>
-              <Text style={styles.cardSubtitle}>Open invoices including admission, material and exam charges</Text>
+              <Text style={styles.cardTitle}>{t('studentProfile.feeLedgerTitle')}</Text>
+              <Text style={styles.cardSubtitle}>{t('studentProfile.feeLedgerSubtitle')}</Text>
             </View>
             <FeeStatusBadge status={student.feeStatus} />
           </View>
 
           {openInvoices.length === 0 ? (
-            <Text style={styles.ledgerEmpty}>No outstanding invoices — fees are up to date.</Text>
+            <Text style={styles.ledgerEmpty}>{t('studentProfile.ledgerEmpty')}</Text>
           ) : (
             <View style={styles.ledgerList}>
               {openInvoices.map((invoice) => (
                 <View key={invoice.id} style={styles.ledgerRow}>
                   <View style={styles.ledgerCopy}>
-                    <Text style={styles.ledgerTitle}>{invoiceLedgerLabel(invoice)}</Text>
+                    <Text style={styles.ledgerTitle}>{invoiceLedgerLabel(invoice, t)}</Text>
                     <Text style={styles.ledgerMeta}>
-                      Paid {formatLkr(invoice.paidAmount)} of {formatLkr(invoice.monthlyFee)}
+                      {interpolate(t('studentProfile.paidMeta'), {
+                        paid: formatLkr(invoice.paidAmount),
+                        total: formatLkr(invoice.monthlyFee),
+                      })}
                     </Text>
                   </View>
                   <Text style={styles.ledgerDue}>{formatLkr(invoice.outstandingAmount)}</Text>
@@ -304,12 +315,12 @@ export default function StudentProfileScreen() {
           <View style={styles.ledgerActions}>
             <NavPressable href={`/fees/charge?studentId=${student.id}` as Href} style={styles.ledgerActionSecondary}>
               <MaterialCommunityIcons name="file-document-plus-outline" size={18} color={colors.warning} />
-              <Text style={styles.ledgerActionSecondaryText}>Issue charge</Text>
+              <Text style={styles.ledgerActionSecondaryText}>{t('studentProfile.issueCharge')}</Text>
             </NavPressable>
             {openInvoices.length > 0 ? (
               <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
                 <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
-                <Text style={styles.ledgerActionText}>Record payment</Text>
+                <Text style={styles.ledgerActionText}>{t('studentProfile.recordPayment')}</Text>
               </NavPressable>
             ) : null}
           </View>
@@ -319,14 +330,14 @@ export default function StudentProfileScreen() {
           <PremiumCard style={styles.certificateCard}>
             <View style={styles.cardHeaderRow}>
               <View>
-                <Text style={styles.cardTitle}>Certifications</Text>
-                <Text style={styles.cardSubtitle}>Issue completion and achievement certificates</Text>
+                <Text style={styles.cardTitle}>{t('studentProfile.certificationsTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('studentProfile.certificationsSubtitle')}</Text>
               </View>
               <MaterialCommunityIcons name="certificate-outline" size={24} color={colors.primary} />
             </View>
             <NavPressable href={`/students/${student.id}/certificates` as Href} style={styles.certificateAction}>
               <MaterialCommunityIcons name="certificate" size={18} color={colors.primary} />
-              <Text style={styles.certificateActionText}>Open certifications</Text>
+              <Text style={styles.certificateActionText}>{t('studentProfile.openCertifications')}</Text>
             </NavPressable>
           </PremiumCard>
         ) : null}
@@ -341,8 +352,8 @@ export default function StudentProfileScreen() {
               />
             </View>
             <View style={styles.parentCopy}>
-              <Text style={styles.parentName}>{student.consentCaptured ? 'Consent captured' : 'Consent pending'}</Text>
-              <Text style={styles.parentPhone}>Parent data and communication permission status</Text>
+              <Text style={styles.parentName}>{student.consentCaptured ? t('studentForm.consentCaptured') : t('studentProfile.consentPending')}</Text>
+              <Text style={styles.parentPhone}>{t('studentProfile.consentStatusNote')}</Text>
             </View>
           </View>
         </PremiumCard>
@@ -350,8 +361,8 @@ export default function StudentProfileScreen() {
         {hasPermission('archive_records') ? (
         <PremiumCard style={styles.archiveCard}>
           <View style={styles.archiveCopy}>
-            <Text style={styles.archiveTitle}>Archive student</Text>
-            <Text style={styles.archiveText}>Hide graduated or inactive students without deleting attendance and payment history.</Text>
+            <Text style={styles.archiveTitle}>{t('studentProfile.archiveTitle')}</Text>
+            <Text style={styles.archiveText}>{t('studentProfile.archiveText')}</Text>
           </View>
           <Pressable style={[styles.archiveButton, isArchiving && styles.archiveButtonDisabled]} onPress={confirmArchive} disabled={isArchiving}>
             {isArchiving ? (
@@ -359,7 +370,7 @@ export default function StudentProfileScreen() {
             ) : (
               <>
                 <MaterialCommunityIcons name="archive-outline" size={18} color={colors.danger} />
-                <Text style={styles.archiveButtonText}>Archive</Text>
+                <Text style={styles.archiveButtonText}>{t('studentProfile.archiveButton')}</Text>
               </>
             )}
           </Pressable>

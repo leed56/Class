@@ -8,11 +8,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEMO_PARENT_OTP } from '@/features/auth/demoAuth';
 import { formatParentPhone, verifyParentOtp } from '@/features/parent/parentAuthService';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function ParentVerifyScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{
     phone: string;
     childCount?: string;
@@ -22,6 +25,13 @@ export default function ParentVerifyScreen() {
   const [otp, setOtp] = useState(params.code ?? DEMO_PARENT_OTP);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const childCount = Number(params.childCount ?? 0);
+  const phoneLabel = params.phone ? formatParentPhone(params.phone) : t('parent.parentPhoneFallback');
+  const subtitle =
+    childCount === 1
+      ? interpolate(t('parent.verifySubtitle'), { phone: phoneLabel, count: childCount })
+      : interpolate(t('parent.verifySubtitlePlural'), { phone: phoneLabel, count: childCount });
 
   useEffect(() => {
     if (params.code) {
@@ -43,7 +53,7 @@ export default function ParentVerifyScreen() {
       }
       router.replace('/parent' as Href);
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : 'Could not verify code.');
+      setError(verifyError instanceof Error ? verifyError.message : t('parent.verifyFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -59,25 +69,22 @@ export default function ParentVerifyScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Enter login code</Text>
-            <Text style={styles.subtitle}>
-              {params.phone ? formatParentPhone(params.phone) : 'Parent phone'} • {params.childCount ?? '0'} child
-              {Number(params.childCount ?? 0) === 1 ? '' : 'ren'}
-            </Text>
+            <Text style={styles.title}>{t('parent.verifyPageTitle')}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>One-time code</Text>
-          <Text style={styles.heroTitle}>Verify parent access</Text>
-          <Text style={styles.heroNote}>Pilot testing uses code {DEMO_PARENT_OTP}. Live SMS sends via Text.lk when configured.</Text>
+          <Text style={styles.heroLabel}>{t('parent.otpHeroLabel')}</Text>
+          <Text style={styles.heroTitle}>{t('parent.verifyHeroTitle')}</Text>
+          <Text style={styles.heroNote}>{interpolate(t('parent.verifyHeroNote'), { code: DEMO_PARENT_OTP })}</Text>
         </LinearGradient>
 
         {params.code ? (
           <View style={styles.pilotBanner}>
             <MaterialCommunityIcons name="message-text-outline" size={18} color={colors.info} />
             <View style={styles.pilotCopy}>
-              <Text style={styles.pilotTitle}>Pilot login code</Text>
+              <Text style={styles.pilotTitle}>{t('parent.pilotCodeTitle')}</Text>
               <Text style={styles.pilotCode}>{params.code}</Text>
             </View>
           </View>
@@ -85,8 +92,8 @@ export default function ParentVerifyScreen() {
 
         <View style={styles.formCard}>
           <FormTextField
-            label="6-digit code"
-            placeholder="000000"
+            label={t('parent.otpFieldLabel')}
+            placeholder={t('parent.otpPlaceholder')}
             icon="shield-key-outline"
             keyboardType="number-pad"
             value={otp}
@@ -97,7 +104,7 @@ export default function ParentVerifyScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.primaryButtonText}>Verify and continue</Text>
+              <Text style={styles.primaryButtonText}>{t('parent.verify')}</Text>
             )}
           </Pressable>
         </View>

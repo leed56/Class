@@ -30,10 +30,10 @@ import { HallBooking, HallRentInvoice } from '@/features/hall-rent/models';
 import { HallPicker } from '@/features/locations/components/HallPicker';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { interpolate, CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions, formatWeekdayName } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function statusColor(status: HallRentInvoice['status']) {
   if (status === 'paid') return colors.success;
@@ -51,6 +51,11 @@ export default function HallRentScreen() {
 }
 
 function HallRentContent() {
+  const { locale, t } = useI18n();
+  const weekdayOptions = useMemo(
+    () => listWeekdayOptions(locale, CLASS_SCHEDULE_WEEKDAYS),
+    [locale],
+  );
   const [bookings, setBookings] = useState<HallBooking[]>([]);
   const [invoices, setInvoices] = useState<HallRentInvoice[]>([]);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof getHallRentSummary>> | null>(null);
@@ -94,11 +99,11 @@ function HallRentContent() {
       setTeacherOptions(teachers);
       if (!teacherUserId && teachers[0]) setTeacherUserId(teachers[0].id);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load hall rent ledger.');
+      setError(loadError instanceof Error ? loadError.message : t('hallRent.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [teacherUserId]);
+  }, [teacherUserId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -108,7 +113,7 @@ function HallRentContent() {
 
   async function handleCreateBooking() {
     if (!hallId || !teacherUserId) {
-      Alert.alert('Missing details', 'Select a hall and visiting teacher.');
+      Alert.alert(t('common.error'), t('hallRent.missingDetails'));
       return;
     }
 
@@ -128,17 +133,17 @@ function HallRentContent() {
       setMonthlyRent('');
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not create booking.');
+      setError(saveError instanceof Error ? saveError.message : t('hallRent.createBookingFailed'));
     } finally {
       setIsSaving(false);
     }
   }
 
   function confirmArchiveBooking(booking: HallBooking) {
-    Alert.alert('End booking', `Stop hall rent for ${booking.teacherName} in ${booking.hallLabel}?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('hallRent.endBooking'), interpolate(t('hallRent.endBookingConfirm'), { teacher: booking.teacherName, hall: booking.hallLabel }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'End booking',
+        text: t('hallRent.endBooking'),
         style: 'destructive',
         onPress: async () => {
           setWorkingId(booking.id);
@@ -146,13 +151,44 @@ function HallRentContent() {
             await archiveHallBooking(booking.id);
             await load();
           } catch (archiveError) {
-            Alert.alert('Could not end booking', archiveError instanceof Error ? archiveError.message : 'Try again.');
+            Alert.alert(
+              t('hallRent.endBookingFailed'),
+              archiveError instanceof Error ? archiveError.message : t('common.retry'),
+            );
           } finally {
             setWorkingId(null);
           }
         },
       },
     ]);
+  }
+
+  function confirmMarkPaid(invoice: HallRentInvoice) {
+    Alert.alert(
+      t('hallRent.markPaidConfirmTitle'),
+      interpolate(t('hallRent.markPaidConfirmMessage'), {
+        teacher: invoice.teacherName,
+        amount: formatLkrCompact(invoice.outstandingAmount),
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('hallRent.markPaid'),
+          onPress: async () => {
+            setWorkingId(invoice.id);
+            setError(null);
+            try {
+              await recordHallRentPayment(invoice.id, invoice.outstandingAmount);
+              await load();
+            } catch (paymentError) {
+              setError(paymentError instanceof Error ? paymentError.message : t('common.error'));
+            } finally {
+              setWorkingId(null);
+            }
+          },
+        },
+      ],
+    );
   }
 
   function startRecordPayment(invoice: HallRentInvoice) {
@@ -164,7 +200,7 @@ function HallRentContent() {
     if (!paymentInvoiceId) return;
     const amount = Number(paymentAmount.replace(/\D/g, '') || 0);
     if (amount <= 0) {
-      Alert.alert('Payment required', 'Enter a valid amount.');
+      Alert.alert(t('common.error'), t('hallRent.paymentRequired'));
       return;
     }
 
@@ -176,7 +212,7 @@ function HallRentContent() {
       setPaymentAmount('');
       await load();
     } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : 'Could not record payment.');
+      setError(paymentError instanceof Error ? paymentError.message : t('hallRent.recordPaymentFailed'));
     } finally {
       setWorkingId(null);
     }
@@ -192,18 +228,20 @@ function HallRentContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Hall rent ledger</Text>
-            <Text style={styles.subtitle}>Track what visiting teachers owe the building — separate from student tuition.</Text>
+            <Text style={styles.title}>{t('hallRent.title')}</Text>
+            <Text style={styles.subtitle}>{t('hallRent.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <Text style={styles.heroLabel}>{summary?.monthLabel ?? 'This month'}</Text>
-          <Text style={styles.heroTitle}>{formatLkrCompact(summary?.collected ?? 0)} collected</Text>
+          <Text style={styles.heroLabel}>{summary?.monthLabel ?? t('common.thisMonth')}</Text>
+          <Text style={styles.heroTitle}>{interpolate(t('hallRent.collected'), { amount: formatLkrCompact(summary?.collected ?? 0) })}</Text>
           <Text style={styles.heroCopy}>
-            {formatLkrCompact(summary?.outstanding ?? 0)} outstanding from {summary?.defaulterCount ?? 0} teacher
-            {(summary?.defaulterCount ?? 0) === 1 ? '' : 's'} • {summary?.activeBookings ?? 0} active slot
-            {(summary?.activeBookings ?? 0) === 1 ? '' : 's'}
+            {interpolate(t('hallRent.outstandingTeachers'), {
+              amount: formatLkrCompact(summary?.outstanding ?? 0),
+              count: String(summary?.defaulterCount ?? 0),
+              slots: String(summary?.activeBookings ?? 0),
+            })}
           </Text>
         </LinearGradient>
 
@@ -212,13 +250,13 @@ function HallRentContent() {
         {isLoading ? (
           <View style={styles.loadingBlock}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadingText}>Loading hall rent ledger…</Text>
+            <Text style={styles.loadingText}>{t('hallRent.loading')}</Text>
           </View>
         ) : (
           <>
             <PremiumCard>
-              <Text style={styles.cardTitle}>Book a hall slot</Text>
-              <Text style={styles.cardHint}>Assign a recurring weekday slot to a visiting teacher with monthly rent.</Text>
+              <Text style={styles.cardTitle}>{t('hallRent.bookSlotTitle')}</Text>
+              <Text style={styles.cardHint}>{t('hallRent.bookSlotHint')}</Text>
 
               <HallPicker
                 selectedHallId={hallId}
@@ -231,7 +269,7 @@ function HallRentContent() {
               {teacherChipOptions.length > 0 ? (
                 <View style={styles.fieldBlock}>
                   <ChoiceChipGroup
-                    label="Visiting teacher"
+                    label={t('hallRent.visitingTeacher')}
                     selected={teacherOptions.find((option) => option.id === teacherUserId)?.label ?? teacherChipOptions[0]}
                     options={teacherChipOptions}
                     onSelect={(name) => {
@@ -241,37 +279,37 @@ function HallRentContent() {
                   />
                 </View>
               ) : (
-                <Text style={styles.cardHint}>Add teachers under Settings → Staff before booking slots.</Text>
+                <Text style={styles.cardHint}>{t('hallRent.addTeachersFirst')}</Text>
               )}
 
-              <FormTextField label="Course label (optional)" value={label} onChangeText={setLabel} placeholder="A/L Combined Maths — Theory" icon="book-education-outline" />
-              <ChoiceChipGroup label="Weekday" selected={weekday} options={WEEKDAYS} onSelect={setWeekday} />
+              <FormTextField label={t('hallRent.courseLabel')} value={label} onChangeText={setLabel} placeholder={t('hallRent.coursePlaceholder')} icon="book-education-outline" />
+              <ChoiceChipGroup label={t('hallRent.weekday')} selected={weekday} options={weekdayOptions} onSelect={setWeekday} />
               <View style={styles.row}>
                 <View style={styles.rowItem}>
-                  <FormTextField label="Start" value={startTime} onChangeText={setStartTime} placeholder="4:00 PM" icon="clock-outline" />
+                  <FormTextField label={t('hallRent.start')} value={startTime} onChangeText={setStartTime} placeholder="4:00 PM" icon="clock-outline" />
                 </View>
                 <View style={styles.rowItem}>
-                  <FormTextField label="End" value={endTime} onChangeText={setEndTime} placeholder="6:00 PM" icon="clock-outline" />
+                  <FormTextField label={t('hallRent.end')} value={endTime} onChangeText={setEndTime} placeholder="6:00 PM" icon="clock-outline" />
                 </View>
               </View>
-              <FormTextField label="Monthly hall rent (LKR)" value={monthlyRent} onChangeText={setMonthlyRent} placeholder="25000" keyboardType="number-pad" icon="cash" />
+              <FormTextField label={t('hallRent.monthlyRent')} value={monthlyRent} onChangeText={setMonthlyRent} placeholder="25000" keyboardType="number-pad" icon="cash" />
               <Pressable style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]} onPress={handleCreateBooking} disabled={isSaving}>
-                <Text style={styles.primaryButtonText}>{isSaving ? 'Saving…' : 'Create booking'}</Text>
+                <Text style={styles.primaryButtonText}>{isSaving ? t('hallRent.saving') : t('hallRent.createBooking')}</Text>
               </Pressable>
-              {hallLabel ? <Text style={styles.metaText}>Selected hall: {hallLabel}</Text> : null}
+              {hallLabel ? <Text style={styles.metaText}>{interpolate(t('hallRent.selectedHall'), { hall: hallLabel })}</Text> : null}
             </PremiumCard>
 
             <PremiumCard>
-              <Text style={styles.cardTitle}>Active bookings</Text>
+              <Text style={styles.cardTitle}>{t('hallRent.activeBookings')}</Text>
               {bookings.length === 0 ? (
-                <EmptyState title="No hall bookings yet" message="Create the first visiting-teacher slot above." icon="door-open" />
+                <EmptyState title={t('hallRent.noBookingsTitle')} message={t('hallRent.noBookingsMessage')} icon="door-open" />
               ) : (
                 bookings.map((booking) => (
                   <View key={booking.id} style={styles.listRow}>
                     <View style={styles.listCopy}>
                       <Text style={styles.listTitle}>{booking.teacherName}</Text>
                       <Text style={styles.listMeta}>
-                        {booking.hallLabel} • {booking.weekday} {booking.startTime}–{booking.endTime}
+                        {booking.hallLabel} • {formatWeekdayName(locale, booking.weekday, 'long')} {booking.startTime}–{booking.endTime}
                       </Text>
                       <Text style={styles.listMeta}>
                         {booking.label ?? 'General slot'} • {formatLkrCompact(booking.monthlyRentLkr)}/month
@@ -282,7 +320,7 @@ function HallRentContent() {
                       onPress={() => confirmArchiveBooking(booking)}
                       disabled={workingId === booking.id}
                     >
-                      <Text style={styles.archiveButtonText}>{workingId === booking.id ? '…' : 'End'}</Text>
+                      <Text style={styles.archiveButtonText}>{workingId === booking.id ? '…' : t('hallRent.endBooking')}</Text>
                     </Pressable>
                   </View>
                 ))
@@ -290,9 +328,9 @@ function HallRentContent() {
             </PremiumCard>
 
             <PremiumCard>
-              <Text style={styles.cardTitle}>Rent invoices — {summary?.monthLabel}</Text>
+              <Text style={styles.cardTitle}>{interpolate(t('hallRent.rentInvoices'), { month: summary?.monthLabel ?? t('common.thisMonth') })}</Text>
               {invoices.length === 0 ? (
-                <EmptyState title="No rent invoices" message="Invoices appear automatically when bookings are active." icon="file-document-outline" />
+                <EmptyState title={t('hallRent.noInvoicesTitle')} message={t('hallRent.noInvoicesMessage')} icon="file-document-outline" />
               ) : (
                 invoices.map((invoice) => (
                   <View key={invoice.id} style={styles.listRow}>
@@ -302,7 +340,10 @@ function HallRentContent() {
                         {invoice.hallLabel} • {invoice.slotLabel}
                       </Text>
                       <Text style={styles.listMeta}>
-                        Due {formatLkrCompact(invoice.amount)} • Paid {formatLkrCompact(invoice.paidAmount)}
+                        {interpolate(t('hallRent.duePaid'), {
+                          due: formatLkrCompact(invoice.amount),
+                          paid: formatLkrCompact(invoice.paidAmount),
+                        })}
                       </Text>
                     </View>
                     <View style={styles.invoiceActions}>
@@ -310,9 +351,14 @@ function HallRentContent() {
                         <Text style={[styles.statusText, { color: statusColor(invoice.status) }]}>{invoice.status}</Text>
                       </View>
                       {invoice.outstandingAmount > 0 ? (
-                        <Pressable style={styles.payButton} onPress={() => startRecordPayment(invoice)} disabled={workingId === invoice.id}>
-                          <Text style={styles.payButtonText}>{workingId === invoice.id ? '…' : 'Record'}</Text>
-                        </Pressable>
+                        <View style={styles.payButtonRow}>
+                          <Pressable style={styles.markPaidButton} onPress={() => confirmMarkPaid(invoice)} disabled={workingId === invoice.id}>
+                            <Text style={styles.markPaidButtonText}>{workingId === invoice.id ? '…' : t('hallRent.markPaid')}</Text>
+                          </Pressable>
+                          <Pressable style={styles.payButton} onPress={() => startRecordPayment(invoice)} disabled={workingId === invoice.id}>
+                            <Text style={styles.payButtonText}>{t('hallRent.recordPartial')}</Text>
+                          </Pressable>
+                        </View>
                       ) : null}
                     </View>
                   </View>
@@ -321,14 +367,14 @@ function HallRentContent() {
 
               {paymentInvoiceId ? (
                 <View style={styles.paymentPanel}>
-                  <Text style={styles.fieldLabel}>Record rent payment</Text>
-                  <FormTextField label="Amount (LKR)" value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="number-pad" placeholder="25000" icon="cash" />
+                  <Text style={styles.fieldLabel}>{t('hallRent.recordPaymentTitle')}</Text>
+                  <FormTextField label={t('hallRent.amountLabel')} value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="number-pad" placeholder="25000" icon="cash" />
                   <View style={styles.paymentActions}>
                     <Pressable style={styles.archiveButton} onPress={() => setPaymentInvoiceId(null)}>
-                      <Text style={styles.archiveButtonText}>Cancel</Text>
+                      <Text style={styles.archiveButtonText}>{t('common.cancel')}</Text>
                     </Pressable>
                     <Pressable style={styles.primaryButtonInline} onPress={handleRecordPayment} disabled={workingId === paymentInvoiceId}>
-                      <Text style={styles.primaryButtonText}>{workingId === paymentInvoiceId ? 'Saving…' : 'Save payment'}</Text>
+                      <Text style={styles.primaryButtonText}>{workingId === paymentInvoiceId ? t('hallRent.saving') : t('hallRent.savePayment')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -409,6 +455,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  payButtonRow: { flexDirection: 'row', gap: spacing.xs },
+  markPaidButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  markPaidButtonText: { color: 'white', fontSize: 11, fontWeight: '900' },
   payButtonText: { color: colors.primary, fontSize: 11, fontWeight: '900' },
   paymentPanel: {
     marginTop: spacing.md,

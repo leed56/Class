@@ -13,6 +13,7 @@ import {
 } from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById, updateStudent } from '@/features/students/studentService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -23,6 +24,7 @@ function displayValue(value: string, fallback: string) {
 
 export default function EditStudentScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [fullName, setFullName] = useState('');
   const [school, setSchool] = useState('');
@@ -53,7 +55,7 @@ export default function EditStudentScreen() {
     try {
       const student = await getStudentById(params.studentId);
       if (!student) {
-        setError('Student not found.');
+        setError(t('studentForm.notFound'));
         return;
       }
       setFullName(student.name);
@@ -64,11 +66,11 @@ export default function EditStudentScreen() {
       setParentPhone(student.parentPhone);
       setConsentCaptured(student.consentCaptured);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load student.');
+      setError(loadError instanceof Error ? loadError.message : t('studentForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
   useEffect(() => {
     loadStudent();
@@ -90,7 +92,7 @@ export default function EditStudentScreen() {
       });
       router.replace(`/students/${params.studentId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save student.');
+      setError(saveError instanceof Error ? saveError.message : t('studentForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +115,7 @@ export default function EditStudentScreen() {
           <Text style={styles.errorText}>{error}</Text>
           <Link href="/(tabs)/students" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to students</Text>
+              <Text style={styles.retryText}>{t('studentForm.backToStudents')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -131,8 +133,8 @@ export default function EditStudentScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Edit Student</Text>
-            <Text style={styles.subtitle}>Update profile details, parent contact and consent status.</Text>
+            <Text style={styles.title}>{t('studentForm.editTitle')}</Text>
+            <Text style={styles.subtitle}>{t('studentForm.subtitleEdit')}</Text>
           </View>
         </View>
 
@@ -141,14 +143,14 @@ export default function EditStudentScreen() {
             <MaterialCommunityIcons name="account-edit-outline" size={28} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Profile update</Text>
-            <Text style={styles.heroTitle}>Keep records accurate</Text>
-            <Text style={styles.heroNote}>Changes apply to attendance, fees and WhatsApp messages immediately.</Text>
+            <Text style={styles.heroLabel}>{t('studentForm.heroEditLabel')}</Text>
+            <Text style={styles.heroTitle}>{t('studentForm.heroEditTitle')}</Text>
+            <Text style={styles.heroNote}>{t('studentForm.heroEditNote')}</Text>
           </View>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Student details</Text>
+          <Text style={styles.cardTitle}>{t('studentForm.studentDetails')}</Text>
           <StudentProfileForm
             workspaceType={workspaceType}
             academySector={academySector}
@@ -164,9 +166,9 @@ export default function EditStudentScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Parent contact</Text>
-          <FormTextField label="Parent name" placeholder="Mrs. Perera" icon="account-heart-outline" value={parentName} onChangeText={setParentName} />
-          <FormTextField label="Parent phone" placeholder="+94 77 123 4567" icon="phone-outline" keyboardType="phone-pad" value={parentPhone} onChangeText={setParentPhone} />
+          <Text style={styles.cardTitle}>{t('studentForm.parentContact')}</Text>
+          <FormTextField label={t('studentForm.parentNameLabel')} placeholder={t('studentForm.parentNamePlaceholder')} icon="account-heart-outline" value={parentName} onChangeText={setParentName} />
+          <FormTextField label={t('studentForm.parentPhoneLabel')} placeholder={t('studentForm.parentPhonePlaceholder')} icon="phone-outline" keyboardType="phone-pad" value={parentPhone} onChangeText={setParentPhone} />
         </PremiumCard>
 
         <PremiumCard style={styles.consentCard}>
@@ -175,8 +177,8 @@ export default function EditStudentScreen() {
               <MaterialCommunityIcons name="shield-check-outline" size={23} color={colors.primary} />
             </View>
             <View style={styles.consentCopy}>
-              <Text style={styles.consentTitle}>Parent consent</Text>
-              <Text style={styles.consentText}>Required to store student details and send parent communication.</Text>
+              <Text style={styles.consentTitle}>{t('studentForm.consentTitle')}</Text>
+              <Text style={styles.consentText}>{t('studentForm.consentTextEdit')}</Text>
             </View>
           </View>
           <Pressable
@@ -189,7 +191,7 @@ export default function EditStudentScreen() {
               color={consentCaptured ? colors.success : colors.warning}
             />
             <Text style={[styles.consentPillText, !consentCaptured && styles.consentPillTextPending]}>
-              {consentCaptured ? 'Consent captured' : 'Tap to capture consent'}
+              {consentCaptured ? t('studentForm.consentCaptured') : t('studentForm.consentTap')}
             </Text>
           </Pressable>
         </PremiumCard>
@@ -199,8 +201,8 @@ export default function EditStudentScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Profile quality</Text>
-          <Text style={styles.saveValue}>{consentCaptured ? 'Ready to save' : 'Consent required'}</Text>
+          <Text style={styles.saveLabel}>{t('studentForm.profileQuality')}</Text>
+          <Text style={styles.saveValue}>{consentCaptured ? t('studentForm.readyToSave') : t('studentForm.consentRequired')}</Text>
         </View>
         <Pressable style={[styles.saveButton, submitting && styles.saveButtonDisabled]} onPress={handleSave} disabled={submitting}>
           {submitting ? (
@@ -208,7 +210,7 @@ export default function EditStudentScreen() {
           ) : (
             <>
               <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Text style={styles.saveButtonText}>{t('studentForm.saveChanges')}</Text>
             </>
           )}
         </Pressable>

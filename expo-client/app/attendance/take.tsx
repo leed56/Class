@@ -9,11 +9,15 @@ import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
+import { formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Locale } from '@/i18n/types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function AttendancePickerScreen() {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const params = useLocalSearchParams<{ classId?: string }>();
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,11 +36,11 @@ export default function AttendancePickerScreen() {
       const nextClasses = await listClasses();
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load classes.');
+      setError(loadError instanceof Error ? loadError.message : t('attendancePicker.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -44,7 +48,7 @@ export default function AttendancePickerScreen() {
     }, [loadClasses, params.classId]),
   );
 
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todayName = getCanonicalWeekday();
   const todayClasses = classes.filter((item) => item.day === todayName);
   const otherClasses = classes.filter((item) => item.day !== todayName);
 
@@ -68,30 +72,30 @@ export default function AttendancePickerScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Take Attendance</Text>
-            <Text style={styles.subtitle}>Choose a class to mark today&apos;s session.</Text>
+            <Text style={styles.title}>{t('attendancePicker.title')}</Text>
+            <Text style={styles.subtitle}>{t('attendancePicker.subtitle')}</Text>
           </View>
         </View>
 
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading classes...</Text>
+            <Text style={styles.stateText}>{t('attendancePicker.loading')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadClasses}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : classes.length === 0 ? (
           <PremiumCard>
             <EmptyState
               icon="calendar-plus"
-              title="No classes yet"
-              message="Create a class and enroll students before taking attendance."
-              actionLabel="Create Class"
+              title={t('attendancePicker.emptyTitle')}
+              message={t('attendancePicker.emptyMessage')}
+              actionLabel={t('attendancePicker.emptyAction')}
               actionHref={'/classes/new' as Href}
             />
           </PremiumCard>
@@ -99,10 +103,10 @@ export default function AttendancePickerScreen() {
           <>
             {todayClasses.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Today&apos;s classes</Text>
+                <Text style={styles.sectionTitle}>{t('attendancePicker.todaysClasses')}</Text>
                 <View style={styles.list}>
                   {todayClasses.map((item) => (
-                    <ClassPickRow key={item.id} item={item} featured />
+                    <ClassPickRow key={item.id} item={item} featured locale={locale} t={t} />
                   ))}
                 </View>
               </View>
@@ -110,10 +114,10 @@ export default function AttendancePickerScreen() {
 
             {otherClasses.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{todayClasses.length > 0 ? 'All classes' : 'Your classes'}</Text>
+                <Text style={styles.sectionTitle}>{todayClasses.length > 0 ? t('attendancePicker.allClasses') : t('attendancePicker.yourClasses')}</Text>
                 <View style={styles.list}>
                   {otherClasses.map((item) => (
-                    <ClassPickRow key={item.id} item={item} />
+                    <ClassPickRow key={item.id} item={item} locale={locale} t={t} />
                   ))}
                 </View>
               </View>
@@ -125,7 +129,17 @@ export default function AttendancePickerScreen() {
   );
 }
 
-function ClassPickRow({ item, featured = false }: { item: TuitionClass; featured?: boolean }) {
+function ClassPickRow({
+  item,
+  featured = false,
+  locale,
+  t,
+}: {
+  item: TuitionClass;
+  featured?: boolean;
+  locale: Locale;
+  t: (key: string) => string;
+}) {
   return (
     <NavPressable href={`/classes/${item.id}/attendance` as Href} style={[styles.pickRow, featured && styles.pickRowFeatured]}>
       <View style={styles.pickIcon}>
@@ -133,10 +147,15 @@ function ClassPickRow({ item, featured = false }: { item: TuitionClass; featured
       </View>
       <View style={styles.pickCopy}>
         <Text style={styles.pickTitle}>
-          {item.subject} Grade {item.grade}
+          {interpolate(t('attendancePicker.pickTitle'), { subject: item.subject, grade: item.grade })}
         </Text>
         <Text style={styles.pickMeta}>
-          {item.day} • {item.startTime} - {item.endTime} • {item.enrolledCount} enrolled
+          {interpolate(t('attendancePicker.pickMeta'), {
+            day: formatWeekdayName(locale, item.day, 'long'),
+            start: item.startTime,
+            end: item.endTime,
+            count: item.enrolledCount,
+          })}
         </Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />

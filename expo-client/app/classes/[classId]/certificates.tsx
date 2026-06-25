@@ -19,13 +19,11 @@ import {
 import { listClassRoster, ClassRosterEntry } from '@/features/enrollment/enrollmentService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { InstituteType } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-
-function certificateTypeLabel(type: CertificateType) {
-  return type === 'completion' ? 'Completion' : 'Achievement';
-}
 
 export default function ClassCertificatesScreen() {
   return (
@@ -36,12 +34,13 @@ export default function ClassCertificatesScreen() {
 }
 
 function ClassCertificatesContent() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
   const [tuitionClass, setTuitionClass] = useState<TuitionClass | null>(null);
   const [roster, setRoster] = useState<ClassRosterEntry[]>([]);
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [certificateType, setCertificateType] = useState<CertificateType>('completion');
-  const [title, setTitle] = useState('Class Completion Certificate');
+  const [title, setTitle] = useState(t('certificates.classCompletionDefault'));
   const [note, setNote] = useState('');
   const [eligibilityByStudent, setEligibilityByStudent] = useState<Record<string, CertificateEligibility>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -51,12 +50,37 @@ function ClassCertificatesContent() {
 
   const backHref = (`/classes/${params.classId}` as Href);
   const isEnabled = workspaceType !== 'solo';
-  const typeChoice = useMemo(() => certificateTypeLabel(certificateType), [certificateType]);
+
+  const typeLabels = useMemo(
+    () => ({
+      completion: t('certificates.typeCompletion'),
+      achievement: t('certificates.typeAchievement'),
+    }),
+    [t],
+  );
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+
+  const typeChoice = typeLabels[certificateType];
   const eligibleCount = useMemo(
     () => roster.filter((entry) => eligibilityByStudent[entry.student.id]?.eligible).length,
     [eligibilityByStudent, roster],
   );
   const blockedCount = Math.max(0, roster.length - eligibleCount);
+
+  const buildTitle = useCallback(
+    (cls: TuitionClass, type: CertificateType) =>
+      interpolate(t('certificates.titleTemplate'), {
+        subject: cls.subject,
+        grade: cls.grade,
+        type: typeLabels[type],
+      }),
+    [t, typeLabels],
+  );
 
   const load = useCallback(async () => {
     if (!params.classId) return;
@@ -84,16 +108,16 @@ function ClassCertificatesContent() {
         setEligibilityByStudent({});
       }
       if (nextClass) {
-        setTitle(`${nextClass.subject} Grade ${nextClass.grade} ${certificateTypeLabel(certificateType)} Certificate`);
+        setTitle(buildTitle(nextClass, certificateType));
       } else {
-        setLoadError('Class not found.');
+        setLoadError(t('certificates.classNotFound'));
       }
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Could not load class certificates.');
+      setLoadError(error instanceof Error ? error.message : t('certificates.loadClassFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId, certificateType]);
+  }, [params.classId, certificateType, buildTitle, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -102,10 +126,10 @@ function ClassCertificatesContent() {
   );
 
   function handleTypeSelect(label: string) {
-    const nextType: CertificateType = label === 'Achievement' ? 'achievement' : 'completion';
+    const nextType: CertificateType = label === typeLabels.achievement ? 'achievement' : 'completion';
     setCertificateType(nextType);
     if (tuitionClass) {
-      setTitle(`${tuitionClass.subject} Grade ${tuitionClass.grade} ${label} Certificate`);
+      setTitle(buildTitle(tuitionClass, nextType));
     }
   }
 
@@ -119,14 +143,21 @@ function ClassCertificatesContent() {
         title,
         note,
       });
-      Alert.alert(
-        'Certificates issued',
-        `Issued ${result.issued.length} certificates. ${result.blocked.length > 0 ? `Blocked ${result.blocked.length} student${result.blocked.length === 1 ? '' : 's'} due to eligibility rules.` : 'All selected students were eligible.'}`,
-      );
+      let message = interpolate(t('certificates.issuedAlertBody'), { issued: result.issued.length });
+      if (result.blocked.length > 0) {
+        message += ` ${
+          result.blocked.length === 1
+            ? t('certificates.issuedAlertBlockedSingle')
+            : interpolate(t('certificates.issuedAlertBlockedMulti'), { count: result.blocked.length })
+        }`;
+      } else {
+        message += ` ${t('certificates.issuedAlertAllEligible')}`;
+      }
+      Alert.alert(t('certificates.issuedAlertTitle'), message);
       setNote('');
       await load();
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Could not issue certificates.');
+      setFormError(error instanceof Error ? error.message : t('certificates.issueFailed'));
     } finally {
       setIsIssuing(false);
     }
@@ -134,12 +165,20 @@ function ClassCertificatesContent() {
 
   function confirmIssueAll() {
     if (!tuitionClass) return;
+    const blockedSuffix =
+      blockedCount > 0 ? interpolate(t('certificates.blockedSuffix'), { count: blockedCount }) : '';
     Alert.alert(
-      'Issue certificates?',
-      `Issue ${certificateTypeLabel(certificateType)} certificates for ${eligibleCount} eligible students in ${tuitionClass.subject} G${tuitionClass.grade}${blockedCount > 0 ? ` (${blockedCount} blocked)` : ''}.`,
+      t('certificates.confirmIssueAllTitle'),
+      interpolate(t('certificates.confirmIssueAllMessage'), {
+        type: typeLabels[certificateType],
+        eligible: eligibleCount,
+        subject: tuitionClass.subject,
+        grade: tuitionClass.grade,
+        blockedSuffix,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Issue all', onPress: handleIssueAll },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('certificates.issueAll'), onPress: handleIssueAll },
       ],
     );
   }
@@ -158,10 +197,10 @@ function ClassCertificatesContent() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{loadError ?? 'Class not found.'}</Text>
+          <Text style={styles.errorText}>{loadError ?? t('certificates.classNotFound')}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to class</Text>
+              <Text style={styles.retryText}>{t('certificates.backToClass')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -179,8 +218,8 @@ function ClassCertificatesContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Class Certificates</Text>
-            <Text style={styles.subtitle}>Bulk issue completion or achievement certificates for this class.</Text>
+            <Text style={styles.title}>{t('certificates.classTitle')}</Text>
+            <Text style={styles.subtitle}>{t('certificates.classSubtitle')}</Text>
           </View>
         </View>
 
@@ -188,9 +227,9 @@ function ClassCertificatesContent() {
           <PremiumCard>
             <EmptyState
               icon="certificate-outline"
-              title="Available for academy and institute"
-              message="Switch your workspace type from Settings to enable certifications."
-              actionLabel="Back to class"
+              title={t('certificates.academyOnlyTitle')}
+              message={t('certificates.academyOnlyMessage')}
+              actionLabel={t('certificates.backToClass')}
               actionHref={backHref}
             />
           </PremiumCard>
@@ -198,32 +237,32 @@ function ClassCertificatesContent() {
           <PremiumCard>
             <EmptyState
               icon="account-group-outline"
-              title="No students enrolled"
-              message="Enroll students in this class before issuing certificates."
-              actionLabel="Back to class"
+              title={t('certificates.noStudentsTitle')}
+              message={t('certificates.noStudentsMessage')}
+              actionLabel={t('certificates.backToClass')}
               actionHref={backHref}
             />
           </PremiumCard>
         ) : (
           <>
             <PremiumCard style={styles.formCard}>
-              <Text style={styles.cardTitle}>Bulk issue setup</Text>
+              <Text style={styles.cardTitle}>{t('certificates.bulkSetupTitle')}</Text>
               <ChoiceChipGroup
-                label="Type"
-                options={['Completion', 'Achievement']}
+                label={t('certificates.typeLabel')}
+                options={[typeLabels.completion, typeLabels.achievement]}
                 selected={typeChoice}
                 onSelect={handleTypeSelect}
               />
               <FormTextField
-                label="Title"
-                placeholder="Certificate title"
+                label={t('certificates.titleLabel')}
+                placeholder={t('certificates.titlePlaceholder')}
                 icon="certificate-outline"
                 value={title}
                 onChangeText={setTitle}
               />
               <FormTextField
-                label="Note (optional)"
-                placeholder="Term, batch or exam context"
+                label={t('certificates.noteLabel')}
+                placeholder={t('certificates.notePlaceholderClass')}
                 icon="note-text-outline"
                 value={note}
                 onChangeText={setNote}
@@ -231,11 +270,15 @@ function ClassCertificatesContent() {
               <View style={styles.summaryRow}>
                 <View style={styles.summaryPill}>
                   <MaterialCommunityIcons name="account-check-outline" size={16} color={colors.success} />
-                  <Text style={[styles.summaryText, { color: colors.success }]}>{eligibleCount} eligible</Text>
+                  <Text style={[styles.summaryText, { color: colors.success }]}>
+                    {interpolate(t('certificates.eligibleCount'), { count: eligibleCount })}
+                  </Text>
                 </View>
                 <View style={styles.summaryPill}>
                   <MaterialCommunityIcons name="account-alert-outline" size={16} color={colors.danger} />
-                  <Text style={[styles.summaryText, { color: colors.danger }]}>{blockedCount} blocked</Text>
+                  <Text style={[styles.summaryText, { color: colors.danger }]}>
+                    {interpolate(t('certificates.blockedCount'), { count: blockedCount })}
+                  </Text>
                 </View>
               </View>
               {formError ? <Text style={styles.formErrorText}>{formError}</Text> : null}
@@ -249,64 +292,74 @@ function ClassCertificatesContent() {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="certificate" size={18} color="white" />
-                    <Text style={styles.issueButtonText}>Issue to all students</Text>
+                    <Text style={styles.issueButtonText}>{t('certificates.issueToAll')}</Text>
                   </>
                 )}
               </Pressable>
             </PremiumCard>
 
             <PremiumCard style={styles.listCard}>
-              <Text style={styles.cardTitle}>Class roster</Text>
+              <Text style={styles.cardTitle}>{t('certificates.rosterTitle')}</Text>
               <View style={styles.list}>
-                {roster.map((entry) => (
-                  <View key={entry.enrollmentId} style={styles.row}>
-                    <View style={styles.rowAvatar}>
-                      <Text style={styles.rowAvatarText}>
-                        {entry.student.name
-                          .split(' ')
-                          .map((part) => part[0])
-                          .join('')
-                          .slice(0, 2)}
-                      </Text>
-                    </View>
-                    <View style={styles.rowCopy}>
-                      <Text style={styles.rowName}>{entry.student.name}</Text>
-                      <Text style={styles.rowMeta}>Grade {entry.student.grade} • {entry.student.medium}</Text>
-                      {eligibilityByStudent[entry.student.id] ? (
-                        <>
-                          <View
-                            style={[
-                              styles.eligibilityBadge,
-                              {
-                                backgroundColor: eligibilityByStudent[entry.student.id].eligible
-                                  ? colors.successSoft
-                                  : colors.dangerSoft,
-                              },
-                            ]}
-                          >
-                            <Text
+                {roster.map((entry) => {
+                  const medium = mediumLabels[entry.student.medium as Medium] ?? entry.student.medium;
+                  return (
+                    <View key={entry.enrollmentId} style={styles.row}>
+                      <View style={styles.rowAvatar}>
+                        <Text style={styles.rowAvatarText}>
+                          {entry.student.name
+                            .split(' ')
+                            .map((part) => part[0])
+                            .join('')
+                            .slice(0, 2)}
+                        </Text>
+                      </View>
+                      <View style={styles.rowCopy}>
+                        <Text style={styles.rowName}>{entry.student.name}</Text>
+                        <Text style={styles.rowMeta}>
+                          {interpolate(t('certificates.gradeMeta'), {
+                            grade: entry.student.grade,
+                            medium,
+                          })}
+                        </Text>
+                        {eligibilityByStudent[entry.student.id] ? (
+                          <>
+                            <View
                               style={[
-                                styles.eligibilityBadgeText,
+                                styles.eligibilityBadge,
                                 {
-                                  color: eligibilityByStudent[entry.student.id].eligible
-                                    ? colors.success
-                                    : colors.danger,
+                                  backgroundColor: eligibilityByStudent[entry.student.id].eligible
+                                    ? colors.successSoft
+                                    : colors.dangerSoft,
                                 },
                               ]}
                             >
-                              {eligibilityByStudent[entry.student.id].eligible ? 'Eligible' : 'Blocked'}
-                            </Text>
-                          </View>
-                          {!eligibilityByStudent[entry.student.id].eligible ? (
-                            <Text style={styles.blockerText}>
-                              {eligibilityByStudent[entry.student.id].blockers[0]}
-                            </Text>
-                          ) : null}
-                        </>
-                      ) : null}
+                              <Text
+                                style={[
+                                  styles.eligibilityBadgeText,
+                                  {
+                                    color: eligibilityByStudent[entry.student.id].eligible
+                                      ? colors.success
+                                      : colors.danger,
+                                  },
+                                ]}
+                              >
+                                {eligibilityByStudent[entry.student.id].eligible
+                                  ? t('certificates.eligible')
+                                  : t('certificates.blocked')}
+                              </Text>
+                            </View>
+                            {!eligibilityByStudent[entry.student.id].eligible ? (
+                              <Text style={styles.blockerText}>
+                                {eligibilityByStudent[entry.student.id].blockers[0]}
+                              </Text>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </PremiumCard>
           </>

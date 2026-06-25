@@ -31,44 +31,32 @@ import {
 import { InstituteType, LanguageCode } from '@/lib/database.types';
 import { clearInviteToken, readInviteToken } from '@/features/platform/inviteStorage';
 import { consumePlatformInvite, getPlatformInvite } from '@/features/platform/platformService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const languageOptions: { label: string; value: LanguageCode; helper: string }[] = [
-  { label: 'English', value: 'en', helper: 'Launch default' },
-  { label: 'සිංහල', value: 'si', helper: 'Sinhala ready' },
-  { label: 'தமிழ்', value: 'ta', helper: 'Tamil ready' },
+const languageOptionValues: { label: string; value: LanguageCode; helperKey: 'langEnHelper' | 'langSiHelper' | 'langTaHelper' }[] = [
+  { label: 'English', value: 'en', helperKey: 'langEnHelper' },
+  { label: 'සිංහල', value: 'si', helperKey: 'langSiHelper' },
+  { label: 'தமிழ்', value: 'ta', helperKey: 'langTaHelper' },
 ];
 
-const workspaceTypeOptions: {
+const workspaceTypeValues: {
   value: InstituteType;
-  label: string;
-  subtitle: string;
+  labelKey: 'typeSoloLabel' | 'typeAcademyLabel' | 'typeInstituteLabel';
+  subtitleKey: 'typeSoloSubtitle' | 'typeAcademySubtitle' | 'typeInstituteSubtitle';
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
 }[] = [
-  {
-    value: 'solo',
-    label: 'Solo tutor',
-    subtitle: 'You teach, you collect — home or own class',
-    icon: 'account-outline',
-  },
-  {
-    value: 'academy',
-    label: 'Academy',
-    subtitle: 'Your brand: A/L & O/L courses, admission, certificates',
-    icon: 'school-outline',
-  },
-  {
-    value: 'institute',
-    label: 'Tuition building',
-    subtitle: 'You own halls — teachers rent slots, students pay teachers',
-    icon: 'office-building-outline',
-  },
+  { value: 'solo', labelKey: 'typeSoloLabel', subtitleKey: 'typeSoloSubtitle', icon: 'account-outline' },
+  { value: 'academy', labelKey: 'typeAcademyLabel', subtitleKey: 'typeAcademySubtitle', icon: 'school-outline' },
+  { value: 'institute', labelKey: 'typeInstituteLabel', subtitleKey: 'typeInstituteSubtitle', icon: 'office-building-outline' },
 ];
 
 type OnboardingPreset = 'academy' | 'institute' | 'solo' | 'maritime' | 'it';
 
 export default function OnboardingScreen() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { preset } = useLocalSearchParams<{ preset?: string }>();
   const presetMode = (preset === 'academy' ||
@@ -144,52 +132,52 @@ export default function OnboardingScreen() {
   const heroCopy = useMemo(() => {
     if (workspaceType === 'academy') {
       return {
-        label: isAcademyPreset ? 'Sample academy onboarding' : 'Academy setup',
-        title: 'Launch your tuition academy.',
-        note: 'Courses are A/L theory, O/L revision, paper classes — not school grades. Parents pay your academy.',
+        label: isAcademyPreset ? t('onboarding.sampleAcademyLabel') : t('onboarding.heroAcademyLabel'),
+        title: t('onboarding.heroAcademyTitle'),
+        note: t('onboarding.heroAcademyNote'),
       };
     }
     if (workspaceType === 'institute') {
       return {
-        label: 'Tuition building setup',
-        title: 'Set up your tuition building.',
-        note: 'You provide halls and timetable. Visiting teachers rent slots and collect their own student fees.',
+        label: t('onboarding.heroInstituteLabel'),
+        title: t('onboarding.heroInstituteTitle'),
+        note: t('onboarding.heroInstituteNote'),
       };
     }
     return {
-      label: 'First-run setup',
-      title: 'Create your teacher workspace.',
-      note: 'This becomes the secure tenant for students, classes, attendance, fees and receipts.',
+      label: t('onboarding.heroSoloLabel'),
+      title: t('onboarding.heroSoloTitle'),
+      note: t('onboarding.heroSoloNote'),
     };
-  }, [workspaceType, isAcademyPreset]);
+  }, [workspaceType, isAcademyPreset, t]);
 
   const checklist = useMemo(() => {
     if (workspaceType === 'academy') {
       return [
-        { icon: 'book-open-page-variant' as const, title: 'Course catalog', copy: 'A/L & O/L theory, revision, paper — not school grades' },
-        { icon: 'cash-plus' as const, title: 'Admission + monthly', copy: 'LKR 2,500 admission and pro-rata monthly billing' },
-        { icon: 'certificate-outline' as const, title: 'Certificates', copy: 'PDF completion certs with attendance and fee rules' },
-        { icon: 'account-child-outline' as const, title: 'Parent portal', copy: 'Parents check attendance, fees and receipts by phone OTP' },
+        { icon: 'book-open-page-variant' as const, title: t('onboarding.checklistAcademyCatalog'), copy: t('onboarding.checklistAcademyCatalogCopy') },
+        { icon: 'cash-plus' as const, title: t('onboarding.checklistAcademyAdmission'), copy: t('onboarding.checklistAcademyAdmissionCopy') },
+        { icon: 'certificate-outline' as const, title: t('onboarding.checklistAcademyCerts'), copy: t('onboarding.checklistAcademyCertsCopy') },
+        { icon: 'account-child-outline' as const, title: t('onboarding.checklistAcademyParent'), copy: t('onboarding.checklistAcademyParentCopy') },
       ];
     }
     if (workspaceType === 'institute') {
       return [
-        { icon: 'office-building-outline' as const, title: 'Halls & timetable', copy: 'Branches, halls, slot booking and conflict warnings' },
-        { icon: 'account-group-outline' as const, title: 'Visiting teachers', copy: 'Each teacher runs their own courses and student fees' },
-        { icon: 'cash-multiple' as const, title: 'Hall rent', copy: 'Track what teachers owe the building — separate from tuition' },
-        { icon: 'file-chart-outline' as const, title: 'Occupancy reports', copy: 'Hall usage and rent collection by branch' },
+        { icon: 'office-building-outline' as const, title: t('onboarding.checklistInstituteHalls'), copy: t('onboarding.checklistInstituteHallsCopy') },
+        { icon: 'account-group-outline' as const, title: t('onboarding.checklistInstituteTeachers'), copy: t('onboarding.checklistInstituteTeachersCopy') },
+        { icon: 'cash-multiple' as const, title: t('onboarding.checklistInstituteRent'), copy: t('onboarding.checklistInstituteRentCopy') },
+        { icon: 'file-chart-outline' as const, title: t('onboarding.checklistInstituteReports'), copy: t('onboarding.checklistInstituteReportsCopy') },
       ];
     }
     return [
-      { icon: 'account-group-outline' as const, title: 'Students', copy: 'Real student records and parent contact details' },
-      { icon: 'school-outline' as const, title: 'Classes', copy: 'Subjects, grades, schedules and monthly fees' },
-      { icon: 'cash-check' as const, title: 'Cash fees', copy: 'Invoices, payments, receipts and defaulters' },
+      { icon: 'account-group-outline' as const, title: t('onboarding.checklistSoloStudents'), copy: t('onboarding.checklistSoloStudentsCopy') },
+      { icon: 'school-outline' as const, title: t('onboarding.checklistSoloClasses'), copy: t('onboarding.checklistSoloClassesCopy') },
+      { icon: 'cash-check' as const, title: t('onboarding.checklistSoloFees'), copy: t('onboarding.checklistSoloFeesCopy') },
     ];
-  }, [workspaceType]);
+  }, [workspaceType, t]);
 
   async function handleCreateWorkspace() {
     if (!workspaceName.trim()) {
-      setError('Add your class or institute name before continuing.');
+      setError(t('onboarding.nameRequired'));
       return;
     }
 
@@ -220,7 +208,7 @@ export default function OnboardingScreen() {
       await clearInviteToken();
       router.replace('/(tabs)');
     } catch (setupError) {
-      setError(setupError instanceof Error ? setupError.message : 'Could not create workspace. Please try again.');
+      setError(setupError instanceof Error ? setupError.message : t('onboarding.createFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -249,28 +237,26 @@ export default function OnboardingScreen() {
             <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
             <Text style={styles.presetBannerText}>
               {academySector === 'maritime'
-                ? 'Maritime academy demo — finish setup to load STCW & pre-sea rating sample courses.'
+                ? t('onboarding.presetMaritime')
                 : academySector === 'it_technology'
-                  ? 'IT academy demo — finish setup to load diploma and NVQ sample programmes.'
-                  : 'Sample academy flow — finish setup to load demo students, theory + revision classes, and parent portal data.'}
+                  ? t('onboarding.presetIt')
+                  : t('onboarding.presetAcademy')}
             </Text>
           </View>
         ) : inviteLocked ? (
           <View style={styles.presetBanner}>
             <MaterialCommunityIcons name="link-variant" size={18} color={colors.info} />
-            <Text style={styles.presetBannerText}>
-              Customer invite applied — workspace type and sector are pre-set for this account.
-            </Text>
+            <Text style={styles.presetBannerText}>{t('onboarding.inviteBanner')}</Text>
           </View>
         ) : null}
 
         <PremiumCard style={styles.card}>
           <View>
-            <Text style={styles.cardTitle}>Workspace type</Text>
-            <Text style={styles.cardSubtitle}>Choose how ClassFlow should organize your tuition business.</Text>
+            <Text style={styles.cardTitle}>{t('onboarding.workspaceTypeTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('onboarding.workspaceTypeSubtitle')}</Text>
           </View>
           <View style={styles.typeList}>
-            {workspaceTypeOptions.map((option) => {
+            {workspaceTypeValues.map((option) => {
               const isSelected = workspaceType === option.value;
               return (
                 <Pressable
@@ -289,8 +275,8 @@ export default function OnboardingScreen() {
                     />
                   </View>
                   <View style={styles.typeCopy}>
-                    <Text style={[styles.typeLabel, isSelected && styles.typeLabelActive]}>{option.label}</Text>
-                    <Text style={styles.typeSubtitle}>{option.subtitle}</Text>
+                    <Text style={[styles.typeLabel, isSelected && styles.typeLabelActive]}>{t(`onboarding.${option.labelKey}`)}</Text>
+                    <Text style={styles.typeSubtitle}>{t(`onboarding.${option.subtitleKey}`)}</Text>
                   </View>
                   {isSelected ? (
                     <MaterialCommunityIcons name="check-circle" size={20} color={colors.primary} />
@@ -304,49 +290,70 @@ export default function OnboardingScreen() {
         {workspaceType === 'academy' ? (
           <PremiumCard style={styles.card}>
             <View>
-              <Text style={styles.cardTitle}>What does your academy teach?</Text>
+              <Text style={styles.cardTitle}>{t('onboarding.sectorTitle')}</Text>
               <Text style={styles.cardSubtitle}>
-                School tuition is only one sector. IT, maritime, gemology, counselling, NVQ and more each work differently.
+                {inviteLocked ? t('onboarding.sectorSubtitleInvite') : t('onboarding.sectorSubtitle')}
               </Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorScroll}>
-              {ACADEMY_SECTORS.map((item) => {
-                const active = academySector === item.id;
-                return (
-                  <Pressable
-                    key={item.id}
-                    style={[styles.sectorCard, active && styles.sectorCardActive]}
-                    onPress={() => setAcademySector(item.id)}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                      size={18}
-                      color={active ? colors.primary : colors.textSecondary}
-                    />
-                    <Text style={[styles.sectorLabel, active && styles.sectorLabelActive]} numberOfLines={2}>
-                      {item.label}
+            {inviteLocked ? (
+              getSectorInfo(academySector) ? (
+                <View style={styles.sectorLockedCard}>
+                  <MaterialCommunityIcons
+                    name={getSectorInfo(academySector)!.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                    size={22}
+                    color={colors.primary}
+                  />
+                  <View style={styles.sectorLockedCopy}>
+                    <Text style={styles.sectorLockedTitle}>{getSectorInfo(academySector)!.label}</Text>
+                    <Text style={styles.sectorHint}>
+                      {interpolate(t('onboarding.sectorExamples'), { examples: getSectorInfo(academySector)?.examples ?? '' })}
                     </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            {getSectorInfo(academySector) ? (
-              <Text style={styles.sectorHint}>e.g. {getSectorInfo(academySector)?.examples}</Text>
-            ) : null}
+                  </View>
+                  <MaterialCommunityIcons name="lock-outline" size={18} color={colors.textMuted} />
+                </View>
+              ) : null
+            ) : (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorScroll}>
+                  {ACADEMY_SECTORS.map((item) => {
+                    const active = academySector === item.id;
+                    return (
+                      <Pressable
+                        key={item.id}
+                        style={[styles.sectorCard, active && styles.sectorCardActive]}
+                        onPress={() => setAcademySector(item.id)}
+                      >
+                        <MaterialCommunityIcons
+                          name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                          size={18}
+                          color={active ? colors.primary : colors.textSecondary}
+                        />
+                        <Text style={[styles.sectorLabel, active && styles.sectorLabelActive]} numberOfLines={2}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                {getSectorInfo(academySector) ? (
+                  <Text style={styles.sectorHint}>e.g. {getSectorInfo(academySector)?.examples}</Text>
+                ) : null}
+              </>
+            )}
           </PremiumCard>
         ) : null}
 
         <PremiumCard style={styles.card}>
           <View>
-            <Text style={styles.cardTitle}>Workspace name</Text>
-            <Text style={styles.cardSubtitle}>Use the name parents and students already recognize.</Text>
+            <Text style={styles.cardTitle}>{t('onboarding.workspaceNameTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('onboarding.workspaceNameSubtitle')}</Text>
           </View>
           <View style={styles.inputWrap}>
             <MaterialCommunityIcons name="storefront-outline" size={20} color={colors.textSecondary} />
             <TextInput
               value={workspaceName}
               onChangeText={setWorkspaceName}
-              placeholder="Your institute name"
+              placeholder={t('onboarding.workspaceNamePlaceholder')}
               placeholderTextColor={colors.textMuted}
               style={styles.input}
             />
@@ -355,11 +362,11 @@ export default function OnboardingScreen() {
 
         <PremiumCard style={styles.card}>
           <View>
-            <Text style={styles.cardTitle}>Default language</Text>
-            <Text style={styles.cardSubtitle}>The MVP starts in English, with Sinhala and Tamil foundation ready.</Text>
+            <Text style={styles.cardTitle}>{t('onboarding.languageTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('onboarding.languageSubtitle')}</Text>
           </View>
           <View style={styles.languageGrid}>
-            {languageOptions.map((option) => {
+            {languageOptionValues.map((option) => {
               const isSelected = option.value === defaultLanguage;
               return (
                 <Pressable
@@ -368,7 +375,7 @@ export default function OnboardingScreen() {
                   onPress={() => setDefaultLanguage(option.value)}
                 >
                   <Text style={[styles.languageLabel, isSelected && styles.languageLabelActive]}>{option.label}</Text>
-                  <Text style={[styles.languageHelper, isSelected && styles.languageHelperActive]}>{option.helper}</Text>
+                  <Text style={[styles.languageHelper, isSelected && styles.languageHelperActive]}>{t(`onboarding.${option.helperKey}`)}</Text>
                 </Pressable>
               );
             })}
@@ -376,7 +383,7 @@ export default function OnboardingScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.checklistCard}>
-          <Text style={styles.cardTitle}>What unlocks next</Text>
+          <Text style={styles.cardTitle}>{t('onboarding.checklistTitle')}</Text>
           {checklist.map((item) => (
             <SetupItem key={item.title} icon={item.icon} title={item.title} copy={item.copy} />
           ))}
@@ -387,9 +394,13 @@ export default function OnboardingScreen() {
 
       <View style={styles.saveBar}>
         <View>
-          <Text style={styles.saveLabel}>Plan</Text>
+          <Text style={styles.saveLabel}>{t('onboarding.planLabel')}</Text>
           <Text style={styles.saveValue}>
-            {workspaceType === 'academy' ? 'Academy workspace' : workspaceType === 'institute' ? 'Tuition building' : 'Free workspace'}
+            {workspaceType === 'academy'
+              ? t('onboarding.planAcademy')
+              : workspaceType === 'institute'
+                ? t('onboarding.planInstitute')
+                : t('onboarding.planFree')}
           </Text>
         </View>
         <Pressable
@@ -402,7 +413,7 @@ export default function OnboardingScreen() {
           ) : (
             <MaterialCommunityIcons name="check-circle-outline" size={18} color="white" />
           )}
-          <Text style={styles.saveButtonText}>{isLoading ? 'Creating...' : 'Enter Dashboard'}</Text>
+          <Text style={styles.saveButtonText}>{isLoading ? t('onboarding.creating') : t('onboarding.enterDashboard')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -502,6 +513,18 @@ const styles = StyleSheet.create({
   sectorLabel: { flex: 1, color: colors.textPrimary, fontSize: 11, fontWeight: '800' },
   sectorLabelActive: { color: colors.primary },
   sectorHint: { color: colors.textMuted, fontSize: 10, fontWeight: '700', fontStyle: 'italic' },
+  sectorLockedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+    padding: spacing.md,
+  },
+  sectorLockedCopy: { flex: 1, gap: 2 },
+  sectorLockedTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: '900' },
   inputWrap: {
     minHeight: 54,
     flexDirection: 'row',

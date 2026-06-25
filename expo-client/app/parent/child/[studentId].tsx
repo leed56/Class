@@ -8,18 +8,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PremiumCard } from '@/components/PremiumCard';
 import { clearParentSession, getParentSession } from '@/features/parent/parentAuthService';
 import {
-  feeStatusLabel,
   formatParentTimelineDate,
   getParentStudentOverview,
   getParentStudentTimeline,
   ParentStudentOverview,
   ParentTimelineItem,
 } from '@/features/parent/parentPortalService';
+import { FeeStatus } from '@/features/fees/models';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
+}
+
+function parentFeeStatusLabel(status: FeeStatus, t: (key: string) => string) {
+  if (status === 'paid') return t('parent.feeStatusPaid');
+  if (status === 'partial') return t('parent.feeStatusPartial');
+  if (status === 'overdue') return t('parent.feeStatusOverdue');
+  return t('parent.feeStatusPending');
 }
 
 function feeStatusColor(status: ParentStudentOverview['feeStatus']) {
@@ -37,6 +47,7 @@ function attendanceTone(percent: number) {
 
 export default function ParentChildDashboardScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string }>();
   const [overview, setOverview] = useState<ParentStudentOverview | null>(null);
   const [timeline, setTimeline] = useState<ParentTimelineItem[]>([]);
@@ -64,11 +75,11 @@ export default function ParentChildDashboardScreen() {
       setOverview(nextOverview);
       setTimeline(nextTimeline.timeline);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load child dashboard.');
+      setError(loadError instanceof Error ? loadError.message : t('parent.loadChildFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId, router]);
+  }, [params.studentId, router, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,16 +106,23 @@ export default function ParentChildDashboardScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Child record not found.'}</Text>
+          <Text style={styles.errorText}>{error ?? t('parent.childNotFound')}</Text>
           <Link href={backHref} asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back</Text>
+              <Text style={styles.retryText}>{t('common.back')}</Text>
             </Pressable>
           </Link>
         </View>
       </SafeAreaView>
     );
   }
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const mediumLabel = mediumLabels[overview.medium as Medium] ?? overview.medium;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -118,7 +136,11 @@ export default function ParentChildDashboardScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.title}>{overview.studentName}</Text>
             <Text style={styles.subtitle}>
-              {overview.workspaceName} • Grade {overview.grade} • {overview.medium}
+              {interpolate(t('parent.childHeaderMeta'), {
+                workspace: overview.workspaceName,
+                grade: overview.grade,
+                medium: mediumLabel,
+              })}
             </Text>
           </View>
           <Pressable style={styles.iconButton} onPress={handleSignOut}>
@@ -127,20 +149,20 @@ export default function ParentChildDashboardScreen() {
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Parent dashboard</Text>
+          <Text style={styles.heroLabel}>{t('parent.childDashboardLabel')}</Text>
           <Text style={styles.heroTitle}>{overview.studentName}</Text>
-          <Text style={styles.heroNote}>Attendance, fees, receipts and certificates in one place.</Text>
+          <Text style={styles.heroNote}>{t('parent.childDashboardNote')}</Text>
         </LinearGradient>
 
         <View style={styles.summaryRow}>
           <PremiumCard style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Attendance</Text>
+            <Text style={styles.summaryLabel}>{t('parent.parentAttendance')}</Text>
             <Text style={[styles.summaryValue, { color: attendanceTone(overview.attendancePercent) }]}>
               {overview.attendancePercent}%
             </Text>
           </PremiumCard>
           <PremiumCard style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Outstanding</Text>
+            <Text style={styles.summaryLabel}>{t('parent.parentOutstanding')}</Text>
             <Text style={[styles.summaryValue, { color: feeStatusColor(overview.feeStatus) }]}>
               {formatLkr(overview.outstandingAmount)}
             </Text>
@@ -153,24 +175,24 @@ export default function ParentChildDashboardScreen() {
               <MaterialCommunityIcons name="cash-multiple" size={22} color={feeStatusColor(overview.feeStatus)} />
             </View>
             <View style={styles.statusCopy}>
-              <Text style={styles.statusTitle}>Fee status</Text>
-              <Text style={styles.statusValue}>{feeStatusLabel(overview.feeStatus)}</Text>
-              <Text style={styles.statusMeta}>Total paid: {formatLkr(overview.paidAmount)}</Text>
+              <Text style={styles.statusTitle}>{t('parent.feeStatusTitle')}</Text>
+              <Text style={styles.statusValue}>{parentFeeStatusLabel(overview.feeStatus, t)}</Text>
+              <Text style={styles.statusMeta}>{interpolate(t('parent.totalPaid'), { amount: formatLkr(overview.paidAmount) })}</Text>
             </View>
           </View>
         </PremiumCard>
 
         <PremiumCard style={styles.timelineCard}>
           <View style={styles.timelineHeader}>
-            <Text style={styles.cardTitle}>Receipts & certificates</Text>
+            <Text style={styles.cardTitle}>{t('parent.receiptsCertsTitle')}</Text>
             <Text style={styles.timelineCount}>{timeline.length}</Text>
           </View>
           {timeline.length === 0 ? (
-            <Text style={styles.emptyText}>No receipts or certificates yet.</Text>
+            <Text style={styles.emptyText}>{t('parent.timelineEmpty')}</Text>
           ) : (
             <View style={styles.timelineList}>
               {timeline.map((item) => (
-                <TimelineRow key={`${item.type}-${item.id}`} item={item} />
+                <TimelineRow key={`${item.type}-${item.id}`} item={item} t={t} />
               ))}
             </View>
           )}
@@ -180,7 +202,7 @@ export default function ParentChildDashboardScreen() {
   );
 }
 
-function TimelineRow({ item }: { item: ParentTimelineItem }) {
+function TimelineRow({ item, t }: { item: ParentTimelineItem; t: (key: string) => string }) {
   const isReceipt = item.type === 'receipt';
   const tone = isReceipt ? colors.success : colors.primary;
   const icon = isReceipt ? 'receipt-text-check-outline' : 'certificate-outline';
@@ -194,7 +216,7 @@ function TimelineRow({ item }: { item: ParentTimelineItem }) {
         <Text style={styles.timelineTitle}>{item.title}</Text>
         <Text style={styles.timelineSubtitle}>
           {isReceipt ? `${formatLkr(item.amount)} • ${item.method.toUpperCase()}` : item.subtitle}
-          {item.type === 'certificate' && item.revoked ? ' • Revoked' : ''}
+          {item.type === 'certificate' && item.revoked ? ` • ${t('parent.revoked')}` : ''}
         </Text>
         <Text style={styles.timelineDate}>{formatParentTimelineDate(item.occurredOn)}</Text>
       </View>

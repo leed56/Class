@@ -24,11 +24,12 @@ import {
   createBatch,
   createOffering,
   createProgram,
-  getOfferingTypeLabel,
   listCatalogTree,
   OfferingType,
 } from '@/features/catalog/catalogService';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -37,6 +38,20 @@ function formatLkr(amount: number) {
 }
 
 const extraOfferingTypes: OfferingType[] = ['revision', 'paper', 'extra', 'online'];
+
+const offeringTypeKeys: Record<OfferingType, `catalog.offering${'Theory' | 'Revision' | 'Paper' | 'Extra' | 'Online'}`> = {
+  theory: 'catalog.offeringTheory',
+  revision: 'catalog.offeringRevision',
+  paper: 'catalog.offeringPaper',
+  extra: 'catalog.offeringExtra',
+  online: 'catalog.offeringOnline',
+};
+
+function workspaceLabelKey(instituteType: string) {
+  if (instituteType === 'academy') return 'catalog.workspaceAcademy' as const;
+  if (instituteType === 'institute') return 'catalog.workspaceInstitute' as const;
+  return 'catalog.workspaceSolo' as const;
+}
 
 export default function CatalogScreen() {
   return (
@@ -47,6 +62,7 @@ export default function CatalogScreen() {
 }
 
 function CatalogContent() {
+  const { t } = useI18n();
   const [programs, setPrograms] = useState<CatalogProgram[]>([]);
   const [instituteType, setInstituteType] = useState('solo');
   const [isLoading, setIsLoading] = useState(true);
@@ -70,11 +86,11 @@ function CatalogContent() {
       setPrograms(tree);
       setInstituteType(workspace?.institute_type ?? 'solo');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load catalog.');
+      setError(loadError instanceof Error ? loadError.message : t('catalog.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,17 +98,21 @@ function CatalogContent() {
     }, [loadCatalog]),
   );
 
+  function offeringLabel(type: OfferingType) {
+    return t(offeringTypeKeys[type]);
+  }
+
   function startAddOffering(batchId: string, programName: string) {
     setAddingBatchId(batchId);
     setNewOfferingType('revision');
-    setNewOfferingName(`${programName} — Revision`);
+    setNewOfferingName(`${programName} — ${offeringLabel('revision')}`);
     setNewOfferingFee('');
     setError(null);
   }
 
   async function handleCreateProgram() {
     if (!newProgramName.trim()) {
-      Alert.alert('Name required', 'Enter a program name.');
+      Alert.alert(t('catalog.nameRequired'), t('catalog.programNameRequired'));
       return;
     }
     try {
@@ -107,13 +127,13 @@ function CatalogContent() {
       setNewProgramName('');
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not add program.');
+      setError(saveError instanceof Error ? saveError.message : t('catalog.addProgramFailed'));
     }
   }
 
   async function handleCreateBatch(programId: string) {
     if (!newBatchName.trim()) {
-      Alert.alert('Name required', 'Enter a batch name.');
+      Alert.alert(t('catalog.nameRequired'), t('catalog.batchNameRequired'));
       return;
     }
     try {
@@ -122,7 +142,7 @@ function CatalogContent() {
       setNewBatchName('');
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not add batch.');
+      setError(saveError instanceof Error ? saveError.message : t('catalog.addBatchFailed'));
     }
   }
 
@@ -138,18 +158,18 @@ function CatalogContent() {
       setAddingBatchId(null);
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not add offering.');
+      setError(saveError instanceof Error ? saveError.message : t('catalog.addOfferingFailed'));
     }
   }
 
   function confirmAddOffering() {
     if (!newOfferingName.trim()) {
-      Alert.alert('Name required', 'Enter a name for this sub-course.');
+      Alert.alert(t('catalog.nameRequired'), t('catalog.subCourseNameRequired'));
       return;
     }
-    Alert.alert('Add sub-course?', newOfferingName.trim(), [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Add', onPress: () => void handleCreateOffering() },
+    Alert.alert(t('catalog.addSubCourseTitle'), newOfferingName.trim(), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('catalog.add'), onPress: () => void handleCreateOffering() },
     ]);
   }
 
@@ -168,8 +188,8 @@ function CatalogContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Course catalog</Text>
-            <Text style={styles.subtitle}>Programs, batches and sub-courses for academies and institutes.</Text>
+            <Text style={styles.title}>{t('catalog.title')}</Text>
+            <Text style={styles.subtitle}>{t('catalog.subtitle')}</Text>
           </View>
         </View>
 
@@ -178,9 +198,11 @@ function CatalogContent() {
             <MaterialCommunityIcons name="book-education-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>{instituteType} workspace</Text>
-            <Text style={styles.heroTitle}>{isLoading ? 'Loading…' : `${programs.length} programs`}</Text>
-            <Text style={styles.heroNote}>{offeringCount} sub-courses • theory, revision, paper & extra</Text>
+            <Text style={styles.heroLabel}>{t(workspaceLabelKey(instituteType))}</Text>
+            <Text style={styles.heroTitle}>
+              {isLoading ? t('common.loading') : interpolate(t('catalog.programCount'), { count: programs.length })}
+            </Text>
+            <Text style={styles.heroNote}>{interpolate(t('catalog.heroNote'), { count: offeringCount })}</Text>
           </View>
         </LinearGradient>
 
@@ -192,21 +214,21 @@ function CatalogContent() {
 
         {!isLoading ? (
           <PremiumCard style={styles.manageCard}>
-            <Text style={styles.manageTitle}>Add to catalog</Text>
+            <Text style={styles.manageTitle}>{t('catalog.addToCatalog')}</Text>
             {showProgramForm ? (
               <View style={styles.addForm}>
-                <Text style={styles.addFormTitle}>New program</Text>
+                <Text style={styles.addFormTitle}>{t('catalog.newProgram')}</Text>
                 <TextInput
                   value={newProgramName}
                   onChangeText={setNewProgramName}
-                  placeholder="Diploma in Software Engineering"
+                  placeholder={t('catalog.programPlaceholder')}
                   placeholderTextColor={colors.textSecondary}
                   style={styles.input}
                 />
                 <TextInput
                   value={newProgramGrade}
                   onChangeText={setNewProgramGrade}
-                  placeholder="Grade (use 13 for professional programmes)"
+                  placeholder={t('catalog.gradePlaceholder')}
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="number-pad"
                   style={styles.input}
@@ -218,23 +240,25 @@ function CatalogContent() {
                       style={[styles.typeChip, newProgramMedium === medium && styles.typeChipActive]}
                       onPress={() => setNewProgramMedium(medium)}
                     >
-                      <Text style={[styles.typeChipText, newProgramMedium === medium && styles.typeChipTextActive]}>{medium}</Text>
+                      <Text style={[styles.typeChipText, newProgramMedium === medium && styles.typeChipTextActive]}>
+                        {medium === 'English' ? t('settings.english') : medium === 'Sinhala' ? t('settings.sinhala') : t('settings.tamil')}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
                 <View style={styles.addActions}>
                   <Pressable style={styles.cancelButton} onPress={() => setShowProgramForm(false)}>
-                    <Text style={styles.cancelText}>Cancel</Text>
+                    <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                   </Pressable>
                   <Pressable style={styles.saveButton} onPress={() => void handleCreateProgram()}>
-                    <Text style={styles.saveText}>Create program</Text>
+                    <Text style={styles.saveText}>{t('catalog.createProgram')}</Text>
                   </Pressable>
                 </View>
               </View>
             ) : (
               <Pressable style={styles.addButton} onPress={() => setShowProgramForm(true)}>
                 <MaterialCommunityIcons name="plus-circle-outline" size={18} color={colors.primary} />
-                <Text style={styles.addButtonText}>Add program + main batch</Text>
+                <Text style={styles.addButtonText}>{t('catalog.addProgramBatch')}</Text>
               </Pressable>
             )}
           </PremiumCard>
@@ -243,15 +267,17 @@ function CatalogContent() {
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading catalog…</Text>
+            <Text style={styles.stateText}>{t('catalog.loading')}</Text>
           </PremiumCard>
         ) : programs.length === 0 ? (
           <PremiumCard>
             <EmptyState
               icon="google-classroom"
-              title="No programs yet"
-              message="Create a class first — a program and theory offering are created automatically."
-              actionLabel="Create class"
+              title={t('catalog.emptyTitle')}
+              message={
+                instituteType === 'academy' ? t('catalog.emptyMessageAcademy') : t('catalog.emptyMessageDefault')
+              }
+              actionLabel={t('common.createClass')}
               actionHref="/classes/new"
             />
           </PremiumCard>
@@ -266,27 +292,31 @@ function CatalogContent() {
                   <View style={styles.programCopy}>
                     <Text style={styles.programTitle}>{program.name}</Text>
                     <Text style={styles.programMeta}>
-                      {program.syllabus} • Grade {program.grade} • {program.medium}
+                      {interpolate(t('catalog.programMeta'), {
+                        syllabus: program.syllabus,
+                        grade: program.grade,
+                        medium: program.medium,
+                      })}
                     </Text>
                   </View>
                 </View>
 
                 {addingProgramId === program.id ? (
                   <View style={styles.addForm}>
-                    <Text style={styles.addFormTitle}>New batch</Text>
+                    <Text style={styles.addFormTitle}>{t('catalog.newBatch')}</Text>
                     <TextInput
                       value={newBatchName}
                       onChangeText={setNewBatchName}
-                      placeholder="2026 January Intake"
+                      placeholder={t('catalog.batchPlaceholder')}
                       placeholderTextColor={colors.textSecondary}
                       style={styles.input}
                     />
                     <View style={styles.addActions}>
                       <Pressable style={styles.cancelButton} onPress={() => setAddingProgramId(null)}>
-                        <Text style={styles.cancelText}>Cancel</Text>
+                        <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                       </Pressable>
                       <Pressable style={styles.saveButton} onPress={() => void handleCreateBatch(program.id)}>
-                        <Text style={styles.saveText}>Add batch</Text>
+                        <Text style={styles.saveText}>{t('catalog.addBatch')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -299,7 +329,7 @@ function CatalogContent() {
                     }}
                   >
                     <MaterialCommunityIcons name="calendar-plus" size={18} color={colors.primary} />
-                    <Text style={styles.addButtonText}>Add batch</Text>
+                    <Text style={styles.addButtonText}>{t('catalog.addBatch')}</Text>
                   </Pressable>
                 )}
 
@@ -307,21 +337,25 @@ function CatalogContent() {
                   <View key={batch.id} style={styles.batchBlock}>
                     <Text style={styles.batchTitle}>{batch.name}</Text>
                     {batch.exam_year ? (
-                      <Text style={styles.batchMeta}>Exam year {batch.exam_year}</Text>
+                      <Text style={styles.batchMeta}>{interpolate(t('catalog.examYear'), { year: batch.exam_year })}</Text>
                     ) : null}
 
                     {batch.offerings.map((offering) => (
                       <View key={offering.id} style={styles.offeringRow}>
                         <View style={styles.offeringBadge}>
-                          <Text style={styles.offeringBadgeText}>{getOfferingTypeLabel(offering.offering_type)}</Text>
+                          <Text style={styles.offeringBadgeText}>{offeringLabel(offering.offering_type)}</Text>
                         </View>
                         <View style={styles.offeringCopy}>
                           <Text style={styles.offeringName}>{offering.name}</Text>
                           <Text style={styles.offeringMeta}>
-                            {formatLkr(offering.default_monthly_fee)}/mo
+                            {formatLkr(offering.default_monthly_fee)}
+                            {t('catalog.perMonth')}
                             {offering.linkedClassCount > 0
-                              ? ` • ${offering.linkedClassCount} class slot${offering.linkedClassCount === 1 ? '' : 's'}`
-                              : ' • no schedule yet'}
+                              ? ` • ${interpolate(
+                                  offering.linkedClassCount === 1 ? t('catalog.classSlot') : t('catalog.classSlots'),
+                                  { count: offering.linkedClassCount },
+                                )}`
+                              : ` • ${t('catalog.noScheduleYet')}`}
                           </Text>
                         </View>
                       </View>
@@ -329,7 +363,7 @@ function CatalogContent() {
 
                     {addingBatchId === batch.id ? (
                       <View style={styles.addForm}>
-                        <Text style={styles.addFormTitle}>New sub-course</Text>
+                        <Text style={styles.addFormTitle}>{t('catalog.newSubCourse')}</Text>
                         <View style={styles.typeRow}>
                           {extraOfferingTypes.map((type) => (
                             <Pressable
@@ -338,12 +372,12 @@ function CatalogContent() {
                               onPress={() => {
                                 setNewOfferingType(type);
                                 if (!newOfferingName || newOfferingName.includes('—')) {
-                                  setNewOfferingName(`${program.name} — ${getOfferingTypeLabel(type)}`);
+                                  setNewOfferingName(`${program.name} — ${offeringLabel(type)}`);
                                 }
                               }}
                             >
                               <Text style={[styles.typeChipText, newOfferingType === type && styles.typeChipTextActive]}>
-                                {getOfferingTypeLabel(type)}
+                                {offeringLabel(type)}
                               </Text>
                             </Pressable>
                           ))}
@@ -351,31 +385,31 @@ function CatalogContent() {
                         <TextInput
                           value={newOfferingName}
                           onChangeText={setNewOfferingName}
-                          placeholder="Offering name"
+                          placeholder={t('catalog.offeringNamePlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                           style={styles.input}
                         />
                         <TextInput
                           value={newOfferingFee}
                           onChangeText={setNewOfferingFee}
-                          placeholder="Monthly fee (LKR)"
+                          placeholder={t('catalog.monthlyFeePlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                           keyboardType="number-pad"
                           style={styles.input}
                         />
                         <View style={styles.addActions}>
                           <Pressable style={styles.cancelButton} onPress={() => setAddingBatchId(null)}>
-                            <Text style={styles.cancelText}>Cancel</Text>
+                            <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                           </Pressable>
                           <Pressable style={styles.saveButton} onPress={confirmAddOffering}>
-                            <Text style={styles.saveText}>Add offering</Text>
+                            <Text style={styles.saveText}>{t('catalog.addOffering')}</Text>
                           </Pressable>
                         </View>
                       </View>
                     ) : (
                       <Pressable style={styles.addButton} onPress={() => startAddOffering(batch.id, program.name)}>
                         <MaterialCommunityIcons name="plus" size={16} color={colors.primary} />
-                        <Text style={styles.addButtonText}>Add revision / paper / extra</Text>
+                        <Text style={styles.addButtonText}>{t('catalog.addRevisionPaperExtra')}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -389,8 +423,8 @@ function CatalogContent() {
           <PremiumCard style={styles.linkCardInner}>
             <MaterialCommunityIcons name="calendar-plus" size={22} color={colors.success} />
             <View style={styles.linkCopy}>
-              <Text style={styles.linkTitle}>Schedule a class slot</Text>
-              <Text style={styles.linkMeta}>Link timetable slots to theory or extra offerings</Text>
+              <Text style={styles.linkTitle}>{t('catalog.scheduleClassSlot')}</Text>
+              <Text style={styles.linkMeta}>{t('catalog.scheduleClassSlotMeta')}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
           </PremiumCard>

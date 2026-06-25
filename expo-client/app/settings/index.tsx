@@ -2,18 +2,19 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { useAuth } from '@/core/auth/AuthProvider';
 import { getCurrentWorkspace, updateWorkspace } from '@/features/auth/authService';
-import { roleLabel } from '@/features/auth/permissions';
 import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teacherProfile';
-import { LanguageCode } from '@/lib/database.types';
+import { roleLabel } from '@/features/auth/permissions';
+import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
+import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -21,7 +22,7 @@ export default function SettingsScreen() {
   const { user } = useAuth();
   const { role, hasPermission } = useWorkspaceRole();
   const { locale, setLocale, t } = useI18n();
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState(t('common.yourWorkspace'));
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
   const [savingLanguage, setSavingLanguage] = useState(false);
@@ -31,18 +32,26 @@ export default function SettingsScreen() {
   const phone =
     typeof user?.user_metadata?.phone === 'string' && user.user_metadata.phone.trim()
       ? user.user_metadata.phone.trim()
-      : 'Not set';
+      : t('common.notSet');
+
+  const heroLabel = useMemo(
+    () =>
+      role
+        ? interpolate(t('settings.teacherWorkspaceWithRole'), { role: roleLabel(role, t) })
+        : t('more.teacherWorkspace'),
+    [role, t],
+  );
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const workspace = await getCurrentWorkspace();
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setDefaultLanguage(workspace?.default_language ?? 'en');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   async function handleLanguageChange(next: LanguageCode) {
     setSavingLanguage(true);
@@ -64,7 +73,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Link href="/(tabs)/more" asChild>
@@ -92,9 +101,9 @@ export default function SettingsScreen() {
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Teacher workspace{role ? ` • ${roleLabel(role)}` : ''}</Text>
+            <Text style={styles.heroLabel}>{heroLabel}</Text>
             <Text style={styles.heroTitle}>{isLoading ? t('common.loading') : workspaceName}</Text>
-            <Text style={styles.heroNote}>Cash receipts • Attendance • Parent consent controls</Text>
+            <Text style={styles.heroNote}>{t('more.heroNote')}</Text>
           </View>
         </LinearGradient>
 
@@ -102,7 +111,7 @@ export default function SettingsScreen() {
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>{t('settings.teacherProfile')}</Text>
-              <Text style={styles.cardSubtitle}>Used in receipts, reports and parent messages</Text>
+              <Text style={styles.cardSubtitle}>{t('settings.profileSubtitle')}</Text>
             </View>
             <MaterialCommunityIcons name="account-edit-outline" size={24} color={colors.primary} />
           </View>
@@ -116,13 +125,13 @@ export default function SettingsScreen() {
               <View style={styles.divider} />
               <Link href="/settings/edit" asChild>
                 <Pressable>
-                  <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
+                  <SettingValue label={t('settings.instituteName')} value={workspaceName} icon="school-outline" />
                 </Pressable>
               </Link>
               <View style={styles.divider} />
               <Link href="/settings/edit" asChild>
                 <Pressable>
-                  <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
+                  <SettingValue label={t('settings.mobileNumber')} value={phone} icon="phone-outline" />
                 </Pressable>
               </Link>
             </>
@@ -130,9 +139,9 @@ export default function SettingsScreen() {
             <>
               <SettingValue label={t('settings.displayName')} value={displayName} icon="account-outline" />
               <View style={styles.divider} />
-              <SettingValue label="Institute name" value={workspaceName} icon="school-outline" />
+              <SettingValue label={t('settings.instituteName')} value={workspaceName} icon="school-outline" />
               <View style={styles.divider} />
-              <SettingValue label="Mobile number" value={phone} icon="phone-outline" />
+              <SettingValue label={t('settings.mobileNumber')} value={phone} icon="phone-outline" />
             </>
           )}
         </PremiumCard>
@@ -158,29 +167,29 @@ export default function SettingsScreen() {
         <PremiumCard style={styles.receiptCard}>
           <View style={styles.cardHeaderRow}>
             <View>
-              <Text style={styles.cardTitle}>Receipt branding</Text>
-              <Text style={styles.cardSubtitle}>Controls shown on every payment receipt</Text>
+              <Text style={styles.cardTitle}>{t('settings.receiptBranding')}</Text>
+              <Text style={styles.cardSubtitle}>{t('settings.receiptBrandingSubtitle')}</Text>
             </View>
             <MaterialCommunityIcons name="receipt-text-edit-outline" size={24} color={colors.success} />
           </View>
-          <SettingValue label="Receipt prefix" value="RCPT" icon="identifier" />
+          <SettingValue label={t('settings.receiptPrefix')} value="RCPT" icon="identifier" />
           <View style={styles.divider} />
-          <SettingValue label="Footer note" value="Thank you for your payment" icon="note-text-outline" />
+          <SettingValue label={t('settings.footerNote')} value={t('settings.footerNoteSample')} icon="note-text-outline" />
           <View style={styles.previewBox}>
-            <Text style={styles.previewLabel}>Preview</Text>
+            <Text style={styles.previewLabel}>{t('settings.preview')}</Text>
             <Text style={styles.previewTitle}>{workspaceName}</Text>
-            <Text style={styles.previewText}>Receipt no: RCPT-0004 • LKR 2,500</Text>
+            <Text style={styles.previewText}>{t('settings.previewReceiptSample')}</Text>
           </View>
         </PremiumCard>
 
         {hasPermission('manage_catalog') || hasPermission('view_reports') ? (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Academic setup</Text>
+              <Text style={styles.sectionTitle}>{t('settings.academicSetup')}</Text>
               {hasPermission('manage_catalog') ? (
                 <Link href="/settings/subjects" asChild>
                   <Pressable>
-                    <Text style={styles.sectionAction}>Manage</Text>
+                    <Text style={styles.sectionAction}>{t('settings.manage')}</Text>
                   </Pressable>
                 </Link>
               ) : null}
@@ -188,24 +197,24 @@ export default function SettingsScreen() {
             <View style={styles.grid}>
               {hasPermission('manage_catalog') ? (
                 <>
-                  <SetupTile title="Subjects" subtitle="Maths, Science, English" icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
-                  <SetupTile title="Catalog" subtitle="Programs & sub-courses" icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
-                  <SetupTile title="Timetable board" subtitle="Hall × time grid for building admins" icon="calendar-clock" color={colors.info} href={'/settings/timetable-board' as Href} />
-                  <SetupTile title="Branches" subtitle="Locations, halls & conflicts" icon="source-branch" color={colors.primary} href="/settings/branches" />
+                  <SetupTile title={t('subjectsSetup.title')} subtitle={t('settings.tileSubjectsSubtitle')} icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
+                  <SetupTile title={t('catalog.title')} subtitle={t('settings.tileCatalogSubtitle')} icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
+                  <SetupTile title={t('timetableBoard.title')} subtitle={t('settings.tileTimetableSubtitle')} icon="calendar-clock" color={colors.info} href={'/settings/timetable-board' as Href} />
+                  <SetupTile title={t('branches.title')} subtitle={t('settings.tileBranchesSubtitle')} icon="source-branch" color={colors.primary} href="/settings/branches" />
                   {hasPermission('manage_hall_rent') ? (
-                    <SetupTile title="Hall rent" subtitle="Teacher slot fees & invoices" icon="cash-clock" color={colors.danger} href="/settings/hall-rent" />
+                    <SetupTile title={t('sidebar.hallRent')} subtitle={t('settings.tileHallRentSubtitle')} icon="cash-clock" color={colors.danger} href="/settings/hall-rent" />
                   ) : null}
-                  <SetupTile title="Certificates" subtitle="PDF branding & wording" icon="certificate-outline" color={colors.warning} href="/settings/certificate-templates" />
+                  <SetupTile title={t('certTemplates.title')} subtitle={t('settings.tileCertificatesSubtitle')} icon="certificate-outline" color={colors.warning} href="/settings/certificate-templates" />
                 </>
               ) : null}
               {hasPermission('take_attendance') ? (
-                <SetupTile title="Classes" subtitle="Grade, medium, hall" icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
+                <SetupTile title={t('tabs.classes')} subtitle={t('settings.tileClassesSubtitle')} icon="google-classroom" color={colors.success} href="/(tabs)/classes" />
               ) : null}
               {hasPermission('record_payments') ? (
-                <SetupTile title="Fee rules" subtitle="Monthly fee defaults" icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
+                <SetupTile title={t('settings.tileFeeRules')} subtitle={t('settings.tileFeeRulesSubtitle')} icon="cash-multiple" color={colors.warning} href="/(tabs)/fees" />
               ) : null}
               {hasPermission('view_reports') ? (
-                <SetupTile title="Reports" subtitle="Export preferences" icon="file-chart-outline" color={colors.info} href="/reports" />
+                <SetupTile title={t('common.reports')} subtitle={t('settings.tileReportsSubtitle')} icon="file-chart-outline" color={colors.info} href="/reports" />
               ) : null}
             </View>
           </>
@@ -219,8 +228,8 @@ export default function SettingsScreen() {
                   <MaterialCommunityIcons name="account-group-outline" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.settingCopy}>
-                  <Text style={styles.cardTitle}>Staff & roles</Text>
-                  <Text style={styles.cardSubtitle}>Add admin, teacher and front-desk staff to your institute</Text>
+                  <Text style={styles.cardTitle}>{t('staff.title')}</Text>
+                  <Text style={styles.cardSubtitle}>{t('staff.subtitle')}</Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
               </PremiumCard>
@@ -229,20 +238,20 @@ export default function SettingsScreen() {
         ) : null}
 
         {hasPermission('archive_records') ? (
-        <Link href="/settings/archived" asChild>
-          <Pressable>
-            <PremiumCard style={styles.archiveCard}>
-              <View style={[styles.settingIcon, { backgroundColor: colors.warningSoft }]}>
-                <MaterialCommunityIcons name="archive-outline" size={20} color={colors.warning} />
-              </View>
-              <View style={styles.settingCopy}>
-                <Text style={styles.cardTitle}>Archived records</Text>
-                <Text style={styles.cardSubtitle}>View and restore hidden students and classes</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
-            </PremiumCard>
-          </Pressable>
-        </Link>
+          <Link href="/settings/archived" asChild>
+            <Pressable>
+              <PremiumCard style={styles.archiveCard}>
+                <View style={[styles.settingIcon, { backgroundColor: colors.warningSoft }]}>
+                  <MaterialCommunityIcons name="archive-outline" size={20} color={colors.warning} />
+                </View>
+                <View style={styles.settingCopy}>
+                  <Text style={styles.cardTitle}>{t('archivedRecords.title')}</Text>
+                  <Text style={styles.cardSubtitle}>{t('archivedRecords.subtitle')}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />
+              </PremiumCard>
+            </Pressable>
+          </Link>
         ) : null}
 
         <PremiumCard style={styles.policyCard}>
@@ -250,18 +259,20 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons name="shield-check-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.policyCopy}>
-            <Text style={styles.cardTitle}>Privacy & consent</Text>
-            <Text style={styles.cardSubtitle}>Parent consent tracking, data retention and communication permissions for production readiness.</Text>
+            <Text style={styles.cardTitle}>{t('settings.privacyTitle')}</Text>
+            <Text style={styles.cardSubtitle}>{t('settings.privacySubtitle')}</Text>
           </View>
-          <View style={styles.policyBadge}><Text style={styles.policyBadgeText}>PDPA-aware</Text></View>
+          <View style={styles.policyBadge}>
+            <Text style={styles.policyBadgeText}>{t('settings.pdpaBadge')}</Text>
+          </View>
         </PremiumCard>
 
         <PremiumCard style={styles.commsCard}>
-          <Text style={styles.cardTitle}>Communication setup</Text>
-          <Text style={styles.cardSubtitle}>Integrations prepared for later production phases</Text>
-          <SettingValue label="WhatsApp / ReachWA" value="Phase 2" icon="whatsapp" success />
+          <Text style={styles.cardTitle}>{t('settings.commsSetupTitle')}</Text>
+          <Text style={styles.cardSubtitle}>{t('settings.commsSetupSubtitle')}</Text>
+          <SettingValue label={t('settings.whatsappLabel')} value={t('settings.phase2')} icon="whatsapp" success />
           <View style={styles.divider} />
-          <SettingValue label="SMS fallback" value="Later" icon="message-processing-outline" />
+          <SettingValue label={t('settings.smsFallback')} value={t('settings.later')} icon="message-processing-outline" />
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>

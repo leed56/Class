@@ -14,11 +14,15 @@ import {
   ParentChild,
   ParentSession,
 } from '@/features/parent/parentAuthService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function ParentHomeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [session, setSession] = useState<ParentSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,7 +71,7 @@ export default function ParentHomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Your children</Text>
+            <Text style={styles.title}>{t('parent.homeTitle')}</Text>
             <Text style={styles.subtitle}>{formatParentPhone(session.phone)}</Text>
           </View>
           <Pressable style={styles.iconButton} onPress={handleSignOut}>
@@ -76,14 +80,14 @@ export default function ParentHomeScreen() {
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Parent portal</Text>
-          <Text style={styles.heroTitle}>Choose a child</Text>
-          <Text style={styles.heroNote}>View attendance, fee status, receipts and certificates.</Text>
+          <Text style={styles.heroLabel}>{t('parent.loginTitle')}</Text>
+          <Text style={styles.heroTitle}>{t('parent.chooseChild')}</Text>
+          <Text style={styles.heroNote}>{t('parent.chooseChildNote')}</Text>
         </LinearGradient>
 
         <View style={styles.list}>
           {session.children.map((child) => (
-            <ChildCard key={child.id} child={child} />
+            <ChildCard key={child.id} child={child} t={t} />
           ))}
         </View>
       </ScrollView>
@@ -91,7 +95,14 @@ export default function ParentHomeScreen() {
   );
 }
 
-function ChildCard({ child }: { child: ParentChild }) {
+function ChildCard({ child, t }: { child: ParentChild; t: (key: string) => string }) {
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[child.medium as Medium] ?? child.medium;
+
   return (
     <NavPressable href={`/parent/child/${child.id}` as Href}>
       <PremiumCard style={styles.childCard}>
@@ -101,7 +112,11 @@ function ChildCard({ child }: { child: ParentChild }) {
         <View style={styles.childCopy}>
           <Text style={styles.childName}>{child.name}</Text>
           <Text style={styles.childMeta}>
-            Grade {child.grade} • {child.medium} • {child.workspaceName}
+            {interpolate(t('parent.childMeta'), {
+              grade: child.grade,
+              medium,
+              workspace: child.workspaceName,
+            })}
           </Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={21} color={colors.textSecondary} />

@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, usePathname, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/core/auth/AuthProvider';
 import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { getTeacherInitials } from '@/features/auth/teacherProfile';
 import { isPlatformAdmin } from '@/features/platform/platformService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -18,26 +19,6 @@ type NavItem = {
   match: string;
   instituteOnly?: boolean;
 };
-
-const primaryNav: NavItem[] = [
-  { label: 'Dashboard', href: '/(tabs)', icon: 'view-dashboard-outline', match: '/index' },
-  { label: 'Classes', href: '/(tabs)/classes', icon: 'google-classroom', match: '/classes' },
-  { label: 'Students', href: '/(tabs)/students', icon: 'account-group-outline', match: '/students' },
-  { label: 'Fees', href: '/(tabs)/fees', icon: 'cash-multiple', match: '/fees' },
-];
-
-const operationsNav: NavItem[] = [
-  { label: 'Halls & branches', href: '/settings/branches', icon: 'office-building-outline', match: '/settings/branches', instituteOnly: true },
-  { label: 'Hall rent', href: '/settings/hall-rent', icon: 'cash-clock', match: '/settings/hall-rent', instituteOnly: true },
-  { label: 'Reports', href: '/reports', icon: 'chart-box-outline', match: '/reports' },
-  { label: 'Settings', href: '/settings', icon: 'cog-outline', match: '/settings' },
-];
-
-function workspaceLabel(type: InstituteType) {
-  if (type === 'institute') return 'Tuition building';
-  if (type === 'academy') return 'Academy';
-  return 'Solo tutor';
-}
 
 function isActive(pathname: string, match: string, href: string) {
   if (match === '/index') {
@@ -51,11 +32,53 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { instituteType, workspaceName } = useWorkspaceShell();
+  const { t } = useI18n();
   const [showPlatformAdmin, setShowPlatformAdmin] = useState(false);
 
   useEffect(() => {
     isPlatformAdmin().then(setShowPlatformAdmin).catch(() => setShowPlatformAdmin(false));
   }, []);
+
+  const workspaceLabel = useMemo(() => {
+    const labels: Record<InstituteType, string> = {
+      institute: t('settingsEdit.typeInstitute'),
+      academy: t('settingsEdit.typeAcademy'),
+      solo: t('settingsEdit.typeSolo'),
+    };
+    return labels[instituteType];
+  }, [instituteType, t]);
+
+  const primaryNav = useMemo<NavItem[]>(
+    () => [
+      { label: t('sidebar.dashboard'), href: '/(tabs)', icon: 'view-dashboard-outline', match: '/index' },
+      { label: t('tabs.classes'), href: '/(tabs)/classes', icon: 'google-classroom', match: '/classes' },
+      { label: t('tabs.students'), href: '/(tabs)/students', icon: 'account-group-outline', match: '/students' },
+      { label: t('tabs.fees'), href: '/(tabs)/fees', icon: 'cash-multiple', match: '/fees' },
+    ],
+    [t],
+  );
+
+  const operationsNav = useMemo<NavItem[]>(
+    () => [
+      {
+        label: t('sidebar.hallsBranches'),
+        href: '/settings/branches',
+        icon: 'office-building-outline',
+        match: '/settings/branches',
+        instituteOnly: true,
+      },
+      {
+        label: t('sidebar.hallRent'),
+        href: '/settings/hall-rent',
+        icon: 'cash-clock',
+        match: '/settings/hall-rent',
+        instituteOnly: true,
+      },
+      { label: t('common.reports'), href: '/reports', icon: 'chart-box-outline', match: '/reports' },
+      { label: t('settings.title'), href: '/settings', icon: 'cog-outline', match: '/settings' },
+    ],
+    [t],
+  );
 
   const opsItems = operationsNav.filter((item) => !item.instituteOnly || instituteType === 'institute');
 
@@ -66,21 +89,21 @@ export function DesktopSidebar() {
           <MaterialCommunityIcons name="school-outline" size={22} color="white" />
         </View>
         <View style={styles.brandCopy}>
-          <Text style={styles.brandTitle}>ClassFlow</Text>
+          <Text style={styles.brandTitle}>{t('auth.appName')}</Text>
           <Text style={styles.brandSubtitle} numberOfLines={1}>
-            {workspaceName ?? 'Workspace'}
+            {workspaceName ?? t('sidebar.workspaceFallback')}
           </Text>
-          <Text style={styles.brandType}>{workspaceLabel(instituteType)}</Text>
+          <Text style={styles.brandType}>{workspaceLabel}</Text>
         </View>
       </View>
 
       <ScrollView style={styles.navScroll} contentContainerStyle={styles.navContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionLabel}>Main</Text>
+        <Text style={styles.sectionLabel}>{t('sidebar.sectionMain')}</Text>
         {primaryNav.map((item) => {
           const active = isActive(pathname, item.match, item.href as string);
           return (
             <Pressable
-              key={item.label}
+              key={item.match}
               style={[styles.navItem, active && styles.navItemActive]}
               onPress={() => router.push(item.href)}
             >
@@ -94,12 +117,12 @@ export function DesktopSidebar() {
           );
         })}
 
-        <Text style={styles.sectionLabel}>Operations</Text>
+        <Text style={styles.sectionLabel}>{t('sidebar.sectionOperations')}</Text>
         {opsItems.map((item) => {
           const active = isActive(pathname, item.match, item.href as string);
           return (
             <Pressable
-              key={item.label}
+              key={item.match}
               style={[styles.navItem, active && styles.navItemActive]}
               onPress={() => router.push(item.href)}
             >
@@ -118,7 +141,7 @@ export function DesktopSidebar() {
             onPress={() => router.push('/platform/index' as Href)}
           >
             <MaterialCommunityIcons name="shield-crown-outline" size={20} color={pathname.includes('/platform') ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.navLabel, pathname.includes('/platform') && styles.navLabelActive]}>Platform admin</Text>
+            <Text style={[styles.navLabel, pathname.includes('/platform') && styles.navLabelActive]}>{t('platformAdmin.title')}</Text>
           </Pressable>
         ) : null}
       </ScrollView>
@@ -130,14 +153,14 @@ export function DesktopSidebar() {
           </View>
           <View style={styles.userCopy}>
             <Text style={styles.userName} numberOfLines={1}>
-              {user?.email?.split('@')[0] ?? 'Teacher'}
+              {user?.email?.split('@')[0] ?? t('common.teacherFallback')}
             </Text>
-            <Text style={styles.userRole}>{workspaceLabel(instituteType)}</Text>
+            <Text style={styles.userRole}>{workspaceLabel}</Text>
           </View>
         </View>
         <Pressable style={styles.signOutButton} onPress={() => signOut()}>
           <MaterialCommunityIcons name="logout" size={16} color={colors.textSecondary} />
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={styles.signOutText}>{t('common.signOut')}</Text>
         </Pressable>
       </View>
     </View>

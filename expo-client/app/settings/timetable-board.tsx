@@ -20,6 +20,8 @@ import {
 } from '@/features/locations/timetableBoardService';
 import { listWorkspaceScheduleConflicts } from '@/features/locations/timetableService';
 import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
+import { formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -32,10 +34,9 @@ export default function TimetableBoardScreen() {
 }
 
 function TimetableBoardContent() {
+  const { locale, t } = useI18n();
   const weekdays = listTimetableWeekdays();
-  const [selectedDay, setSelectedDay] = useState(
-    new Date().toLocaleDateString('en-US', { weekday: 'long' }),
-  );
+  const [selectedDay, setSelectedDay] = useState(getCanonicalWeekday());
   const [rows, setRows] = useState<TimetableBoardRow[]>([]);
   const [conflictCount, setConflictCount] = useState(0);
   const [scheduleConflicts, setScheduleConflicts] = useState<
@@ -56,11 +57,11 @@ function TimetableBoardContent() {
       setConflictCount(board.conflicts);
       setScheduleConflicts(conflicts.filter((item) => item.weekday === selectedDay));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load timetable board.');
+      setError(loadError instanceof Error ? loadError.message : t('timetableBoard.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDay]);
+  }, [selectedDay, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,8 +79,8 @@ function TimetableBoardContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Timetable board</Text>
-            <Text style={styles.subtitle}>Hall × time grid — like the notice board at a tuition building.</Text>
+            <Text style={styles.title}>{t('timetableBoard.title')}</Text>
+            <Text style={styles.subtitle}>{t('timetableBoard.subtitle')}</Text>
           </View>
         </View>
 
@@ -91,7 +92,7 @@ function TimetableBoardContent() {
               onPress={() => setSelectedDay(day)}
             >
               <Text style={[styles.dayChipText, selectedDay === day && styles.dayChipTextActive]}>
-                {day.slice(0, 3)}
+                {formatWeekdayName(locale, day, 'short')}
               </Text>
             </Pressable>
           ))}
@@ -112,8 +113,8 @@ function TimetableBoardContent() {
         ) : rows.length === 0 ? (
           <PremiumCard style={styles.emptyCard}>
             <MaterialCommunityIcons name="calendar-blank-outline" size={28} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No hall slots on {selectedDay}</Text>
-            <Text style={styles.emptyText}>Assign halls to classes to populate this board.</Text>
+            <Text style={styles.emptyTitle}>{interpolate(t('timetableBoard.emptyTitle'), { day: selectedDay })}</Text>
+            <Text style={styles.emptyText}>{t('timetableBoard.emptyText')}</Text>
           </PremiumCard>
         ) : (
           <>
@@ -121,7 +122,9 @@ function TimetableBoardContent() {
               <View style={styles.conflictBanner}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.danger} />
                 <Text style={styles.conflictText}>
-                  {conflictCount} overlapping slot{conflictCount === 1 ? '' : 's'} on this day — resolve in Branches.
+                  {conflictCount === 1
+                    ? t('timetableBoard.conflictSingle')
+                    : interpolate(t('timetableBoard.conflictMulti'), { count: conflictCount })}
                 </Text>
               </View>
             ) : null}
@@ -144,7 +147,7 @@ function TimetableBoardContent() {
                       <Text style={styles.slotSubject} numberOfLines={1}>
                         {slot.subject}
                       </Text>
-                      <Text style={styles.slotMeta}>Grade {slot.grade}</Text>
+                      <Text style={styles.slotMeta}>{interpolate(t('timetableBoard.gradeMeta'), { grade: slot.grade })}</Text>
                     </View>
                   ))}
                 </View>

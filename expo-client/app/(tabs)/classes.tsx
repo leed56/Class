@@ -12,23 +12,15 @@ import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
-import { interpolate } from '@/i18n';
+import { CLASS_SCHEDULE_WEEKDAYS, formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const weekdayShortNames: Record<string, string> = {
-  Monday: 'Mon',
-  Tuesday: 'Tue',
-  Wednesday: 'Wed',
-  Thursday: 'Thu',
-  Friday: 'Fri',
-  Saturday: 'Sat',
-  Sunday: 'Sun',
-};
+const weekdayTabs = CLASS_SCHEDULE_WEEKDAYS.slice(0, 5);
 
 export default function ClassesScreen() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +32,11 @@ export default function ClassesScreen() {
       const nextClasses = await listClasses();
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load classes.');
+      setError(loadError instanceof Error ? loadError.message : t('classes.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,7 +44,7 @@ export default function ClassesScreen() {
     }, [loadClasses]),
   );
 
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todayName = getCanonicalWeekday();
   const todayClasses = classes.filter((item) => item.day === todayName);
   const nextClass = todayClasses.find((item) => item.state !== 'completed') ?? classes[0];
 
@@ -135,13 +127,13 @@ export default function ClassesScreen() {
         ) : (
           <>
             <View style={styles.dayTabs}>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day) => {
-                const isToday = Object.entries(weekdayShortNames).some(
-                  ([full, short]) => short === day && full === todayName,
-                );
+              {weekdayTabs.map((day) => {
+                const isToday = day === todayName;
                 return (
                   <View key={day} style={[styles.dayChip, isToday && styles.activeDayChip]}>
-                    <Text style={[styles.dayChipText, isToday && styles.activeDayChipText]}>{day}</Text>
+                    <Text style={[styles.dayChipText, isToday && styles.activeDayChipText]}>
+                      {formatWeekdayName(locale, day, 'short')}
+                    </Text>
                   </View>
                 );
               })}

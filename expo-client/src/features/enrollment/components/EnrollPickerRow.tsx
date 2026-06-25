@@ -3,6 +3,9 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -13,6 +16,14 @@ type EnrollPickerRowProps = {
 };
 
 export function EnrollPickerRow({ student, enrolling, onEnroll }: EnrollPickerRowProps) {
+  const { t } = useI18n();
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[student.medium as Medium] ?? student.medium;
+
   return (
     <PremiumCard style={styles.card}>
       <View style={styles.row}>
@@ -21,7 +32,13 @@ export function EnrollPickerRow({ student, enrolling, onEnroll }: EnrollPickerRo
         </View>
         <View style={styles.copy}>
           <Text style={styles.name} numberOfLines={1}>{student.name}</Text>
-          <Text style={styles.meta} numberOfLines={1}>Grade {student.grade} • {student.medium} • {student.school}</Text>
+          <Text style={styles.meta} numberOfLines={1}>
+            {interpolate(t('classEnroll.studentMeta'), {
+              grade: student.grade,
+              medium,
+              school: student.school,
+            })}
+          </Text>
           <Text style={styles.parent} numberOfLines={1}>{student.parentName} • {student.parentPhone}</Text>
         </View>
         <Pressable
@@ -34,7 +51,7 @@ export function EnrollPickerRow({ student, enrolling, onEnroll }: EnrollPickerRo
           ) : (
             <>
               <MaterialCommunityIcons name="account-plus" size={16} color="white" />
-              <Text style={styles.enrollText}>Enroll</Text>
+              <Text style={styles.enrollText}>{t('classEnroll.enroll')}</Text>
             </>
           )}
         </Pressable>

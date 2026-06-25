@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { requestParentOtp } from '@/features/parent/parentAuthService';
+import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_PARENT_OTP,
@@ -40,7 +41,7 @@ export default function ParentLoginScreen() {
         },
       });
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Could not request login code.');
+      setError(submitError instanceof Error ? submitError.message : t('parent.otpRequestFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -66,9 +67,9 @@ export default function ParentLoginScreen() {
             <MaterialCommunityIcons name="account-child-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Secure parent access</Text>
-            <Text style={styles.heroTitle}>Sign in with parent phone</Text>
-            <Text style={styles.heroNote}>Use the same mobile number registered with the institute.</Text>
+            <Text style={styles.heroLabel}>{t('parent.loginHeroLabel')}</Text>
+            <Text style={styles.heroTitle}>{t('parent.loginHeroTitle')}</Text>
+            <Text style={styles.heroNote}>{t('parent.loginHeroNote')}</Text>
           </View>
         </LinearGradient>
 
@@ -78,9 +79,9 @@ export default function ParentLoginScreen() {
             <View style={styles.demoBanner}>
               <MaterialCommunityIcons name="test-tube" size={18} color={colors.info} />
               <View style={styles.demoCopy}>
-                <Text style={styles.demoTitle}>Pilot demo login</Text>
+                <Text style={styles.demoTitle}>{t('parent.demoTitle')}</Text>
                 <Text style={styles.demoText}>
-                  Phone {DEMO_PARENT_PHONE} • OTP {DEMO_PARENT_OTP}
+                  {interpolate(t('parent.demoText'), { phone: DEMO_PARENT_PHONE, otp: DEMO_PARENT_OTP })}
                 </Text>
               </View>
             </View>
@@ -97,7 +98,7 @@ export default function ParentLoginScreen() {
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {isPilotDemoAuthEnabled() ? (
             <Pressable style={styles.secondaryButton} onPress={handleContinue} disabled={isSubmitting}>
-              <Text style={styles.secondaryButtonText}>Quick demo parent login</Text>
+              <Text style={styles.secondaryButtonText}>{t('parent.quickDemoLogin')}</Text>
             </Pressable>
           ) : null}
           <Pressable style={styles.primaryButton} onPress={handleContinue} disabled={isSubmitting}>

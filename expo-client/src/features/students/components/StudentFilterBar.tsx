@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -22,21 +23,23 @@ function FilterChip({ label, active = false }: FilterChipProps) {
 }
 
 export function StudentFilterBar({ showSchoolGradeFilters = true }: Props) {
+  const { t } = useI18n();
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.searchBox}>
         <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
         <TextInput
-          placeholder="Search student, school or parent"
+          placeholder={t('students.filterSearchPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           style={styles.input}
         />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <FilterChip label="All" active />
-        {showSchoolGradeFilters ? <FilterChip label="By grade" /> : null}
-        <FilterChip label="Pending fees" />
-        <FilterChip label="No consent" />
+        <FilterChip label={t('students.filterAll')} active />
+        {showSchoolGradeFilters ? <FilterChip label={t('students.filterByGrade')} /> : null}
+        <FilterChip label={t('students.filterPendingFees')} />
+        <FilterChip label={t('students.filterNoConsent')} />
       </ScrollView>
     </View>
   );

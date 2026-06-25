@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { isPlatformAdmin } from '@/features/platform/platformService';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
 export function PlatformAdminGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function PlatformAdminGate({ children }: { children: React.ReactNode }) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.loadingText}>Checking platform access…</Text>
+        <Text style={styles.loadingText}>{t('platformAdmin.checkingAccess')}</Text>
       </View>
     );
   }

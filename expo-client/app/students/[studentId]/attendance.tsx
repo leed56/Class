@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,22 +13,31 @@ import {
 } from '@/features/attendance/attendanceService';
 import { AttendanceStatus } from '@/features/attendance/models';
 import { getStudentById } from '@/features/students/studentService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const statusConfig: Record<Exclude<AttendanceStatus, 'unmarked'>, { label: string; color: string; bg: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = {
-  present: { label: 'Present', color: colors.success, bg: colors.successSoft, icon: 'check-circle-outline' },
-  late: { label: 'Late', color: colors.warning, bg: colors.warningSoft, icon: 'clock-alert-outline' },
-  absent: { label: 'Absent', color: colors.danger, bg: colors.dangerSoft, icon: 'close-circle-outline' },
-};
-
 export default function StudentAttendanceHistoryScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string }>();
-  const [studentName, setStudentName] = useState('Student');
+  const [studentName, setStudentName] = useState(t('studentAttendance.studentFallback'));
   const [attendancePercent, setAttendancePercent] = useState(0);
   const [records, setRecords] = useState<StudentAttendanceHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const statusConfig = useMemo(
+    (): Record<
+      Exclude<AttendanceStatus, 'unmarked'>,
+      { label: string; color: string; bg: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }
+    > => ({
+      present: { label: t('classAttendance.present'), color: colors.success, bg: colors.successSoft, icon: 'check-circle-outline' },
+      late: { label: t('classAttendance.late'), color: colors.warning, bg: colors.warningSoft, icon: 'clock-alert-outline' },
+      absent: { label: t('classAttendance.absent'), color: colors.danger, bg: colors.dangerSoft, icon: 'close-circle-outline' },
+    }),
+    [t],
+  );
 
   const loadHistory = useCallback(async () => {
     if (!params.studentId) return;
@@ -39,15 +48,15 @@ export default function StudentAttendanceHistoryScreen() {
         getStudentById(params.studentId),
         listStudentAttendanceHistory(params.studentId),
       ]);
-      setStudentName(student?.name ?? 'Student');
+      setStudentName(student?.name ?? t('studentAttendance.studentFallback'));
       setAttendancePercent(student?.attendancePercent ?? 0);
       setRecords(nextRecords);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load attendance history.');
+      setError(loadError instanceof Error ? loadError.message : t('studentAttendance.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.studentId]);
+  }, [params.studentId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,17 +76,21 @@ export default function StudentAttendanceHistoryScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Attendance History</Text>
-            <Text style={styles.subtitle}>Session-by-session record across enrolled classes.</Text>
+            <Text style={styles.title}>{t('studentAttendance.title')}</Text>
+            <Text style={styles.subtitle}>{t('studentAttendance.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
           <View style={styles.heroCopy}>
             <Text style={styles.heroLabel}>{studentName}</Text>
-            <Text style={styles.heroTitle}>{attendancePercent}% overall attendance</Text>
+            <Text style={styles.heroTitle}>
+              {interpolate(t('studentAttendance.heroTitle'), { percent: attendancePercent })}
+            </Text>
             <Text style={styles.heroNote}>
-              {isLoading ? 'Loading records…' : `${presentCount}/${records.length} sessions attended`}
+              {isLoading
+                ? t('studentAttendance.heroLoading')
+                : interpolate(t('studentAttendance.heroNote'), { present: presentCount, total: records.length })}
             </Text>
           </View>
         </LinearGradient>
@@ -85,21 +98,21 @@ export default function StudentAttendanceHistoryScreen() {
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading attendance records…</Text>
+            <Text style={styles.stateText}>{t('studentAttendance.loadingRecords')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={loadHistory}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : records.length === 0 ? (
           <PremiumCard>
             <EmptyState
               icon="clipboard-text-clock-outline"
-              title="No attendance yet"
-              message="Once this student is marked in class sessions, their history will appear here."
+              title={t('studentAttendance.emptyTitle')}
+              message={t('studentAttendance.emptyMessage')}
             />
           </PremiumCard>
         ) : (

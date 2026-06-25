@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +7,8 @@ import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { formatLkrCompact } from '@/features/auth/teacherProfile';
 import { HallRentSummary } from '@/features/hall-rent/models';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -16,29 +17,32 @@ type Props = {
 };
 
 export function HallRentSummaryPanel({ summary }: Props) {
+  const { t } = useI18n();
   const collectionPercent =
     summary.totalDue === 0 ? 0 : Math.round((summary.collected / summary.totalDue) * 100);
+
+  const subtitle =
+    summary.activeBookings === 1
+      ? interpolate(t('dashboard.hallRentPanelSubtitleSingle'), { count: summary.activeBookings })
+      : interpolate(t('dashboard.hallRentPanelSubtitleMulti'), { count: summary.activeBookings });
 
   return (
     <PremiumCard style={styles.card}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Hall rent this month</Text>
-          <Text style={styles.subtitle}>
-            Teacher slot fees separate from student tuition • {summary.activeBookings} active booking
-            {summary.activeBookings === 1 ? '' : 's'}
-          </Text>
+          <Text style={styles.title}>{t('dashboard.hallRentPanelTitle')}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
         <NavPressable href={'/settings/hall-rent' as Href} style={styles.linkButton}>
-          <Text style={styles.linkText}>Open ledger</Text>
+          <Text style={styles.linkText}>{t('dashboard.openLedger')}</Text>
         </NavPressable>
       </View>
 
       <DashboardMetricGrid desktop>
-        <MetricCard fill label="Collected" value={formatLkrCompact(summary.collected)} icon="cash-check" tone={colors.success} />
-        <MetricCard fill label="Outstanding" value={formatLkrCompact(summary.outstanding)} icon="cash-remove" tone={colors.danger} />
-        <MetricCard fill label="Teachers due" value={`${summary.defaulterCount}`} icon="account-alert" tone={colors.warning} />
-        <MetricCard fill label="Collection" value={`${collectionPercent}%`} icon="chart-donut" tone={colors.primary} />
+        <MetricCard fill label={t('dashboard.collected')} value={formatLkrCompact(summary.collected)} icon="cash-check" tone={colors.success} />
+        <MetricCard fill label={t('dashboard.outstanding')} value={formatLkrCompact(summary.outstanding)} icon="cash-remove" tone={colors.danger} />
+        <MetricCard fill label={t('dashboard.teachersDue')} value={`${summary.defaulterCount}`} icon="account-alert" tone={colors.warning} />
+        <MetricCard fill label={t('dashboard.collection')} value={`${collectionPercent}%`} icon="chart-donut" tone={colors.primary} />
       </DashboardMetricGrid>
     </PremiumCard>
   );

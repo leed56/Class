@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { PermissionGate } from '@/features/auth/PermissionGate';
-import { ASSIGNABLE_STAFF_ROLES, roleLabel } from '@/features/auth/permissions';
+import { ASSIGNABLE_STAFF_ROLES, workspaceRoleLabels } from '@/features/auth/permissions';
 import {
   addStaffMemberByEmail,
   listWorkspaceStaff,
@@ -25,26 +25,36 @@ import {
 } from '@/features/auth/staffService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { WorkspaceRole } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const roleOptions = ASSIGNABLE_STAFF_ROLES.map((role) => roleLabel(role));
-
-function roleFromLabel(label: string): WorkspaceRole {
-  if (label === 'Admin') return 'admin';
-  if (label === 'Front desk') return 'front_desk';
-  return 'teacher';
-}
-
 function StaffSettingsContent() {
+  const { t } = useI18n();
   const [staff, setStaff] = useState<WorkspaceStaffMember[]>([]);
   const [email, setEmail] = useState('');
-  const [newRoleLabel, setNewRoleLabel] = useState('Teacher');
+  const [newRole, setNewRole] = useState<WorkspaceRole>('teacher');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [workingUserId, setWorkingUserId] = useState<string | null>(null);
+
+  const roleLabels = useMemo(() => workspaceRoleLabels(t), [t]);
+
+  const assignableRoleOptions = useMemo(
+    () => ASSIGNABLE_STAFF_ROLES.map((role) => roleLabels[role]),
+    [roleLabels],
+  );
+
+  const roleFromLabel = useCallback(
+    (label: string): WorkspaceRole => {
+      const match = (Object.entries(roleLabels) as [WorkspaceRole, string][]).find(([, value]) => value === label);
+      return match?.[0] ?? 'teacher';
+    },
+    [roleLabels],
+  );
 
   const loadStaff = useCallback(async () => {
     setIsLoading(true);
@@ -53,11 +63,11 @@ function StaffSettingsContent() {
       const rows = await listWorkspaceStaff();
       setStaff(rows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load staff.');
+      setError(loadError instanceof Error ? loadError.message : t('staff.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,11 +79,11 @@ function StaffSettingsContent() {
     setError(null);
     setIsAdding(true);
     try {
-      await addStaffMemberByEmail(email, roleFromLabel(newRoleLabel));
+      await addStaffMemberByEmail(email, newRole);
       setEmail('');
       await loadStaff();
     } catch (addError) {
-      setError(addError instanceof Error ? addError.message : 'Could not add staff member.');
+      setError(addError instanceof Error ? addError.message : t('staff.addFailed'));
     } finally {
       setIsAdding(false);
     }
@@ -87,7 +97,7 @@ function StaffSettingsContent() {
       await updateStaffMemberRole(member.userId, roleFromLabel(label));
       await loadStaff();
     } catch (changeError) {
-      setError(changeError instanceof Error ? changeError.message : 'Could not update role.');
+      setError(changeError instanceof Error ? changeError.message : t('staff.updateFailed'));
     } finally {
       setWorkingUserId(null);
     }
@@ -95,29 +105,26 @@ function StaffSettingsContent() {
 
   function confirmRemove(member: WorkspaceStaffMember) {
     if (member.role === 'owner') return;
-    Alert.alert(
-      'Remove staff member',
-      `Remove ${member.fullName || member.email} from this workspace?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setWorkingUserId(member.userId);
-            setError(null);
-            try {
-              await removeStaffMember(member.userId);
-              await loadStaff();
-            } catch (removeError) {
-              setError(removeError instanceof Error ? removeError.message : 'Could not remove staff.');
-            } finally {
-              setWorkingUserId(null);
-            }
-          },
+    const name = member.fullName || member.email;
+    Alert.alert(t('staff.removeTitle'), interpolate(t('staff.removeMessage'), { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('staff.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          setWorkingUserId(member.userId);
+          setError(null);
+          try {
+            await removeStaffMember(member.userId);
+            await loadStaff();
+          } catch (removeError) {
+            setError(removeError instanceof Error ? removeError.message : t('staff.removeFailed'));
+          } finally {
+            setWorkingUserId(null);
+          }
         },
-      ],
-    );
+      },
+    ]);
   }
 
   return (
@@ -130,35 +137,33 @@ function StaffSettingsContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Staff & roles</Text>
-            <Text style={styles.subtitle}>Assign admin, teacher and front-desk access for institute operations.</Text>
+            <Text style={styles.title}>{t('staff.title')}</Text>
+            <Text style={styles.subtitle}>{t('staff.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>Institute operations</Text>
-          <Text style={styles.heroTitle}>Safe daily workflows</Text>
-          <Text style={styles.heroNote}>
-            Front desk can record payments. Teachers take attendance and issue certificates. Only owners manage staff.
-          </Text>
+          <Text style={styles.heroLabel}>{t('staff.heroLabel')}</Text>
+          <Text style={styles.heroTitle}>{t('staff.heroTitle')}</Text>
+          <Text style={styles.heroNote}>{t('staff.heroNote')}</Text>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Add staff member</Text>
-          <Text style={styles.cardHint}>They must already have a ClassFlow account with this email.</Text>
+          <Text style={styles.cardTitle}>{t('staff.addTitle')}</Text>
+          <Text style={styles.cardHint}>{t('staff.addHint')}</Text>
           <FormTextField
-            label="Staff email"
-            placeholder="teacher@example.com"
+            label={t('staff.emailLabel')}
+            placeholder={t('staff.emailPlaceholder')}
             icon="email-outline"
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
           />
           <ChoiceChipGroup
-            label="Role"
-            selected={newRoleLabel}
-            options={roleOptions}
-            onSelect={setNewRoleLabel}
+            label={t('staff.roleLabel')}
+            selected={roleLabels[newRole]}
+            options={assignableRoleOptions}
+            onSelect={(label) => setNewRole(roleFromLabel(label))}
           />
           <Pressable
             style={[styles.primaryButton, isAdding && styles.primaryButtonDisabled]}
@@ -170,18 +175,18 @@ function StaffSettingsContent() {
             ) : (
               <>
                 <MaterialCommunityIcons name="account-plus-outline" size={18} color="white" />
-                <Text style={styles.primaryButtonText}>Add to workspace</Text>
+                <Text style={styles.primaryButtonText}>{t('staff.addToWorkspace')}</Text>
               </>
             )}
           </Pressable>
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Current staff</Text>
+          <Text style={styles.cardTitle}>{t('staff.currentStaff')}</Text>
           {isLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : staff.length === 0 ? (
-            <Text style={styles.cardHint}>No staff members yet.</Text>
+            <Text style={styles.cardHint}>{t('staff.emptyStaff')}</Text>
           ) : (
             staff.map((member, index) => (
               <View key={member.userId}>
@@ -192,7 +197,7 @@ function StaffSettingsContent() {
                   </View>
                   {member.role === 'owner' ? (
                     <View style={styles.ownerBadge}>
-                      <Text style={styles.ownerBadgeText}>Owner</Text>
+                      <Text style={styles.ownerBadgeText}>{roleLabels.owner}</Text>
                     </View>
                   ) : workingUserId === member.userId ? (
                     <ActivityIndicator color={colors.primary} size="small" />
@@ -204,9 +209,9 @@ function StaffSettingsContent() {
                 </View>
                 {member.role !== 'owner' ? (
                   <ChoiceChipGroup
-                    label="Assigned role"
-                    selected={roleLabel(member.role)}
-                    options={roleOptions}
+                    label={t('staff.assignedRoleLabel')}
+                    selected={roleLabels[member.role]}
+                    options={assignableRoleOptions}
                     onSelect={(label) => handleRoleChange(member, label)}
                   />
                 ) : null}
@@ -222,13 +227,17 @@ function StaffSettingsContent() {
   );
 }
 
-export default function StaffSettingsScreen() {
+function StaffSettingsScreen() {
+  const { t } = useI18n();
+
   return (
-    <PermissionGate permission="manage_staff" message="Only the workspace owner can manage staff.">
+    <PermissionGate permission="manage_staff" message={t('staff.ownerOnly')}>
       <StaffSettingsContent />
     </PermissionGate>
   );
 }
+
+export default StaffSettingsScreen;
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },

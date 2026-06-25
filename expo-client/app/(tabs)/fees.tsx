@@ -52,14 +52,14 @@ export default function FeesScreen() {
       setSummary(nextSummary);
       setInvoices(nextInvoices);
       setPayments(nextPayments);
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setWorkspaceLanguage(workspace?.default_language ?? 'en');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load fees.');
+      setError(loadError instanceof Error ? loadError.message : t('fees.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const sendFeeReminder = useCallback(
     async (invoice: FeeInvoice) => {
@@ -84,7 +84,7 @@ export default function FeesScreen() {
     }, [loadFees]),
   );
 
-  const monthLabel = summary?.monthLabel ?? 'This month';
+  const monthLabel = summary?.monthLabel ?? t('common.thisMonth');
   const collected = summary?.collected ?? 0;
   const outstanding = summary?.outstanding ?? 0;
   const collectionPercent = summary?.collectionPercent ?? 0;
@@ -111,15 +111,15 @@ export default function FeesScreen() {
     }
 
     Alert.alert(
-      'WhatsApp reminders',
-      `${defaulterCount} open invoice${defaulterCount === 1 ? '' : 's'} • ${parentReminderCount} parent${parentReminderCount === 1 ? '' : 's'}`,
+      t('fees.remindAlertTitle'),
+      interpolate(t('fees.remindAlertMessage'), { invoices: defaulterCount, parents: parentReminderCount }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Top defaulter', onPress: () => void sendTopReminder() },
-        { text: `All (${parentReminderCount})`, onPress: () => void sendAllReminders() },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('fees.remindTopDefaulter'), onPress: () => void sendTopReminder() },
+        { text: interpolate(t('fees.remindAll'), { count: parentReminderCount }), onPress: () => void sendAllReminders() },
       ],
     );
-  }, [defaulterCount, invoices.length, parentReminderCount, sendAllReminders, sendTopReminder]);
+  }, [defaulterCount, invoices.length, parentReminderCount, sendAllReminders, sendTopReminder, t]);
 
   const handleExportDefaulters = useCallback(async () => {
     setIsExporting(true);
@@ -127,13 +127,13 @@ export default function FeesScreen() {
       await exportDefaulterCsv(monthLabel, workspaceName, invoices);
     } catch (exportError) {
       Alert.alert(
-        'Export failed',
-        exportError instanceof Error ? exportError.message : 'Could not export the defaulter list.',
+        t('fees.exportDefaulterFailedTitle'),
+        exportError instanceof Error ? exportError.message : t('fees.exportDefaulterFailedMessage'),
       );
     } finally {
       setIsExporting(false);
     }
-  }, [invoices, monthLabel, workspaceName]);
+  }, [invoices, monthLabel, t, workspaceName]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>

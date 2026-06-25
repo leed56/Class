@@ -42,11 +42,11 @@ export default function StudentsScreen() {
       setWorkspaceType(workspace?.institute_type ?? 'solo');
       setAcademySector(workspace?.academy_sector ?? 'school_tuition');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load students.');
+      setError(loadError instanceof Error ? loadError.message : t('students.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {

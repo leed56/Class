@@ -12,6 +12,8 @@ import { getDefaultCertificateBodies, PLACEHOLDERS } from '@/features/certificat
 import { getSectorCertificatePreset, listSectorCertificatePresets } from '@/features/certificates/certificateSectorPresets';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { InstituteType } from '@/lib/database.types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -25,6 +27,7 @@ export default function CertificateTemplatesScreen() {
 
 function CertificateTemplatesContent() {
   const router = useRouter();
+  const { t } = useI18n();
   const [instituteType, setInstituteType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
@@ -51,7 +54,7 @@ function CertificateTemplatesContent() {
       setAchievementBody(workspace?.certificate_achievement_body ?? getDefaultCertificateBodies().achievementBody);
       setFooterNote(workspace?.certificate_footer_note ?? getDefaultCertificateBodies().footerNote);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load certificate templates.');
+      setError(loadError instanceof Error ? loadError.message : t('certTemplates.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,7 @@ function CertificateTemplatesContent() {
       });
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save certificate templates.');
+      setError(saveError instanceof Error ? saveError.message : t('certTemplates.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -95,13 +98,11 @@ function CertificateTemplatesContent() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
           <MaterialCommunityIcons name="certificate-outline" size={42} color={colors.primary} />
-          <Text style={styles.blockedTitle}>Academy and institute only</Text>
-          <Text style={styles.blockedText}>
-            Certificate templates are available when your workspace type is Academy or Institute.
-          </Text>
+          <Text style={styles.blockedTitle}>{t('certTemplates.blockedTitle')}</Text>
+          <Text style={styles.blockedText}>{t('certTemplates.blockedText')}</Text>
           <Link href="/settings/edit" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Change workspace type</Text>
+              <Text style={styles.retryText}>{t('certTemplates.changeWorkspace')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -119,21 +120,21 @@ function CertificateTemplatesContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Certificate templates</Text>
-            <Text style={styles.subtitle}>Branding, signatory and wording used on exported PDF certificates.</Text>
+            <Text style={styles.title}>{t('certTemplates.title')}</Text>
+            <Text style={styles.subtitle}>{t('certTemplates.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>PDF branding</Text>
+          <Text style={styles.heroLabel}>{t('certTemplates.heroLabel')}</Text>
           <Text style={styles.heroTitle}>{workspaceName}</Text>
-          <Text style={styles.heroNote}>Parents receive official documents with your institute name and signatory.</Text>
+          <Text style={styles.heroNote}>{t('certTemplates.heroNote')}</Text>
         </LinearGradient>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Sector presets</Text>
+          <Text style={styles.cardTitle}>{t('certTemplates.sectorPresets')}</Text>
           <Text style={styles.cardHint}>
-            Apply maritime, IT or school tuition wording. Current sector: {academySector ?? 'school_tuition'}.
+            {interpolate(t('certTemplates.sectorHint'), { sector: academySector ?? 'school_tuition' })}
           </Text>
           <View style={styles.presetRow}>
             {listSectorCertificatePresets(academySector).map((preset) => (
@@ -161,22 +162,22 @@ function CertificateTemplatesContent() {
               setFooterNote(preset.footerNote);
             }}
           >
-            <Text style={styles.presetChipText}>Reset to sector default</Text>
+            <Text style={styles.presetChipText}>{t('certTemplates.resetSector')}</Text>
           </Pressable>
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Signatory</Text>
+          <Text style={styles.cardTitle}>{t('certTemplates.signatory')}</Text>
           <FormTextField
-            label="Signatory name"
-            placeholder="Dr. Nimal Perera"
+            label={t('certTemplates.signatoryName')}
+            placeholder={t('certTemplates.signatoryNamePlaceholder')}
             icon="account-tie-outline"
             value={signatoryName}
             onChangeText={setSignatoryName}
           />
           <FormTextField
-            label="Signatory title"
-            placeholder="Director"
+            label={t('certTemplates.signatoryTitle')}
+            placeholder={t('certTemplates.signatoryTitlePlaceholder')}
             icon="badge-account-outline"
             value={signatoryTitle}
             onChangeText={setSignatoryTitle}
@@ -184,11 +185,11 @@ function CertificateTemplatesContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Completion wording</Text>
-          <Text style={styles.cardHint}>Placeholders: {PLACEHOLDERS.join(', ')}</Text>
+          <Text style={styles.cardTitle}>{t('certTemplates.completionWording')}</Text>
+          <Text style={styles.cardHint}>{interpolate(t('certTemplates.placeholdersHint'), { list: PLACEHOLDERS.join(', ') })}</Text>
           <FormTextField
-            label="Completion body"
-            placeholder="Certificate wording"
+            label={t('certTemplates.completionBody')}
+            placeholder={t('certTemplates.completionPlaceholder')}
             icon="text-box-outline"
             value={completionBody}
             onChangeText={setCompletionBody}
@@ -197,10 +198,10 @@ function CertificateTemplatesContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Achievement wording</Text>
+          <Text style={styles.cardTitle}>{t('certTemplates.achievementWording')}</Text>
           <FormTextField
-            label="Achievement body"
-            placeholder="Certificate wording"
+            label={t('certTemplates.achievementBody')}
+            placeholder={t('certTemplates.completionPlaceholder')}
             icon="trophy-outline"
             value={achievementBody}
             onChangeText={setAchievementBody}
@@ -209,10 +210,10 @@ function CertificateTemplatesContent() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Footer</Text>
+          <Text style={styles.cardTitle}>{t('certTemplates.footer')}</Text>
           <FormTextField
-            label="Footer note"
-            placeholder="Issued via ClassFlow"
+            label={t('certTemplates.footerNote')}
+            placeholder={t('certTemplates.footerPlaceholder')}
             icon="note-text-outline"
             value={footerNote}
             onChangeText={setFooterNote}
@@ -223,14 +224,14 @@ function CertificateTemplatesContent() {
       </ScrollView>
 
       <View style={styles.saveBar}>
-        <Text style={styles.saveNote}>Used on every PDF export and reprint</Text>
+        <Text style={styles.saveNote}>{t('certTemplates.saveNote')}</Text>
         <Pressable style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving}>
           {isSaving ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
             <>
               <MaterialCommunityIcons name="content-save-check" size={18} color="white" />
-              <Text style={styles.saveButtonText}>Save templates</Text>
+              <Text style={styles.saveButtonText}>{t('certTemplates.saveTemplates')}</Text>
             </>
           )}
         </Pressable>

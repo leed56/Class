@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,14 +33,22 @@ import { ScheduleConflict } from '@/features/locations/models';
 import { findHallScheduleConflicts } from '@/features/locations/timetableService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { useI18n } from '@/i18n/I18nProvider';
+import { CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions } from '@/i18n';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 const ALL_COURSE_TEMPLATES = [...SL_COURSE_TEMPLATES, ...MARITIME_COURSE_TEMPLATES];
+const MEDIUM_VALUES = ['English', 'Sinhala', 'Tamil'] as const;
 
 export default function EditClassScreen() {
   const router = useRouter();
+  const { locale, t } = useI18n();
+  const weekdayOptions = useMemo(
+    () => listWeekdayOptions(locale, CLASS_SCHEDULE_WEEKDAYS),
+    [locale],
+  );
   const params = useLocalSearchParams<{ classId: string }>();
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [subjectName, setSubjectName] = useState('');
@@ -63,6 +71,12 @@ export default function EditClassScreen() {
 
   const schoolMode = usesSchoolClassForm(workspaceType, sector);
 
+  const mediumLabels = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  } as const;
+
   useEffect(() => {
     if (!schoolMode) return;
     setSubject(buildSchoolClassSubject(subjectName, sessionType));
@@ -75,7 +89,7 @@ export default function EditClassScreen() {
     try {
       const [tuitionClass, workspace] = await Promise.all([getClassById(params.classId), getCurrentWorkspace()]);
       if (!tuitionClass) {
-        setError('Class not found.');
+        setError(t('classForm.notFound'));
         return;
       }
 
@@ -101,11 +115,11 @@ export default function EditClassScreen() {
         setSelectedTemplateId(match?.id ?? null);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load class.');
+      setError(loadError instanceof Error ? loadError.message : t('classForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId]);
+  }, [params.classId, t]);
 
   useEffect(() => {
     loadClass();
@@ -156,11 +170,11 @@ export default function EditClassScreen() {
         : null;
 
     if (!storedSubject) {
-      setError(schoolMode ? 'Enter a subject name.' : 'Select or enter a course name.');
+      setError(schoolMode ? t('classForm.errorSubjectSchool') : t('classForm.errorSubjectAcademy'));
       return;
     }
     if (workspaceType === 'institute' && !hallId) {
-      setError('Select a hall slot for this class.');
+      setError(t('classForm.errorHallRequired'));
       return;
     }
 
@@ -182,7 +196,7 @@ export default function EditClassScreen() {
       });
       router.replace(`/classes/${params.classId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save class.');
+      setError(saveError instanceof Error ? saveError.message : t('classForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +219,7 @@ export default function EditClassScreen() {
           <Text style={styles.errorText}>{error}</Text>
           <Link href="/(tabs)/classes" asChild>
             <Pressable style={styles.retryButton}>
-              <Text style={styles.retryText}>Back to classes</Text>
+              <Text style={styles.retryText}>{t('classForm.backToClasses')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -213,8 +227,8 @@ export default function EditClassScreen() {
     );
   }
 
-  const title = schoolMode ? 'Edit Class' : 'Edit Course';
-  const saveLabel = schoolMode ? 'Save Changes' : 'Save Course';
+  const title = schoolMode ? t('classForm.editClass') : t('classForm.editCourse');
+  const saveLabel = schoolMode ? t('classForm.saveChanges') : t('classForm.saveCourse');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -228,23 +242,21 @@ export default function EditClassScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.subtitle}>
-              {schoolMode
-                ? 'Update subject, grade, schedule, hall and monthly fee.'
-                : 'Update programme, schedule and fee for your academy course.'}
+              {schoolMode ? t('classForm.subtitleEditSchool') : t('classForm.subtitleEditAcademy')}
             </Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-          <Text style={styles.heroLabel}>{schoolMode ? 'School tuition' : 'Academy course'}</Text>
-          <Text style={styles.heroTitle}>Update weekly schedule</Text>
-          <Text style={styles.heroNote}>Fee changes apply to new invoices. Existing monthly records stay as recorded.</Text>
+          <Text style={styles.heroLabel}>{schoolMode ? t('classForm.schoolTuition') : t('classForm.academyCourse')}</Text>
+          <Text style={styles.heroTitle}>{t('classForm.heroEditTitle')}</Text>
+          <Text style={styles.heroNote}>{t('classForm.heroEditNote')}</Text>
         </LinearGradient>
 
         <ScheduleConflictBanner conflicts={conflicts} />
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>{schoolMode ? 'Class details' : 'Course details'}</Text>
+          <Text style={styles.cardTitle}>{schoolMode ? t('classForm.classDetails') : t('classForm.courseDetails')}</Text>
           {schoolMode ? (
             <SchoolClassForm
               subjectName={subjectName}
@@ -262,14 +274,15 @@ export default function EditClassScreen() {
               <CourseTemplatePicker
                 sector={sector}
                 onSectorChange={setSector}
+                lockSector={workspaceType === 'academy'}
                 selectedTemplateId={selectedTemplateId}
                 examLevel={examLevel}
                 onExamLevelChange={setExamLevel}
                 onSelectTemplate={handleSelectTemplate}
               />
               <FormTextField
-                label="Course / programme name"
-                placeholder="STCW Basic Safety, Diploma in Counselling"
+                label={t('classForm.courseNameLabel')}
+                placeholder={t('classForm.courseNamePlaceholder')}
                 icon="book-education-outline"
                 value={subject}
                 onChangeText={(value) => {
@@ -279,10 +292,13 @@ export default function EditClassScreen() {
                 }}
               />
               <ChoiceChipGroup
-                label="Medium"
-                selected={medium}
-                options={['English', 'Sinhala', 'Tamil']}
-                onSelect={(value) => setMedium(value as Medium)}
+                label={t('classForm.mediumLabel')}
+                selected={mediumLabels[medium]}
+                options={MEDIUM_VALUES.map((value) => mediumLabels[value])}
+                onSelect={(label) => {
+                  const match = MEDIUM_VALUES.find((value) => mediumLabels[value] === label);
+                  if (match) setMedium(match);
+                }}
               />
             </>
           )}
@@ -292,23 +308,23 @@ export default function EditClassScreen() {
         </PremiumCard>
 
         <PremiumCard style={styles.card}>
-          <Text style={styles.cardTitle}>Schedule & fee</Text>
+          <Text style={styles.cardTitle}>{t('classForm.scheduleFeeTitle')}</Text>
           <ChoiceChipGroup
-            label="Day"
+            label={t('classForm.dayLabel')}
             selected={weekday}
-            options={['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']}
+            options={weekdayOptions}
             onSelect={setWeekday}
           />
-          <FormTextField label="Start time" placeholder="10:30 AM" icon="clock-outline" value={startTime} onChangeText={setStartTime} />
-          <FormTextField label="End time" placeholder="12:00 PM" icon="clock-outline" value={endTime} onChangeText={setEndTime} />
-          <FormTextField label="Monthly fee (LKR)" placeholder="2500" icon="cash" keyboardType="number-pad" value={monthlyFee} onChangeText={setMonthlyFee} />
+          <FormTextField label={t('classForm.startTimeLabel')} placeholder={t('classForm.startTimePlaceholder')} icon="clock-outline" value={startTime} onChangeText={setStartTime} />
+          <FormTextField label={t('classForm.endTimeLabel')} placeholder={t('classForm.endTimePlaceholder')} icon="clock-outline" value={endTime} onChangeText={setEndTime} />
+          <FormTextField label={t('classForm.monthlyFeeLabel')} placeholder={t('classForm.monthlyFeePlaceholder')} icon="cash" keyboardType="number-pad" value={monthlyFee} onChangeText={setMonthlyFee} />
         </PremiumCard>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.saveBar}>
-        <Text style={styles.saveValue}>Updates save to your workspace</Text>
+        <Text style={styles.saveValue}>{t('classForm.saveFootnoteEdit')}</Text>
         <Pressable style={[styles.saveButton, submitting && styles.saveButtonDisabled]} onPress={handleSave} disabled={submitting}>
           {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>{saveLabel}</Text>}
         </Pressable>

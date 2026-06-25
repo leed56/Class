@@ -1,19 +1,17 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { formatClassMeta } from '@/features/courses/slCourseModel';
+import { formatWeekdayName } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { TuitionClass } from '../models';
-
-const stateConfig = {
-  inProgress: { label: 'In Progress', color: colors.primary, background: colors.primarySoft },
-  upcoming: { label: 'Upcoming', color: colors.warning, background: colors.warningSoft },
-  completed: { label: 'Completed', color: colors.success, background: colors.successSoft },
-} as const;
 
 type ClassCardProps = {
   item: TuitionClass;
@@ -27,6 +25,24 @@ function formatLkr(amount: number) {
 
 export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) {
   const router = useRouter();
+  const { locale, t } = useI18n();
+
+  const stateConfig = useMemo(
+    () => ({
+      inProgress: { label: t('common.statusInProgress'), color: colors.primary, background: colors.primarySoft },
+      upcoming: { label: t('common.statusUpcoming'), color: colors.warning, background: colors.warningSoft },
+      completed: { label: t('common.statusCompleted'), color: colors.success, background: colors.successSoft },
+    }),
+    [t],
+  );
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[item.medium as Medium] ?? item.medium;
+
   const status = stateConfig[item.state];
   const capacityPercent = Math.round((item.enrolledCount / item.capacity) * 100);
 
@@ -38,7 +54,7 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
         </View>
         <View style={styles.titleBlock}>
           <Text style={styles.subject}>{item.subject}</Text>
-          <Text style={styles.meta}>{formatClassMeta(item.subject, item.grade, item.medium)}</Text>
+          <Text style={styles.meta}>{formatClassMeta(item.subject, item.grade, medium as Medium)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.background }]}>
           <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
@@ -48,7 +64,7 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
       <View style={styles.scheduleRow}>
         <View style={styles.scheduleItem}>
           <MaterialCommunityIcons name="calendar-clock" size={17} color={colors.textSecondary} />
-          <Text style={styles.scheduleText}>{item.day}</Text>
+          <Text style={styles.scheduleText}>{formatWeekdayName(locale, item.day, 'long')}</Text>
         </View>
         <View style={styles.scheduleItem}>
           <MaterialCommunityIcons name="clock-outline" size={17} color={colors.textSecondary} />
@@ -62,10 +78,10 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
       </View>
 
       <View style={styles.statsGrid}>
-        <Stat label="Students" value={`${item.enrolledCount}/${item.capacity}`} tone={capacityPercent > 85 ? colors.warning : colors.primary} />
-        <Stat label="Monthly Fee" value={formatLkr(item.monthlyFee)} tone={colors.textPrimary} />
-        <Stat label="Attendance" value={`${item.attendanceAverage}%`} tone={colors.success} />
-        <Stat label="Collected" value={`${item.collectionPercent}%`} tone={item.collectionPercent >= 70 ? colors.success : colors.danger} />
+        <Stat label={t('common.studentsLabel')} value={`${item.enrolledCount}/${item.capacity}`} tone={capacityPercent > 85 ? colors.warning : colors.primary} />
+        <Stat label={t('common.monthlyFeeLabel')} value={formatLkr(item.monthlyFee)} tone={colors.textPrimary} />
+        <Stat label={t('common.attendanceLabel')} value={`${item.attendanceAverage}%`} tone={colors.success} />
+        <Stat label={t('common.collectedLabel')} value={`${item.collectionPercent}%`} tone={item.collectionPercent >= 70 ? colors.success : colors.danger} />
       </View>
     </>
   );
@@ -73,12 +89,12 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
   const attendanceButton = attendanceHref ? (
     <NavPressable href={attendanceHref} style={styles.primaryAction}>
       <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-      <Text style={styles.primaryActionText}>Take Attendance</Text>
+      <Text style={styles.primaryActionText}>{t('common.takeAttendance')}</Text>
     </NavPressable>
   ) : (
     <View style={styles.primaryAction}>
       <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
-      <Text style={styles.primaryActionText}>Take Attendance</Text>
+      <Text style={styles.primaryActionText}>{t('common.takeAttendance')}</Text>
     </View>
   );
 

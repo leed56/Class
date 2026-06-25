@@ -15,11 +15,15 @@ import {
   listAvailableStudentsForClass,
 } from '@/features/enrollment/enrollmentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
 export default function EnrollStudentsScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
   const [tuitionClass, setTuitionClass] = useState<TuitionClass | null>(null);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
@@ -28,6 +32,12 @@ export default function EnrollStudentsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
 
   const loadData = useCallback(async () => {
     if (!params.classId) return;
@@ -40,13 +50,13 @@ export default function EnrollStudentsScreen() {
       ]);
       setTuitionClass(nextClass);
       setAvailableStudents(students);
-      if (!nextClass) setError('Class not found.');
+      if (!nextClass) setError(t('classEnroll.classNotFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load students.');
+      setError(loadError instanceof Error ? loadError.message : t('classEnroll.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [params.classId]);
+  }, [params.classId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,13 +83,17 @@ export default function EnrollStudentsScreen() {
     try {
       await enrollStudentInClass(params.classId, studentId);
       const enrolled = availableStudents.find((student) => student.id === studentId);
-      setSuccessMessage(`${enrolled?.name ?? 'Student'} enrolled successfully.`);
+      setSuccessMessage(
+        interpolate(t('classEnroll.enrollSuccess'), {
+          name: enrolled?.name ?? t('classEnroll.studentFallback'),
+        }),
+      );
       setAvailableStudents((current) => current.filter((student) => student.id !== studentId));
       if (tuitionClass) {
         setTuitionClass({ ...tuitionClass, enrolledCount: tuitionClass.enrolledCount + 1 });
       }
     } catch (enrollError) {
-      setError(enrollError instanceof Error ? enrollError.message : 'Could not enroll student.');
+      setError(enrollError instanceof Error ? enrollError.message : t('classEnroll.enrollFailed'));
     } finally {
       setEnrollingId(null);
     }
@@ -95,6 +109,8 @@ export default function EnrollStudentsScreen() {
     );
   }
 
+  const heroMedium = tuitionClass ? mediumLabels[tuitionClass.medium as Medium] ?? tuitionClass.medium : '';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -105,29 +121,33 @@ export default function EnrollStudentsScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Enroll students</Text>
-            <Text style={styles.subtitle}>Add students from your registry into this class roster.</Text>
+            <Text style={styles.title}>{t('classEnroll.title')}</Text>
+            <Text style={styles.subtitle}>{t('classEnroll.subtitle')}</Text>
           </View>
         </View>
 
         {tuitionClass ? (
           <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
-            <Text style={styles.heroLabel}>Target class</Text>
+            <Text style={styles.heroLabel}>{t('classEnroll.heroLabel')}</Text>
             <Text style={styles.heroTitle}>{tuitionClass.subject}</Text>
             <Text style={styles.heroNote}>
-              Grade {tuitionClass.grade} • {tuitionClass.medium} • {tuitionClass.enrolledCount} already enrolled
+              {interpolate(t('classEnroll.heroNote'), {
+                grade: tuitionClass.grade,
+                medium: heroMedium,
+                count: tuitionClass.enrolledCount,
+              })}
             </Text>
           </LinearGradient>
         ) : null}
 
         <PremiumCard style={styles.searchCard}>
-          <Text style={styles.searchLabel}>Search registry</Text>
+          <Text style={styles.searchLabel}>{t('classEnroll.searchLabel')}</Text>
           <View style={styles.searchField}>
             <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Name, school or phone"
+              placeholder={t('classEnroll.searchPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               style={styles.searchInput}
             />
@@ -144,7 +164,7 @@ export default function EnrollStudentsScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Available students</Text>
+          <Text style={styles.sectionTitle}>{t('classEnroll.availableStudents')}</Text>
           <Text style={styles.sectionCount}>{filteredStudents.length}</Text>
         </View>
 
@@ -152,13 +172,17 @@ export default function EnrollStudentsScreen() {
           <PremiumCard>
             <EmptyState
               icon="account-search-outline"
-              title={availableStudents.length === 0 ? 'All students enrolled' : 'No matches found'}
+              title={
+                availableStudents.length === 0
+                  ? t('classEnroll.allEnrolledTitle')
+                  : t('classEnroll.noMatchesTitle')
+              }
               message={
                 availableStudents.length === 0
-                  ? 'Every active student is already in this class, or your registry is empty.'
-                  : 'Try a different search term.'
+                  ? t('classEnroll.allEnrolledMessage')
+                  : t('classEnroll.noMatchesMessage')
               }
-              actionLabel={availableStudents.length === 0 ? 'Add New Student' : undefined}
+              actionLabel={availableStudents.length === 0 ? t('classEnroll.addNewStudent') : undefined}
               actionHref={availableStudents.length === 0 ? '/students/new' : undefined}
             />
           </PremiumCard>
@@ -178,7 +202,7 @@ export default function EnrollStudentsScreen() {
 
       <View style={styles.footer}>
         <Pressable style={styles.doneButton} onPress={() => router.back()}>
-          <Text style={styles.doneButtonText}>Done</Text>
+          <Text style={styles.doneButtonText}>{t('classEnroll.done')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

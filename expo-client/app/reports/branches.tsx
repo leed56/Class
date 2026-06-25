@@ -10,6 +10,8 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getBranchMonthlyReports } from '@/features/locations/branchReportsService';
 import { BranchReportRow } from '@/features/locations/models';
 import { getReportSummary } from '@/features/reports/reportsService';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -18,8 +20,9 @@ function formatLkr(amount: number) {
 }
 
 export default function BranchReportsScreen() {
+  const { t } = useI18n();
   const [rows, setRows] = useState<BranchReportRow[]>([]);
-  const [monthLabel, setMonthLabel] = useState('This month');
+  const [monthLabel, setMonthLabel] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,11 +34,11 @@ export default function BranchReportsScreen() {
       setMonthLabel(summary.monthLabel);
       setRows(branchRows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load branch reports.');
+      setError(loadError instanceof Error ? loadError.message : t('branchReports.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,40 +58,44 @@ export default function BranchReportsScreen() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Branch reports</Text>
-            <Text style={styles.subtitle}>Monthly collection and attendance rolled up by branch.</Text>
+            <Text style={styles.title}>{t('branchReports.title')}</Text>
+            <Text style={styles.subtitle}>{t('branchReports.subtitle')}</Text>
           </View>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
           <Text style={styles.heroLabel}>{monthLabel}</Text>
-          <Text style={styles.heroTitle}>{formatLkr(totalCollected)} collected</Text>
-          <Text style={styles.heroNote}>Across {rows.length} branch{rows.length === 1 ? '' : 'es'}</Text>
+          <Text style={styles.heroTitle}>{interpolate(t('branchReports.collectedHero'), { amount: formatLkr(totalCollected) })}</Text>
+          <Text style={styles.heroNote}>
+            {rows.length === 1
+              ? t('branchReports.branchCountSingle')
+              : interpolate(t('branchReports.branchCountMulti'), { count: rows.length })}
+          </Text>
         </LinearGradient>
 
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateText}>Loading branch performance…</Text>
+            <Text style={styles.stateText}>{t('branchReports.loading')}</Text>
           </PremiumCard>
         ) : error ? (
           <PremiumCard style={styles.stateCard}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryButton} onPress={load}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('common.retry')}</Text>
             </Pressable>
           </PremiumCard>
         ) : rows.length === 0 ? (
           <EmptyState
             icon="source-branch"
-            title="No branch data yet"
-            message="Add branches and halls, then link classes to a hall to see per-branch collection."
-            actionLabel="Manage branches"
+            title={t('branchReports.emptyTitle')}
+            message={t('branchReports.emptyMessage')}
+            actionLabel={t('branchReports.emptyAction')}
             actionHref="/settings/branches"
           />
         ) : (
           <PremiumCard style={styles.tableCard}>
-            <Text style={styles.cardTitle}>Per-branch snapshot</Text>
+            <Text style={styles.cardTitle}>{t('branchReports.snapshotTitle')}</Text>
             {rows.map((row, index) => (
               <View key={row.branchId}>
                 {index > 0 ? <View style={styles.divider} /> : null}
@@ -96,12 +103,16 @@ export default function BranchReportsScreen() {
                   <View style={styles.rowCopy}>
                     <Text style={styles.branchName}>{row.branchName}</Text>
                     <Text style={styles.rowMeta}>
-                      {row.classCount} classes • {row.attendancePercent}% attendance • {row.collectionPercent}% collected
+                      {interpolate(t('branchReports.rowMeta'), {
+                        classes: row.classCount,
+                        attendance: row.attendancePercent,
+                        collection: row.collectionPercent,
+                      })}
                     </Text>
                   </View>
                   <View style={styles.amountBlock}>
                     <Text style={styles.amount}>{formatLkr(row.collected)}</Text>
-                    <Text style={styles.due}>{formatLkr(row.outstanding)} due</Text>
+                    <Text style={styles.due}>{interpolate(t('branchReports.due'), { amount: formatLkr(row.outstanding) })}</Text>
                   </View>
                 </View>
               </View>

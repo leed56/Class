@@ -5,6 +5,7 @@ import { Link } from 'expo-router';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { ensureDefaultLocationSetup, listHallOptions } from '@/features/locations/branchService';
 import { HallOption } from '@/features/locations/models';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export function HallPicker({ selectedHallId, onSelect }: Props) {
+  const { t } = useI18n();
   const [options, setOptions] = useState<HallOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export function HallPicker({ selectedHallId, onSelect }: Props) {
         setOptions(nextOptions);
       } catch (loadError) {
         if (!active) return;
-        setError(loadError instanceof Error ? loadError.message : 'Could not load halls.');
+        setError(loadError instanceof Error ? loadError.message : t('branches.loadHallsFailed'));
       } finally {
         if (active) setIsLoading(false);
       }
@@ -39,13 +41,13 @@ export function HallPicker({ selectedHallId, onSelect }: Props) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingRow}>
         <ActivityIndicator color={colors.primary} size="small" />
-        <Text style={styles.loadingText}>Loading halls…</Text>
+        <Text style={styles.loadingText}>{t('branches.loadingHalls')}</Text>
       </View>
     );
   }
@@ -57,10 +59,10 @@ export function HallPicker({ selectedHallId, onSelect }: Props) {
   if (options.length === 0) {
     return (
       <View style={styles.emptyBox}>
-        <Text style={styles.emptyText}>Add branches and halls before scheduling classes.</Text>
+        <Text style={styles.emptyText}>{t('branches.emptyHallsPicker')}</Text>
         <Link href="/settings/branches" asChild>
           <Pressable>
-            <Text style={styles.linkText}>Open branches & halls</Text>
+            <Text style={styles.linkText}>{t('branches.openBranchesLink')}</Text>
           </Pressable>
         </Link>
       </View>
@@ -71,7 +73,7 @@ export function HallPicker({ selectedHallId, onSelect }: Props) {
 
   return (
     <ChoiceChipGroup
-      label="Hall"
+      label={t('branches.hallLabel')}
       selected={selectedLabel}
       options={options.map((option) => option.label)}
       onSelect={(label) => {

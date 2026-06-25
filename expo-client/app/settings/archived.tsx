@@ -20,6 +20,9 @@ import { listArchivedClasses, restoreClass } from '@/features/classes/classServi
 import { TuitionClass } from '@/features/classes/models';
 import { listArchivedStudents, restoreStudent } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -34,6 +37,7 @@ export default function ArchivedRecordsScreen() {
 }
 
 function ArchivedRecordsContent() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<ArchiveTab>('students');
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<TuitionClass[]>([]);
@@ -49,11 +53,11 @@ function ArchivedRecordsContent() {
       setStudents(nextStudents);
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load archived records.');
+      setError(loadError instanceof Error ? loadError.message : t('archivedRecords.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,22 +67,22 @@ function ArchivedRecordsContent() {
 
   function confirmRestoreStudent(student: Student) {
     Alert.alert(
-      'Restore student?',
-      `${student.name} will reappear in your active student list.`,
+      t('archivedRecords.restoreStudentTitle'),
+      interpolate(t('archivedRecords.restoreStudentMessage'), { name: student.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Restore', onPress: () => handleRestoreStudent(student.id) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('archivedRecords.restore'), onPress: () => handleRestoreStudent(student.id) },
       ],
     );
   }
 
   function confirmRestoreClass(item: TuitionClass) {
     Alert.alert(
-      'Restore class?',
-      `${item.subject} Grade ${item.grade} will reappear in your class schedule.`,
+      t('archivedRecords.restoreClassTitle'),
+      interpolate(t('archivedRecords.restoreClassMessage'), { subject: item.subject, grade: item.grade }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Restore', onPress: () => handleRestoreClass(item.id) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('archivedRecords.restore'), onPress: () => handleRestoreClass(item.id) },
       ],
     );
   }
@@ -90,7 +94,7 @@ function ArchivedRecordsContent() {
       await restoreStudent(studentId);
       await loadArchived();
     } catch (restoreError) {
-      setError(restoreError instanceof Error ? restoreError.message : 'Could not restore student.');
+      setError(restoreError instanceof Error ? restoreError.message : t('archivedRecords.restoreStudentFailed'));
     } finally {
       setRestoringId(null);
     }
@@ -103,7 +107,7 @@ function ArchivedRecordsContent() {
       await restoreClass(classId);
       await loadArchived();
     } catch (restoreError) {
-      setError(restoreError instanceof Error ? restoreError.message : 'Could not restore class.');
+      setError(restoreError instanceof Error ? restoreError.message : t('archivedRecords.restoreClassFailed'));
     } finally {
       setRestoringId(null);
     }
@@ -121,8 +125,8 @@ function ArchivedRecordsContent() {
             </Pressable>
           </Link>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Archived records</Text>
-            <Text style={styles.subtitle}>Hidden students and classes. Restore anytime — history stays saved.</Text>
+            <Text style={styles.title}>{t('archivedRecords.title')}</Text>
+            <Text style={styles.subtitle}>{t('archivedRecords.subtitle')}</Text>
           </View>
         </View>
 
@@ -131,12 +135,12 @@ function ArchivedRecordsContent() {
             <MaterialCommunityIcons name="archive-outline" size={30} color="white" />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroLabel}>Soft-deleted records</Text>
+            <Text style={styles.heroLabel}>{t('archivedRecords.heroLabel')}</Text>
             <Text style={styles.heroTitle}>
-              {isLoading ? 'Loading…' : `${students.length + classes.length} archived`}
+              {isLoading ? t('archivedRecords.heroLoading') : interpolate(t('archivedRecords.heroArchived'), { count: students.length + classes.length })}
             </Text>
             <Text style={styles.heroNote}>
-              {students.length} students • {classes.length} classes
+              {interpolate(t('archivedRecords.heroBreakdown'), { students: students.length, classes: classes.length })}
             </Text>
           </View>
         </LinearGradient>
@@ -147,7 +151,7 @@ function ArchivedRecordsContent() {
             onPress={() => setTab('students')}
           >
             <Text style={[styles.tabChipText, tab === 'students' && styles.tabChipTextActive]}>
-              Students ({students.length})
+              {interpolate(t('archivedRecords.studentsTab'), { count: students.length })}
             </Text>
           </Pressable>
           <Pressable
@@ -155,7 +159,7 @@ function ArchivedRecordsContent() {
             onPress={() => setTab('classes')}
           >
             <Text style={[styles.tabChipText, tab === 'classes' && styles.tabChipTextActive]}>
-              Classes ({classes.length})
+              {interpolate(t('archivedRecords.classesTab'), { count: classes.length })}
             </Text>
           </Pressable>
         </View>
@@ -170,55 +174,27 @@ function ArchivedRecordsContent() {
         {isLoading ? (
           <PremiumCard style={styles.stateCard}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.stateTitle}>Loading archived records…</Text>
+            <Text style={styles.stateTitle}>{t('archivedRecords.loading')}</Text>
           </PremiumCard>
         ) : tab === 'students' ? (
           activeCount === 0 ? (
             <PremiumCard style={styles.stateCard}>
               <EmptyState
                 icon="account-off-outline"
-                title="No archived students"
-                message="Students you archive from their profile will appear here."
+                title={t('archivedRecords.emptyStudentsTitle')}
+                message={t('archivedRecords.emptyStudentsMessage')}
               />
             </PremiumCard>
           ) : (
             <View style={styles.list}>
               {students.map((student) => (
-                <PremiumCard key={student.id} style={styles.recordCard}>
-                  <View style={styles.recordTop}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>
-                        {student.name
-                          .split(' ')
-                          .map((part) => part[0])
-                          .join('')
-                          .slice(0, 2)}
-                      </Text>
-                    </View>
-                    <View style={styles.recordCopy}>
-                      <Text style={styles.recordTitle} numberOfLines={1}>
-                        {student.name}
-                      </Text>
-                      <Text style={styles.recordMeta} numberOfLines={1}>
-                        Grade {student.grade} • {student.medium} • {student.className}
-                      </Text>
-                    </View>
-                  </View>
-                  <Pressable
-                    style={styles.restoreButton}
-                    onPress={() => confirmRestoreStudent(student)}
-                    disabled={restoringId === student.id}
-                  >
-                    {restoringId === student.id ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <>
-                        <MaterialCommunityIcons name="backup-restore" size={16} color="white" />
-                        <Text style={styles.restoreButtonText}>Restore</Text>
-                      </>
-                    )}
-                  </Pressable>
-                </PremiumCard>
+                <ArchivedStudentCard
+                  key={student.id}
+                  student={student}
+                  restoring={restoringId === student.id}
+                  onRestore={() => confirmRestoreStudent(student)}
+                  t={t}
+                />
               ))}
             </View>
           )
@@ -226,50 +202,133 @@ function ArchivedRecordsContent() {
           <PremiumCard style={styles.stateCard}>
             <EmptyState
               icon="calendar-remove-outline"
-              title="No archived classes"
-              message="Classes you archive from class detail will appear here."
+              title={t('archivedRecords.emptyClassesTitle')}
+              message={t('archivedRecords.emptyClassesMessage')}
             />
           </PremiumCard>
         ) : (
           <View style={styles.list}>
             {classes.map((item) => (
-              <PremiumCard key={item.id} style={styles.recordCard}>
-                <View style={styles.recordTop}>
-                  <View style={[styles.avatar, styles.classAvatar]}>
-                    <MaterialCommunityIcons name="book-open-page-variant" size={22} color={colors.primary} />
-                  </View>
-                  <View style={styles.recordCopy}>
-                    <Text style={styles.recordTitle} numberOfLines={1}>
-                      {item.subject}
-                    </Text>
-                    <Text style={styles.recordMeta} numberOfLines={1}>
-                      Grade {item.grade} • {item.medium} • {item.day} {item.startTime}
-                    </Text>
-                    <Text style={styles.recordMeta} numberOfLines={1}>
-                      {item.hall}
-                    </Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={styles.restoreButton}
-                  onPress={() => confirmRestoreClass(item)}
-                  disabled={restoringId === item.id}
-                >
-                  {restoringId === item.id ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="backup-restore" size={16} color="white" />
-                      <Text style={styles.restoreButtonText}>Restore</Text>
-                    </>
-                  )}
-                </Pressable>
-              </PremiumCard>
+              <ArchivedClassCard
+                key={item.id}
+                item={item}
+                restoring={restoringId === item.id}
+                onRestore={() => confirmRestoreClass(item)}
+                t={t}
+              />
             ))}
           </View>
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ArchivedStudentCard({
+  student,
+  restoring,
+  onRestore,
+  t,
+}: {
+  student: Student;
+  restoring: boolean;
+  onRestore: () => void;
+  t: (key: string) => string;
+}) {
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[student.medium as Medium] ?? student.medium;
+
+  return (
+    <PremiumCard style={styles.recordCard}>
+      <View style={styles.recordTop}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {student.name
+              .split(' ')
+              .map((part) => part[0])
+              .join('')
+              .slice(0, 2)}
+          </Text>
+        </View>
+        <View style={styles.recordCopy}>
+          <Text style={styles.recordTitle} numberOfLines={1}>
+            {student.name}
+          </Text>
+          <Text style={styles.recordMeta} numberOfLines={1}>
+            {interpolate(t('archivedRecords.studentMeta'), { grade: student.grade, medium, className: student.className })}
+          </Text>
+        </View>
+      </View>
+      <Pressable style={styles.restoreButton} onPress={onRestore} disabled={restoring}>
+        {restoring ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <>
+            <MaterialCommunityIcons name="backup-restore" size={16} color="white" />
+            <Text style={styles.restoreButtonText}>{t('archivedRecords.restore')}</Text>
+          </>
+        )}
+      </Pressable>
+    </PremiumCard>
+  );
+}
+
+function ArchivedClassCard({
+  item,
+  restoring,
+  onRestore,
+  t,
+}: {
+  item: TuitionClass;
+  restoring: boolean;
+  onRestore: () => void;
+  t: (key: string) => string;
+}) {
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
+  const medium = mediumLabels[item.medium as Medium] ?? item.medium;
+
+  return (
+    <PremiumCard style={styles.recordCard}>
+      <View style={styles.recordTop}>
+        <View style={[styles.avatar, styles.classAvatar]}>
+          <MaterialCommunityIcons name="book-open-page-variant" size={22} color={colors.primary} />
+        </View>
+        <View style={styles.recordCopy}>
+          <Text style={styles.recordTitle} numberOfLines={1}>
+            {item.subject}
+          </Text>
+          <Text style={styles.recordMeta} numberOfLines={1}>
+            {interpolate(t('archivedRecords.classMeta'), {
+              grade: item.grade,
+              medium,
+              day: item.day,
+              time: item.startTime,
+            })}
+          </Text>
+          <Text style={styles.recordMeta} numberOfLines={1}>
+            {item.hall}
+          </Text>
+        </View>
+      </View>
+      <Pressable style={styles.restoreButton} onPress={onRestore} disabled={restoring}>
+        {restoring ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <>
+            <MaterialCommunityIcons name="backup-restore" size={16} color="white" />
+            <Text style={styles.restoreButtonText}>{t('archivedRecords.restore')}</Text>
+          </>
+        )}
+      </Pressable>
+    </PremiumCard>
   );
 }
 

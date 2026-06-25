@@ -1,10 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { TuitionClass } from '@/features/classes/models';
+import { interpolate, formatWeekdayName } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -14,11 +17,15 @@ type HallSlot = {
   subjects: string[];
 };
 
-export function buildTodayHallSlots(classes: TuitionClass[], weekday: string): HallSlot[] {
+export function buildTodayHallSlots(
+  classes: TuitionClass[],
+  weekday: string,
+  hallNotSetLabel = 'Hall not set',
+): HallSlot[] {
   const map = new Map<string, HallSlot>();
 
   for (const item of classes.filter((cls) => cls.day === weekday)) {
-    const hall = item.hall || 'Hall not set';
+    const hall = item.hall || hallNotSetLabel;
     const existing = map.get(hall) ?? { hall, count: 0, subjects: [] };
     existing.count += 1;
     if (!existing.subjects.includes(item.subject)) {
@@ -36,43 +43,54 @@ type Props = {
 };
 
 export function HallOccupancyPanel({ classes, weekday }: Props) {
-  const slots = buildTodayHallSlots(classes, weekday);
+  const { locale, t } = useI18n();
+  const hallNotSet = t('dashboard.hallNotSet');
+  const weekdayLabel = formatWeekdayName(locale, weekday);
+  const slots = useMemo(
+    () => buildTodayHallSlots(classes, weekday, hallNotSet),
+    [classes, weekday, hallNotSet],
+  );
 
   return (
     <PremiumCard style={styles.card}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Hall occupancy today</Text>
-          <Text style={styles.subtitle}>Live view of booked slots and hall rent collection</Text>
+          <Text style={styles.title}>{t('dashboard.hallOccupancyTitle')}</Text>
+          <Text style={styles.subtitle}>{t('dashboard.hallOccupancySubtitle')}</Text>
         </View>
         <NavPressable href={'/settings/hall-rent' as Href} style={styles.linkButton}>
-          <Text style={styles.linkText}>Hall rent</Text>
+          <Text style={styles.linkText}>{t('sidebar.hallRent')}</Text>
         </NavPressable>
       </View>
 
       {slots.length === 0 ? (
-        <Text style={styles.empty}>No classes scheduled in halls for {weekday}.</Text>
+        <Text style={styles.empty}>{interpolate(t('dashboard.hallOccupancyEmpty'), { weekday: weekdayLabel })}</Text>
       ) : (
         <View style={styles.grid}>
-          {slots.map((slot) => (
-            <View key={slot.hall} style={styles.slotCard}>
-              <View style={styles.slotIcon}>
-                <MaterialCommunityIcons name="door-open" size={18} color={colors.primary} />
+          {slots.map((slot) => {
+            const subjects = slot.subjects.slice(0, 2).join(', ') + (slot.subjects.length > 2 ? '…' : '');
+            const slotMeta =
+              slot.count === 1
+                ? interpolate(t('dashboard.slotMetaSingle'), { count: slot.count, subjects })
+                : interpolate(t('dashboard.slotMetaMulti'), { count: slot.count, subjects });
+
+            return (
+              <View key={slot.hall} style={styles.slotCard}>
+                <View style={styles.slotIcon}>
+                  <MaterialCommunityIcons name="door-open" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.slotCopy}>
+                  <Text style={styles.slotHall} numberOfLines={1}>
+                    {slot.hall}
+                  </Text>
+                  <Text style={styles.slotMeta}>{slotMeta}</Text>
+                </View>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{slot.count}</Text>
+                </View>
               </View>
-              <View style={styles.slotCopy}>
-                <Text style={styles.slotHall} numberOfLines={1}>
-                  {slot.hall}
-                </Text>
-                <Text style={styles.slotMeta}>
-                  {slot.count} slot{slot.count === 1 ? '' : 's'} • {slot.subjects.slice(0, 2).join(', ')}
-                  {slot.subjects.length > 2 ? '…' : ''}
-                </Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{slot.count}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </PremiumCard>
