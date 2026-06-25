@@ -5,10 +5,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
-import { formatClassMeta } from '@/features/courses/slCourseModel';
-import { formatWeekdayName } from '@/i18n';
+import { formatLocalizedClassMeta, formatWeekdayName } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
-import { Medium } from '@/lib/database.types';
+import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { TuitionClass } from '../models';
@@ -17,13 +16,14 @@ type ClassCardProps = {
   item: TuitionClass;
   detailHref?: Href;
   attendanceHref?: Href;
+  instituteType?: InstituteType | null;
 };
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) {
+export function ClassCard({ item, detailHref, attendanceHref, instituteType }: ClassCardProps) {
   const router = useRouter();
   const { locale, t } = useI18n();
 
@@ -36,15 +36,11 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
     [t],
   );
 
-  const mediumLabels: Record<Medium, string> = {
-    English: t('settings.english'),
-    Sinhala: t('settings.sinhala'),
-    Tamil: t('settings.tamil'),
-  };
-  const medium = mediumLabels[item.medium as Medium] ?? item.medium;
+  const medium = item.medium as Medium;
 
   const status = stateConfig[item.state];
   const capacityPercent = Math.round((item.enrolledCount / item.capacity) * 100);
+  const classMeta = formatLocalizedClassMeta(item.subject, item.grade, medium, instituteType, t);
 
   const cardBody = (
     <>
@@ -54,7 +50,7 @@ export function ClassCard({ item, detailHref, attendanceHref }: ClassCardProps) 
         </View>
         <View style={styles.titleBlock}>
           <Text style={styles.subject}>{item.subject}</Text>
-          <Text style={styles.meta}>{formatClassMeta(item.subject, item.grade, medium as Medium)}</Text>
+          <Text style={styles.meta}>{classMeta}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.background }]}>
           <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>

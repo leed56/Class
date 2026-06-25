@@ -13,6 +13,7 @@ import {
 } from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById, updateStudent } from '@/features/students/studentService';
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -66,7 +67,7 @@ export default function EditStudentScreen() {
       setParentPhone(student.parentPhone);
       setConsentCaptured(student.consentCaptured);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('studentForm.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'studentForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +93,7 @@ export default function EditStudentScreen() {
       });
       router.replace(`/students/${params.studentId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('studentForm.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'studentForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }

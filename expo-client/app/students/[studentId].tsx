@@ -15,14 +15,12 @@ import { listStudentOpenInvoices } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
 import { FeeStatusBadge } from '@/features/students/components/FeeStatusBadge';
 import { getStudentById, archiveStudent } from '@/features/students/studentService';
-import { formatStudentMeta } from '@/features/students/studentProfileModel';
 import { Student } from '@/features/students/types';
-import { InstituteType } from '@/lib/database.types';
 import { sendLoggedFeeReminder } from '@/features/fees/feeReminderService';
-import { LanguageCode } from '@/lib/database.types';
-import { buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
-import { interpolate } from '@/i18n';
+import { formatLocalizedStudentMeta, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
+import { InstituteType, LanguageCode } from '@/lib/database.types';
+import { buildParentMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -76,7 +74,7 @@ export default function StudentProfileScreen() {
       setAcademySector(workspace?.academy_sector ?? 'school_tuition');
       if (!nextStudent) setError(t('studentForm.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('studentForm.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'studentForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -96,6 +94,7 @@ export default function StudentProfileScreen() {
         workspaceName,
         invoice: openInvoices[0],
         locale: workspaceLanguage,
+        t,
       });
       return;
     }
@@ -104,9 +103,10 @@ export default function StudentProfileScreen() {
       workspaceName,
       studentName: student.name,
       parentName: student.parentName,
+      t,
     });
 
-    await openWhatsAppChat(student.parentPhone, message);
+    await openWhatsAppChat(student.parentPhone, message, t);
   }
 
   function confirmArchive() {
@@ -129,7 +129,7 @@ export default function StudentProfileScreen() {
       await archiveStudent(student.id);
       router.replace('/(tabs)/students');
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : t('studentProfile.archiveFailed'));
+      setError(resolveServiceErrorMessage(archiveError, t, 'studentProfile.archiveFailed'));
     } finally {
       setIsArchiving(false);
     }
@@ -187,7 +187,7 @@ export default function StudentProfileScreen() {
           <View style={styles.heroCopy}>
             <Text style={styles.heroName}>{student.name}</Text>
             <Text style={styles.heroMeta}>
-              {formatStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector)}
+              {formatLocalizedStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector, t)}
             </Text>
             <View style={styles.heroBadgeRow}>
               <View style={styles.heroBadge}>

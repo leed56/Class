@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 import { PaymentRecord } from '../models';
@@ -14,6 +16,16 @@ function formatLkr(amount: number) {
 }
 
 export function PaymentRow({ payment }: PaymentRowProps) {
+  const { t } = useI18n();
+
+  const meta =
+    payment.allocations.length > 1
+      ? interpolate(t('fees.splitPaymentMeta'), { receiptNo: payment.receiptNo })
+      : interpolate(t('fees.paymentClassMeta'), {
+          className: payment.className,
+          receiptNo: payment.receiptNo,
+        });
+
   return (
     <View style={styles.row}>
       <View style={styles.iconWrap}>
@@ -21,9 +33,7 @@ export function PaymentRow({ payment }: PaymentRowProps) {
       </View>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{payment.studentName}</Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {payment.allocations.length > 1 ? `Split payment • ${payment.receiptNo}` : `${payment.className} • ${payment.receiptNo}`}
-        </Text>
+        <Text style={styles.meta} numberOfLines={1}>{meta}</Text>
       </View>
       <View style={styles.amountBlock}>
         <Text style={styles.amount}>{formatLkr(payment.amount)}</Text>

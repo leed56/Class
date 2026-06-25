@@ -41,3 +41,34 @@ export {
   listWeekdayOptions,
 } from '@/i18n/format';
 export type { CanonicalWeekday } from '@/i18n/format';
+export { getLocalizedSectorInfo, listLocalizedSectors } from '@/i18n/sectors';
+export {
+  getLocalizedExamLevelLabel,
+  getLocalizedMaritimeTrack,
+  getLocalizedSchoolSessionLabel,
+  listLocalizedExamLevels,
+  listLocalizedMaritimeTracks,
+  listLocalizedSchoolSessionOptions,
+} from '@/i18n/coursePickerLabels';
+export {
+  getLocalizedSchoolSubjectLabel,
+  listLocalizedSchoolSubjects,
+} from '@/i18n/schoolSubjectLabels';
+export {
+  resolveServiceErrorMessage,
+  ServiceError,
+  throwServiceError,
+} from '@/i18n/serviceErrors';
+export {
+  getLocalizedCourseTemplateDurationNote,
+  getLocalizedCourseTemplateLabel,
+  getLocalizedCourseTemplatePhaseLabel,
+  getLocalizedIntakeLabel,
+} from '@/i18n/courseTemplateLabels';
+export {
+  formatLocalizedClassMeta,
+  formatLocalizedComposeClassLabel,
+  formatLocalizedStudentMeta,
+  getLocalizedCourseSessionLabel,
+  getLocalizedQualificationLevelLabel,
+} from '@/i18n/classMetaLabels';

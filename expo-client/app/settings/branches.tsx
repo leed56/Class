@@ -27,7 +27,7 @@ import { Branch, Hall } from '@/features/locations/models';
 import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
 import { listWorkspaceScheduleConflicts } from '@/features/locations/timetableService';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -71,7 +71,7 @@ function BranchesSettingsContent() {
         setSelectedBranchId(nextBranches[0].id);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('branches.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'branches.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ function BranchesSettingsContent() {
       setSelectedBranchId(branch.id);
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('branches.createBranchFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'branches.createBranchFailed'));
     } finally {
       setIsSavingBranch(false);
     }
@@ -108,7 +108,7 @@ function BranchesSettingsContent() {
       setHallName('');
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('branches.createHallFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'branches.createHallFailed'));
     } finally {
       setIsSavingHall(false);
     }
@@ -129,7 +129,7 @@ function BranchesSettingsContent() {
               await archiveBranch(branch.id);
               await load();
             } catch (archiveError) {
-              setError(archiveError instanceof Error ? archiveError.message : t('branches.archiveBranchFailed'));
+              setError(resolveServiceErrorMessage(archiveError, t, 'branches.archiveBranchFailed'));
             } finally {
               setWorkingId(null);
             }
@@ -154,7 +154,7 @@ function BranchesSettingsContent() {
               await archiveHall(hall.id);
               await load();
             } catch (archiveError) {
-              setError(archiveError instanceof Error ? archiveError.message : t('branches.archiveHallFailed'));
+              setError(resolveServiceErrorMessage(archiveError, t, 'branches.archiveHallFailed'));
             } finally {
               setWorkingId(null);
             }

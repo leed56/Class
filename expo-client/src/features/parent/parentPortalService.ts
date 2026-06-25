@@ -1,4 +1,5 @@
 import { FeeStatus } from '@/lib/database.types';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { getSupabase } from '@/lib/supabase';
 
 import { getParentSession } from './parentAuthService';
@@ -39,7 +40,7 @@ export type ParentTimelineItem = ParentTimelineReceipt | ParentTimelineCertifica
 
 function requireSessionToken(token?: string) {
   if (token) return token;
-  throw new Error('Parent session expired. Please sign in again.');
+  throwServiceError('parentSessionExpired');
 }
 
 export async function getParentStudentOverview(studentId: string, sessionToken?: string) {
@@ -47,7 +48,7 @@ export async function getParentStudentOverview(studentId: string, sessionToken?:
   const token = requireSessionToken(session?.token);
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('get_parent_student_overview', {
     session_id: token,
@@ -74,7 +75,7 @@ export async function getParentStudentTimeline(studentId: string, sessionToken?:
   const token = requireSessionToken(session?.token);
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('get_parent_student_timeline', {
     session_id: token,

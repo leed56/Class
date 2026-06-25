@@ -13,7 +13,7 @@ import {
 } from '@/features/attendance/attendanceService';
 import { AttendanceStatus } from '@/features/attendance/models';
 import { getStudentById } from '@/features/students/studentService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -52,7 +52,7 @@ export default function StudentAttendanceHistoryScreen() {
       setAttendancePercent(student?.attendancePercent ?? 0);
       setRecords(nextRecords);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('studentAttendance.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'studentAttendance.loadFailed'));
     } finally {
       setIsLoading(false);
     }

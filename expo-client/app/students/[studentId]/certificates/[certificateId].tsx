@@ -22,7 +22,7 @@ import {
 } from '@/features/certificates/certificateService';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { buildCertificateMessage, openWhatsAppChat } from '@/lib/whatsapp';
 import { colors } from '@/theme/colors';
@@ -45,7 +45,9 @@ export default function CertificateDetailScreen() {
   const [student, setStudent] = useState<Student | null>(null);
   const [certificate, setCertificate] = useState<StudentCertificate | null>(null);
   const [workspaceName, setWorkspaceName] = useState(t('certificateDetail.workspaceFallback'));
-  const [template, setTemplate] = useState(getCertificateTemplateFromWorkspace(null));
+  const [template, setTemplate] = useState(() =>
+    getCertificateTemplateFromWorkspace(null, { workspaceNameFallback: t('common.yourWorkspace') }),
+  );
   const [prints, setPrints] = useState<CertificatePrint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
@@ -85,13 +87,15 @@ export default function CertificateDetailScreen() {
       setStudent(nextStudent);
       setCertificate(nextCertificate);
       setWorkspaceName(workspace?.name ?? t('certificateDetail.workspaceFallback'));
-      setTemplate(getCertificateTemplateFromWorkspace(workspace));
+      setTemplate(
+        getCertificateTemplateFromWorkspace(workspace, { workspaceNameFallback: t('common.yourWorkspace') }),
+      );
       setPrints(nextPrints);
       if (!nextStudent || !nextCertificate) {
         setError(t('certificateDetail.notFound'));
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('certificateDetail.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'certificateDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +133,7 @@ export default function CertificateDetailScreen() {
       await logCertificatePrint(certificate.id, isReprint ? 'reprint' : 'download');
       await load();
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : t('certificateDetail.exportFailed'));
+      setError(resolveServiceErrorMessage(downloadError, t, 'certificateDetail.exportFailed'));
     } finally {
       setIsWorking(false);
     }
@@ -150,14 +154,15 @@ export default function CertificateDetailScreen() {
       serialNo: certificate.serialNo,
       issuedOn: formatCertificateDate(certificate.issuedOn),
       note: certificate.note,
+      t,
     });
 
-    await openWhatsAppChat(student.parentPhone, message);
+    await openWhatsAppChat(student.parentPhone, message, t);
     try {
       await logCertificatePrint(certificate.id, 'share');
       await load();
     } catch (logError) {
-      setError(logError instanceof Error ? logError.message : t('certificateDetail.shareLogFailed'));
+      setError(resolveServiceErrorMessage(logError, t, 'certificateDetail.shareLogFailed'));
     }
   }
 
@@ -176,7 +181,7 @@ export default function CertificateDetailScreen() {
             setCertificate(updated);
             await load();
           } catch (revokeError) {
-            setError(revokeError instanceof Error ? revokeError.message : t('certificateDetail.revokeFailed'));
+            setError(resolveServiceErrorMessage(revokeError, t, 'certificateDetail.revokeFailed'));
           } finally {
             setIsWorking(false);
           }

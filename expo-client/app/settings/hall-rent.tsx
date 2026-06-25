@@ -26,11 +26,11 @@ import {
   listHallRentInvoices,
   recordHallRentPayment,
 } from '@/features/hall-rent/hallRentService';
-import { HallBooking, HallRentInvoice } from '@/features/hall-rent/models';
+import { HallBooking, HallRentInvoice, HallRentStatus } from '@/features/hall-rent/models';
 import { HallPicker } from '@/features/locations/components/HallPicker';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { interpolate, CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions, formatWeekdayName } from '@/i18n';
+import { interpolate, CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions, formatWeekdayName, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -77,6 +77,16 @@ function HallRentContent() {
 
   const teacherChipOptions = useMemo(() => teacherOptions.map((option) => option.label), [teacherOptions]);
 
+  const rentStatusLabels = useMemo(
+    (): Record<HallRentStatus, string> => ({
+      paid: t('common.paid'),
+      partial: t('common.partial'),
+      pending: t('common.pending'),
+      overdue: t('common.overdue'),
+    }),
+    [t],
+  );
+
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -99,7 +109,7 @@ function HallRentContent() {
       setTeacherOptions(teachers);
       if (!teacherUserId && teachers[0]) setTeacherUserId(teachers[0].id);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('hallRent.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'hallRent.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +143,7 @@ function HallRentContent() {
       setMonthlyRent('');
       await load();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('hallRent.createBookingFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'hallRent.createBookingFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -153,7 +163,7 @@ function HallRentContent() {
           } catch (archiveError) {
             Alert.alert(
               t('hallRent.endBookingFailed'),
-              archiveError instanceof Error ? archiveError.message : t('common.retry'),
+              resolveServiceErrorMessage(archiveError, t, 'hallRent.endBookingFailed'),
             );
           } finally {
             setWorkingId(null);
@@ -181,7 +191,7 @@ function HallRentContent() {
               await recordHallRentPayment(invoice.id, invoice.outstandingAmount);
               await load();
             } catch (paymentError) {
-              setError(paymentError instanceof Error ? paymentError.message : t('common.error'));
+              setError(resolveServiceErrorMessage(paymentError, t, 'hallRent.recordPaymentFailed'));
             } finally {
               setWorkingId(null);
             }
@@ -212,7 +222,7 @@ function HallRentContent() {
       setPaymentAmount('');
       await load();
     } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : t('hallRent.recordPaymentFailed'));
+      setError(resolveServiceErrorMessage(paymentError, t, 'hallRent.recordPaymentFailed'));
     } finally {
       setWorkingId(null);
     }
@@ -286,13 +296,13 @@ function HallRentContent() {
               <ChoiceChipGroup label={t('hallRent.weekday')} selected={weekday} options={weekdayOptions} onSelect={setWeekday} />
               <View style={styles.row}>
                 <View style={styles.rowItem}>
-                  <FormTextField label={t('hallRent.start')} value={startTime} onChangeText={setStartTime} placeholder="4:00 PM" icon="clock-outline" />
+                  <FormTextField label={t('hallRent.start')} value={startTime} onChangeText={setStartTime} placeholder={t('hallRent.startTimePlaceholder')} icon="clock-outline" />
                 </View>
                 <View style={styles.rowItem}>
-                  <FormTextField label={t('hallRent.end')} value={endTime} onChangeText={setEndTime} placeholder="6:00 PM" icon="clock-outline" />
+                  <FormTextField label={t('hallRent.end')} value={endTime} onChangeText={setEndTime} placeholder={t('hallRent.endTimePlaceholder')} icon="clock-outline" />
                 </View>
               </View>
-              <FormTextField label={t('hallRent.monthlyRent')} value={monthlyRent} onChangeText={setMonthlyRent} placeholder="25000" keyboardType="number-pad" icon="cash" />
+              <FormTextField label={t('hallRent.monthlyRent')} value={monthlyRent} onChangeText={setMonthlyRent} placeholder={t('hallRent.monthlyRentPlaceholder')} keyboardType="number-pad" icon="cash" />
               <Pressable style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]} onPress={handleCreateBooking} disabled={isSaving}>
                 <Text style={styles.primaryButtonText}>{isSaving ? t('hallRent.saving') : t('hallRent.createBooking')}</Text>
               </Pressable>
@@ -312,7 +322,11 @@ function HallRentContent() {
                         {booking.hallLabel} • {formatWeekdayName(locale, booking.weekday, 'long')} {booking.startTime}–{booking.endTime}
                       </Text>
                       <Text style={styles.listMeta}>
-                        {booking.label ?? 'General slot'} • {formatLkrCompact(booking.monthlyRentLkr)}/month
+                        {interpolate(t('hallRent.bookingRentMeta'), {
+                          slot: booking.label ?? t('hallRent.generalSlot'),
+                          fee: formatLkrCompact(booking.monthlyRentLkr),
+                          perMonth: t('hallRent.perMonth'),
+                        })}
                       </Text>
                     </View>
                     <Pressable
@@ -348,7 +362,9 @@ function HallRentContent() {
                     </View>
                     <View style={styles.invoiceActions}>
                       <View style={[styles.statusBadge, { backgroundColor: `${statusColor(invoice.status)}1F` }]}>
-                        <Text style={[styles.statusText, { color: statusColor(invoice.status) }]}>{invoice.status}</Text>
+                        <Text style={[styles.statusText, { color: statusColor(invoice.status) }]}>
+                          {rentStatusLabels[invoice.status]}
+                        </Text>
                       </View>
                       {invoice.outstandingAmount > 0 ? (
                         <View style={styles.payButtonRow}>
@@ -368,7 +384,7 @@ function HallRentContent() {
               {paymentInvoiceId ? (
                 <View style={styles.paymentPanel}>
                   <Text style={styles.fieldLabel}>{t('hallRent.recordPaymentTitle')}</Text>
-                  <FormTextField label={t('hallRent.amountLabel')} value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="number-pad" placeholder="25000" icon="cash" />
+                  <FormTextField label={t('hallRent.amountLabel')} value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="number-pad" placeholder={t('hallRent.amountPlaceholder')} icon="cash" />
                   <View style={styles.paymentActions}>
                     <Pressable style={styles.archiveButton} onPress={() => setPaymentInvoiceId(null)}>
                       <Text style={styles.archiveButtonText}>{t('common.cancel')}</Text>

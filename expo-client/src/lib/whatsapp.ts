@@ -1,6 +1,20 @@
 import { Alert, Linking, Platform } from 'react-native';
 
+import { interpolate } from '@/i18n';
+
 export { buildCombinedFeeReminderMessage, buildFeeReminderMessage } from '@/lib/whatsappMessages';
+
+type TranslateFn = (path: string) => string;
+
+function whatsappLine(
+  t: TranslateFn | undefined,
+  key: string,
+  fallback: string,
+  vars?: Record<string, string | number>,
+) {
+  const template = t?.(`whatsapp.${key}`) ?? fallback;
+  return vars ? interpolate(template, vars) : template;
+}
 
 export function normalizeWhatsAppPhone(phone: string): string | null {
   const digits = phone.replace(/\D/g, '');
@@ -25,10 +39,21 @@ export function normalizeWhatsAppPhone(phone: string): string | null {
   return null;
 }
 
-export async function openWhatsAppChat(phone: string, message: string): Promise<boolean> {
+export async function openWhatsAppChat(
+  phone: string,
+  message: string,
+  t?: TranslateFn,
+): Promise<boolean> {
+  const invalidTitle = t?.('whatsapp.invalidPhoneTitle') ?? 'Invalid phone number';
+  const invalidMessage =
+    t?.('whatsapp.invalidPhoneMessage') ?? 'Add a valid parent phone number, for example +94 77 123 4567.';
+  const failedTitle = t?.('whatsapp.openFailedTitle') ?? 'Could not open WhatsApp';
+  const failedMessage =
+    t?.('whatsapp.openFailedMessage') ?? 'Install WhatsApp or check the parent phone number.';
+
   const normalized = normalizeWhatsAppPhone(phone);
   if (!normalized) {
-    Alert.alert('Invalid phone number', 'Add a valid parent phone number, for example +94 77 123 4567.');
+    Alert.alert(invalidTitle, invalidMessage);
     return false;
   }
 
@@ -48,7 +73,7 @@ export async function openWhatsAppChat(phone: string, message: string): Promise<
     await Linking.openURL(canOpen ? appUrl : webUrl);
     return true;
   } catch {
-    Alert.alert('Could not open WhatsApp', 'Install WhatsApp or check the parent phone number.');
+    Alert.alert(failedTitle, failedMessage);
     return false;
   }
 }
@@ -62,30 +87,41 @@ export function buildReceiptMessage(params: {
   paidAt: string;
   method: string;
   allocations?: { label: string; amount: number }[];
+  t?: TranslateFn;
 }) {
+  const { t } = params;
   const amount = `LKR ${params.amount.toLocaleString('en-LK')}`;
   const lines = [
-    `Payment received - ${params.workspaceName}`,
+    whatsappLine(t, 'receiptHeader', 'Payment received - {{workspaceName}}', {
+      workspaceName: params.workspaceName,
+    }),
     '',
-    `Student: ${params.studentName}`,
+    whatsappLine(t, 'receiptStudent', 'Student: {{studentName}}', { studentName: params.studentName }),
   ];
 
   if (params.allocations && params.allocations.length > 1) {
-    lines.push('Applied to:');
+    lines.push(whatsappLine(t, 'receiptAppliedTo', 'Applied to:'));
     for (const line of params.allocations) {
-      lines.push(`- ${line.label}: LKR ${line.amount.toLocaleString('en-LK')}`);
+      lines.push(
+        whatsappLine(t, 'receiptAllocationLine', '- {{label}}: {{amount}}', {
+          label: line.label,
+          amount: `LKR ${line.amount.toLocaleString('en-LK')}`,
+        }),
+      );
     }
   } else {
-    lines.push(`Class: ${params.className}`);
+    lines.push(
+      whatsappLine(t, 'receiptClass', 'Class: {{className}}', { className: params.className }),
+    );
   }
 
   lines.push(
-    `Amount: ${amount}`,
-    `Receipt: ${params.receiptNo}`,
-    `Date: ${params.paidAt}`,
-    `Method: ${params.method.toUpperCase()}`,
+    whatsappLine(t, 'receiptAmount', 'Amount: {{amount}}', { amount }),
+    whatsappLine(t, 'receiptReceipt', 'Receipt: {{receiptNo}}', { receiptNo: params.receiptNo }),
+    whatsappLine(t, 'receiptDate', 'Date: {{paidAt}}', { paidAt: params.paidAt }),
+    whatsappLine(t, 'receiptMethod', 'Method: {{method}}', { method: params.method.toUpperCase() }),
     '',
-    'Thank you for your payment.',
+    whatsappLine(t, 'receiptThankYou', 'Thank you for your payment.'),
   );
 
   return lines.join('\n');
@@ -99,22 +135,28 @@ export function buildCertificateMessage(params: {
   serialNo: string;
   issuedOn: string;
   note?: string | null;
+  t?: TranslateFn;
 }) {
+  const { t } = params;
   const lines = [
-    `Certificate issued - ${params.workspaceName}`,
+    whatsappLine(t, 'certificateHeader', 'Certificate issued - {{workspaceName}}', {
+      workspaceName: params.workspaceName,
+    }),
     '',
-    `Student: ${params.studentName}`,
-    `Type: ${params.certificateType}`,
-    `Title: ${params.title}`,
-    `Serial: ${params.serialNo}`,
-    `Issued on: ${params.issuedOn}`,
+    whatsappLine(t, 'certificateStudent', 'Student: {{studentName}}', { studentName: params.studentName }),
+    whatsappLine(t, 'certificateType', 'Type: {{certificateType}}', {
+      certificateType: params.certificateType,
+    }),
+    whatsappLine(t, 'certificateTitle', 'Title: {{title}}', { title: params.title }),
+    whatsappLine(t, 'certificateSerial', 'Serial: {{serialNo}}', { serialNo: params.serialNo }),
+    whatsappLine(t, 'certificateIssuedOn', 'Issued on: {{issuedOn}}', { issuedOn: params.issuedOn }),
   ];
 
   if (params.note) {
-    lines.push(`Note: ${params.note}`);
+    lines.push(whatsappLine(t, 'certificateNote', 'Note: {{note}}', { note: params.note }));
   }
 
-  lines.push('', 'Congratulations and best wishes.');
+  lines.push('', whatsappLine(t, 'certificateClosing', 'Congratulations and best wishes.'));
   return lines.join('\n');
 }
 
@@ -122,13 +164,18 @@ export function buildParentMessage(params: {
   workspaceName: string;
   studentName: string;
   parentName: string;
+  t?: TranslateFn;
 }) {
+  const { t } = params;
   return [
-    `Hello ${params.parentName},`,
+    whatsappLine(t, 'parentGreeting', 'Hello {{parentName}},', { parentName: params.parentName }),
     '',
-    `This is ${params.workspaceName} regarding ${params.studentName}.`,
+    whatsappLine(t, 'parentIntro', 'This is {{workspaceName}} regarding {{studentName}}.', {
+      workspaceName: params.workspaceName,
+      studentName: params.studentName,
+    }),
     '',
-    'Please let us know if you have any questions.',
+    whatsappLine(t, 'parentClosing', 'Please let us know if you have any questions.'),
   ].join('\n');
 }
 
@@ -138,14 +185,17 @@ export function buildAbsenceAlertMessage(params: {
   className: string;
   sessionDate: string;
   template?: string;
+  t?: TranslateFn;
 }) {
-  const template =
-    params.template?.trim() ||
+  const defaultTemplate =
+    params.t?.('whatsapp.absenceDefaultTemplate') ??
     `Dear parent,
 
 {{student_name}} was marked absent from {{class_name}} on {{session_date}} at {{workspace_name}}.
 
 Please contact the teacher if there is a concern. Thank you.`;
+
+  const template = params.template?.trim() || defaultTemplate;
 
   return template
     .replaceAll('{{student_name}}', params.studentName)

@@ -15,7 +15,7 @@ import {
   ParentTimelineItem,
 } from '@/features/parent/parentPortalService';
 import { FeeStatus } from '@/features/fees/models';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -75,7 +75,7 @@ export default function ParentChildDashboardScreen() {
       setOverview(nextOverview);
       setTimeline(nextTimeline.timeline);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('parent.loadChildFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'parent.loadChildFailed'));
     } finally {
       setIsLoading(false);
     }

@@ -5,6 +5,7 @@ import {
 } from '@/features/fees/feeService';
 import { getAttendanceTrend, getStudentAttendancePercents } from '@/features/attendance/attendanceService';
 import { getClassLabelsByStudent } from '@/features/enrollment/enrollmentService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { FeeStatus, Medium, StudentRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 import { Student } from './types';
@@ -19,9 +20,9 @@ export type StudentFormInput = {
   consentCaptured: boolean;
 };
 
-function requireText(value: string, message: string) {
+function requireText(value: string, code: 'studentNameRequired' | 'parentPhoneRequired') {
   const trimmed = value.trim();
-  if (!trimmed) throw new Error(message);
+  if (!trimmed) throwServiceError(code);
   return trimmed;
 }
 
@@ -53,10 +54,10 @@ function mapStudentRow(
 
 export async function listStudents() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('students')
@@ -88,10 +89,10 @@ export async function listStudents() {
 
 export async function getStudentById(studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('students')
@@ -121,16 +122,16 @@ export async function getStudentById(studentId: string) {
 
 export async function createStudent(input: StudentFormInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
-  const fullName = requireText(input.fullName, 'Student name is required.');
-  const parentPhone = requireText(input.parentPhone, 'Parent phone is required.');
+  const fullName = requireText(input.fullName, 'studentNameRequired');
+  const parentPhone = requireText(input.parentPhone, 'parentPhoneRequired');
 
   if (!input.consentCaptured) {
-    throw new Error('Parent consent is required before saving a student record.');
+    throwServiceError('parentConsentRequired');
   }
 
   const { data, error } = await supabase
@@ -156,16 +157,16 @@ export async function createStudent(input: StudentFormInput) {
 
 export async function updateStudent(studentId: string, input: StudentFormInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before updating students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
-  const fullName = requireText(input.fullName, 'Student name is required.');
-  const parentPhone = requireText(input.parentPhone, 'Parent phone is required.');
+  const fullName = requireText(input.fullName, 'studentNameRequired');
+  const parentPhone = requireText(input.parentPhone, 'parentPhoneRequired');
 
   if (!input.consentCaptured) {
-    throw new Error('Parent consent is required before saving a student record.');
+    throwServiceError('parentConsentRequired');
   }
 
   const { data, error } = await supabase
@@ -186,7 +187,7 @@ export async function updateStudent(studentId: string, input: StudentFormInput) 
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Student not found.');
+  if (!data) throwServiceError('studentNotFound');
 
   const [labels, attendancePercents, feeSummaries] = await Promise.all([
     getClassLabelsByStudent([data.id]),
@@ -206,10 +207,10 @@ export async function updateStudent(studentId: string, input: StudentFormInput) 
 
 export async function archiveStudent(studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before archiving students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('students')
@@ -221,15 +222,15 @@ export async function archiveStudent(studentId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Student not found or already archived.');
+  if (!data) throwServiceError('studentNotFoundOrArchived');
 }
 
 export async function listArchivedStudents() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing archived students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('students')
@@ -247,10 +248,10 @@ export async function listArchivedStudents() {
 
 export async function restoreStudent(studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before restoring students.');
+  if (!workspace) throwServiceError('workspaceRequiredStudents');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('students')
@@ -262,5 +263,5 @@ export async function restoreStudent(studentId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Student not found or already active.');
+  if (!data) throwServiceError('studentNotFoundOrActive');
 }

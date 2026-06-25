@@ -36,6 +36,21 @@ export function AttendanceStudentRow({ student, onStatusPress }: Props) {
 
   const status = statusConfig[student.attendanceStatus];
 
+  const lastSeenLabel = useMemo(() => {
+    if (student.lastMarkStatus) {
+      const statusLabels: Record<Exclude<AttendanceStatus, 'unmarked'>, string> = {
+        present: t('classAttendance.present'),
+        late: t('classAttendance.late'),
+        absent: t('classAttendance.absent'),
+      };
+      return interpolate(t('common.lastClassMeta'), {
+        status: statusLabels[student.lastMarkStatus],
+      });
+    }
+    if (student.lastSeen) return student.lastSeen;
+    return t('common.noPreviousAttendance');
+  }, [student.lastMarkStatus, student.lastSeen, t]);
+
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
@@ -47,7 +62,7 @@ export function AttendanceStudentRow({ student, onStatusPress }: Props) {
           {interpolate(t('common.gradeLastSeenMeta'), {
             grade: student.grade,
             medium,
-            lastSeen: student.lastSeen ?? t('common.notSet'),
+            lastSeen: lastSeenLabel,
           })}
         </Text>
         <View style={styles.phoneRow}>

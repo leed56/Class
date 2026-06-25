@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { ClassRow, Medium } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -49,10 +50,10 @@ export async function ensureCatalogForClass(classRow: ClassRow) {
   }
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClasses');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const name = programName(classRow.subject, classRow.grade);
 
@@ -150,10 +151,10 @@ export async function ensureCatalogForClass(classRow: ClassRow) {
 
 export async function listPrograms() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing programs.');
+  if (!workspace) throwServiceError('workspaceRequiredPrograms');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('programs')
@@ -178,24 +179,24 @@ export type CatalogProgram = ProgramRow & {
   batches: CatalogBatch[];
 };
 
-const offeringTypeLabels: Record<OfferingType, string> = {
-  theory: 'Theory',
-  revision: 'Revision',
-  paper: 'Paper class',
-  extra: 'Extra course',
-  online: 'Online',
+const offeringTypeLabelKeys: Record<OfferingType, string> = {
+  theory: 'catalog.offeringTheory',
+  revision: 'catalog.offeringRevision',
+  paper: 'catalog.offeringPaper',
+  extra: 'catalog.offeringExtra',
+  online: 'catalog.offeringOnline',
 };
 
-export function getOfferingTypeLabel(type: OfferingType) {
-  return offeringTypeLabels[type];
+export function getOfferingTypeLabel(type: OfferingType, t: (path: string) => string) {
+  return t(offeringTypeLabelKeys[type]);
 }
 
 export async function listCatalogTree(): Promise<CatalogProgram[]> {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing the catalog.');
+  if (!workspace) throwServiceError('workspaceRequiredCatalogView');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: programs, error: programError } = await supabase
     .from('programs')
@@ -300,13 +301,13 @@ export type CreateBatchInput = {
 
 export async function createProgram(input: CreateProgramInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding programs.');
+  if (!workspace) throwServiceError('workspaceRequiredPrograms');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const name = input.name.trim();
-  if (!name) throw new Error('Program name is required.');
+  if (!name) throwServiceError('programNameRequired');
 
   const grade = Math.min(13, Math.max(1, Math.round(input.grade || 13)));
 
@@ -328,13 +329,13 @@ export async function createProgram(input: CreateProgramInput) {
 
 export async function createBatch(input: CreateBatchInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding batches.');
+  if (!workspace) throwServiceError('workspaceRequiredBatches');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const name = input.name.trim();
-  if (!name) throw new Error('Batch name is required.');
+  if (!name) throwServiceError('batchNameRequired');
 
   const { data, error } = await supabase
     .from('batches')
@@ -354,13 +355,13 @@ export async function createBatch(input: CreateBatchInput) {
 
 export async function createOffering(input: CreateOfferingInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding offerings.');
+  if (!workspace) throwServiceError('workspaceRequiredOfferings');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const name = input.name.trim();
-  if (!name) throw new Error('Offering name is required.');
+  if (!name) throwServiceError('offeringNameRequired');
 
   const { data, error } = await supabase
     .from('offerings')

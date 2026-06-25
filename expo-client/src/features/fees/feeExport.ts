@@ -1,6 +1,7 @@
 import { Platform, Share } from 'react-native';
 
 import { FeeInvoice } from '@/features/fees/models';
+import { throwServiceError } from '@/i18n/serviceErrors';
 
 function escapeCsvCell(value: string | number) {
   const text = String(value);
@@ -66,7 +67,7 @@ export function getDefaulterExportFilename(monthLabel: string) {
 
 export async function exportDefaulterCsv(monthLabel: string, workspaceName: string, invoices: FeeInvoice[]) {
   if (invoices.length === 0) {
-    throw new Error('No outstanding invoices to export.');
+    throwServiceError('noOutstandingInvoicesToExport');
   }
 
   const csv = buildDefaulterCsv(monthLabel, workspaceName, invoices);
@@ -74,7 +75,7 @@ export async function exportDefaulterCsv(monthLabel: string, workspaceName: stri
 
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
-      throw new Error('CSV export is only available in the browser.');
+      throwServiceError('csvExportWebOnly');
     }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

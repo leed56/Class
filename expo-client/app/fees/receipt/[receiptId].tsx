@@ -10,6 +10,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getPaymentByReceiptNo } from '@/features/fees/feeService';
 import { PaymentRecord } from '@/features/fees/models';
 import { buildReceiptMessage, openWhatsAppChat } from '@/lib/whatsapp';
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -39,7 +40,7 @@ export default function ReceiptDetailScreen() {
       setWorkspaceName(workspace?.name ?? t('receiptDetail.workspaceFallback'));
       if (!nextPayment) setError(t('receiptDetail.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('receiptDetail.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'receiptDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -63,9 +64,10 @@ export default function ReceiptDetailScreen() {
       paidAt: payment.paidAt,
       method: payment.method,
       allocations: payment.allocations,
+      t,
     });
 
-    await openWhatsAppChat(payment.parentPhone, message);
+    await openWhatsAppChat(payment.parentPhone, message, t);
   }
 
   if (isLoading) {

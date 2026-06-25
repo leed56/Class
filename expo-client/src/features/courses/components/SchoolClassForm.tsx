@@ -1,14 +1,12 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
-  buildSchoolClassSubject,
-  COMMON_SCHOOL_SUBJECTS,
-  getSchoolSessionLabel,
   SCHOOL_GRADE_OPTIONS,
-  SCHOOL_SESSION_OPTIONS,
   SchoolGrade,
   SchoolSessionType,
 } from '@/features/courses/schoolSubjectModel';
+import { getLocalizedSchoolSessionLabel, listLocalizedSchoolSessionOptions, listLocalizedSchoolSubjects } from '@/i18n';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -42,16 +40,17 @@ export function SchoolClassForm({
   showBuildingHint = false,
 }: Props) {
   const { t } = useI18n();
-  const preview = buildSchoolClassSubject(subjectName, sessionType);
+  const localizedPreview = subjectName.trim()
+    ? `${subjectName.trim()} — ${getLocalizedSchoolSessionLabel(sessionType, t)}`
+    : '';
+  const sessionOptions = useMemo(() => listLocalizedSchoolSessionOptions(t), [t]);
+  const subjectOptions = useMemo(() => listLocalizedSchoolSubjects(t), [t]);
 
   const mediumLabels = {
     English: t('settings.english'),
     Sinhala: t('settings.sinhala'),
     Tamil: t('settings.tamil'),
   } as const;
-
-  const sessionLabels = SCHOOL_SESSION_OPTIONS.map((item) => item.label);
-  const selectedSessionLabel = getSchoolSessionLabel(sessionType);
 
   return (
     <View style={styles.wrap}>
@@ -67,16 +66,16 @@ export function SchoolClassForm({
 
       <Text style={styles.chipLabel}>{t('classForm.quickPickSubject')}</Text>
       <View style={styles.subjectGrid}>
-        {COMMON_SCHOOL_SUBJECTS.map((item) => {
-          const active = subjectName === item;
+        {subjectOptions.map((item) => {
+          const active = subjectName === item.value;
           return (
             <Pressable
-              key={item}
+              key={item.value}
               style={[styles.subjectChip, active && styles.subjectChipActive]}
-              onPress={() => onSubjectNameChange(item)}
+              onPress={() => onSubjectNameChange(item.value)}
             >
               <Text style={[styles.subjectChipText, active && styles.subjectChipTextActive]} numberOfLines={1}>
-                {item}
+                {item.label}
               </Text>
             </Pressable>
           );
@@ -102,18 +101,15 @@ export function SchoolClassForm({
 
       <ChoiceChipGroup
         label={t('classForm.classTypeLabel')}
-        selected={selectedSessionLabel}
-        options={sessionLabels}
-        onSelect={(label) => {
-          const match = SCHOOL_SESSION_OPTIONS.find((item) => item.label === label);
-          if (match) onSessionTypeChange(match.value);
-        }}
+        selected={sessionType}
+        options={sessionOptions}
+        onSelect={(value) => onSessionTypeChange(value as SchoolSessionType)}
       />
 
-      {preview ? (
+      {localizedPreview ? (
         <View style={styles.preview}>
           <Text style={styles.previewLabel}>{t('classForm.classLabelPreview')}</Text>
-          <Text style={styles.previewValue}>{preview}</Text>
+          <Text style={styles.previewValue}>{localizedPreview}</Text>
         </View>
       ) : null}
     </View>

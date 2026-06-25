@@ -5,6 +5,7 @@ import { getClassCollectionPercents } from '@/features/fees/feeService';
 import { getEnrollmentCountsByClass } from '@/features/enrollment/enrollmentService';
 import { getHallById, listHalls } from '@/features/locations/branchService';
 import { Hall } from '@/features/locations/models';
+import { ServiceErrorCode, throwServiceError } from '@/i18n/serviceErrors';
 import { ClassRow, Medium } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 import { ScheduleState, TuitionClass } from './models';
@@ -25,14 +26,14 @@ export type ClassFormInput = {
   intakeLabel?: string | null;
 };
 
-function requireText(value: string, message: string) {
+function requireText(value: string, code: ServiceErrorCode) {
   const trimmed = value.trim();
-  if (!trimmed) throw new Error(message);
+  if (!trimmed) throwServiceError(code);
   return trimmed;
 }
 
-function parseTimeToDb(value: string, message: string) {
-  const trimmed = requireText(value, message);
+function parseTimeToDb(value: string, requiredCode: ServiceErrorCode) {
+  const trimmed = requireText(value, requiredCode);
   const twelveHour = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
   if (twelveHour) {
     let hour = Number(twelveHour[1]);
@@ -48,12 +49,12 @@ function parseTimeToDb(value: string, message: string) {
     const hour = Number(twentyFourHour[1]);
     const minute = Number(twentyFourHour[2]);
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      throw new Error('Use a valid time, for example 10:30 AM or 15:30.');
+      throwServiceError('invalidTimeFormat');
     }
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
   }
 
-  throw new Error('Use time format like 10:30 AM or 15:30.');
+  throwServiceError('invalidTimeFormat');
 }
 
 function formatTime(value: string) {
@@ -120,7 +121,7 @@ function mapClassRow(
 async function resolveHallFields(input: ClassFormInput) {
   if (input.hallId) {
     const hall = await getHallById(input.hallId);
-    if (!hall) throw new Error('Selected hall not found.');
+    if (!hall) throwServiceError('hallNotFound');
     return {
       hall_id: input.hallId,
       hall: hall.name,
@@ -140,10 +141,10 @@ async function buildHallLookup() {
 
 export async function listClasses() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClasses');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('classes')
@@ -175,10 +176,10 @@ export async function listClasses() {
 
 export async function getClassById(classId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClasses');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('classes')
@@ -207,15 +208,15 @@ export async function getClassById(classId: string) {
 
 export async function createClass(input: ClassFormInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before adding classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClasses');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
-  const subject = requireText(input.subject, 'Subject is required.');
-  const weekday = requireText(input.weekday, 'Class day is required.');
-  const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
-  const endTime = parseTimeToDb(input.endTime, 'End time is required.');
+  const subject = requireText(input.subject, 'subjectRequired');
+  const weekday = requireText(input.weekday, 'classDayRequired');
+  const startTime = parseTimeToDb(input.startTime, 'startTimeRequired');
+  const endTime = parseTimeToDb(input.endTime, 'endTimeRequired');
   const hallFields = await resolveHallFields(input);
 
   const { data, error } = await supabase
@@ -248,15 +249,15 @@ export async function createClass(input: ClassFormInput) {
 
 export async function updateClass(classId: string, input: ClassFormInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before updating classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClasses');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
-  const subject = requireText(input.subject, 'Subject is required.');
-  const weekday = requireText(input.weekday, 'Class day is required.');
-  const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
-  const endTime = parseTimeToDb(input.endTime, 'End time is required.');
+  const subject = requireText(input.subject, 'subjectRequired');
+  const weekday = requireText(input.weekday, 'classDayRequired');
+  const startTime = parseTimeToDb(input.startTime, 'startTimeRequired');
+  const endTime = parseTimeToDb(input.endTime, 'endTimeRequired');
   const hallFields = await resolveHallFields(input);
 
   const { data, error } = await supabase
@@ -283,7 +284,7 @@ export async function updateClass(classId: string, input: ClassFormInput) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Class not found.');
+  if (!data) throwServiceError('classNotFound');
 
   const [counts, attendanceAverages, collectionPercents, hallLookup] = await Promise.all([
     getEnrollmentCountsByClass([data.id]),
@@ -303,10 +304,10 @@ export async function updateClass(classId: string, input: ClassFormInput) {
 
 export async function archiveClass(classId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before archiving classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClassesArchive');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('classes')
@@ -318,15 +319,15 @@ export async function archiveClass(classId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Class not found or already archived.');
+  if (!data) throwServiceError('classNotFoundOrArchived');
 }
 
 export async function listArchivedClasses() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing archived classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClassesArchivedView');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('classes')
@@ -341,10 +342,10 @@ export async function listArchivedClasses() {
 
 export async function restoreClass(classId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before restoring classes.');
+  if (!workspace) throwServiceError('workspaceRequiredClassesRestore');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('classes')
@@ -356,5 +357,5 @@ export async function restoreClass(classId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Class not found or already active.');
+  if (!data) throwServiceError('classNotFoundOrActive');
 }

@@ -13,7 +13,7 @@ import {
   listClassAttendanceSessions,
 } from '@/features/attendance/attendanceService';
 import { getClassById } from '@/features/classes/classService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -42,7 +42,7 @@ export default function ClassAttendanceHistoryScreen() {
       );
       setSessions(nextSessions);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('attendanceHistory.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'attendanceHistory.loadFailed'));
     } finally {
       setIsLoading(false);
     }

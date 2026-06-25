@@ -2,6 +2,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { listClassRoster } from '@/features/enrollment/enrollmentService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { AttendanceMarkRow, AttendanceSessionRow, AttendanceStatus as DbAttendanceStatus } from '@/lib/database.types';
 import { isLikelyNetworkError, isOnline } from '@/lib/network';
 import { getSupabase } from '@/lib/supabase';
@@ -72,10 +73,9 @@ function nextStatus(current: AttendanceStatus): AttendanceStatus {
   return 'unmarked';
 }
 
-function formatLastSeen(status: DbAttendanceStatus | null) {
-  if (!status) return 'No previous attendance';
-  const label = status === 'present' ? 'Present' : status === 'late' ? 'Late' : 'Absent';
-  return `Last class: ${label}`;
+function formatLastSeen(status: DbAttendanceStatus | null): Exclude<AttendanceStatus, 'unmarked'> | null {
+  if (!status) return null;
+  return status;
 }
 
 function mapSession(classInfo: TuitionClass, session: AttendanceSessionRow): AttendanceSession {
@@ -94,10 +94,10 @@ function mapSession(classInfo: TuitionClass, session: AttendanceSessionRow): Att
 
 async function getOrCreateSession(classId: string, sessionDate = formatLocalDate()) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before taking attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendance');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: existing, error: existingError } = await supabase
     .from('attendance_sessions')
@@ -173,16 +173,16 @@ async function getLastMarksForClass(classId: string, studentIds: string[], befor
 
 export async function loadAttendanceSheet(classId: string, sessionDate = formatLocalDate()) {
   const tuitionClass = await getClassById(classId);
-  if (!tuitionClass) throw new Error('Class not found.');
+  if (!tuitionClass) throwServiceError('classNotFound');
 
   const session = await getOrCreateSession(classId, sessionDate);
   const roster = await listClassRoster(classId);
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before taking attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendance');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: marks, error: marksError } = await supabase
     .from('attendance_marks')
@@ -207,7 +207,7 @@ export async function loadAttendanceSheet(classId: string, sessionDate = formatL
       consentCaptured: entry.student.consentCaptured,
       feeStatus: entry.student.feeStatus,
       attendanceStatus: toUiStatus(mark?.status),
-      lastSeen: formatLastSeen(lastMarks.get(entry.student.id) ?? null),
+      lastMarkStatus: formatLastSeen(lastMarks.get(entry.student.id) ?? null),
     };
   });
 
@@ -231,7 +231,7 @@ async function persistStudentAttendance(
   status: AttendanceStatus,
 ) {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   if (status === 'unmarked') {
     const { error } = await supabase
@@ -260,7 +260,7 @@ async function persistStudentAttendance(
 
 export async function syncOfflineAttendanceForSession(sessionId: string, classId: string, sessionDate: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before syncing attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendanceSync');
 
   const pending = await listPendingAttendanceMarks(workspace.id, sessionId);
   if (pending.length === 0) return { synced: 0, failed: 0 };
@@ -321,10 +321,10 @@ export async function setStudentAttendance(
   context?: { classId: string; sessionDate: string },
 ) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before taking attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendance');
 
   if (!isOnline()) {
-    if (!context) throw new Error('Offline attendance requires class context.');
+    if (!context) throwServiceError('offlineAttendanceContextRequired');
     await enqueueAttendanceMark({
       workspaceId: workspace.id,
       sessionId,
@@ -380,8 +380,8 @@ export async function markAllPresent(
 
   if (!isOnline()) {
     const workspace = await getCurrentWorkspace();
-    if (!workspace) throw new Error('Create your workspace before taking attendance.');
-    if (!context) throw new Error('Offline attendance requires class context.');
+    if (!workspace) throwServiceError('workspaceRequiredAttendance');
+    if (!context) throwServiceError('offlineAttendanceContextRequired');
     for (const studentId of studentIds) {
       await enqueueAttendanceMark({
         workspaceId: workspace.id,
@@ -396,10 +396,10 @@ export async function markAllPresent(
   }
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before taking attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendance');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const rows = studentIds.map((studentId) => ({
     workspace_id: workspace.id,
@@ -431,12 +431,12 @@ export async function markAllPresent(
 
 export async function saveAttendanceSession(sessionId: string, classId: string, sessionDate: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before saving attendance.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendance');
 
   await syncOfflineAttendanceForSession(sessionId, classId, sessionDate);
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { error } = await supabase
     .from('attendance_sessions')
@@ -559,10 +559,10 @@ function summarizeSessionMarks(session: AttendanceSessionRow, marks: { status: D
 
 export async function listClassAttendanceSessions(classId: string, limit = 40) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing attendance history.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendanceHistory');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: sessions, error: sessionsError } = await supabase
     .from('attendance_sessions')
@@ -598,10 +598,10 @@ export async function listClassAttendanceSessions(classId: string, limit = 40) {
 
 export async function listStudentAttendanceHistory(studentId: string, limit = 40) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing attendance history.');
+  if (!workspace) throwServiceError('workspaceRequiredAttendanceHistory');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('attendance_marks')

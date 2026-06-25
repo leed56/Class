@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +14,11 @@ import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { getTeacherInitials } from '@/features/auth/teacherProfile';
 import { CommandTile } from '@/features/more/components/CommandTile';
 import { SettingsRow } from '@/features/more/components/SettingsRow';
-import { integrationCommands, reportCommands, setupCommands } from '@/features/more/data/moreItems';
+import {
+  buildIntegrationCommands,
+  buildReportCommands,
+  buildSetupCommands,
+} from '@/features/more/data/moreItems';
 import { getWorkspaceHealth } from '@/features/reports/reportsService';
 import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -27,7 +31,7 @@ export default function MoreScreen() {
   const { t } = useI18n();
   const { role } = useWorkspaceRole();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState(() => t('common.yourWorkspace'));
   const [dataHealth, setDataHealth] = useState(100);
   const [consentMissingCount, setConsentMissingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,14 +45,18 @@ export default function MoreScreen() {
         getWorkspaceHealth(),
         isPlatformAdmin(),
       ]);
-      setWorkspaceName(workspace?.name ?? 'Your workspace');
+      setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setDataHealth(health.dataHealth);
       setConsentMissingCount(health.consentMissingCount);
       setShowPlatformAdmin(platformAdmin);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
+
+  const reportCommands = useMemo(() => buildReportCommands(t), [t]);
+  const setupCommands = useMemo(() => buildSetupCommands(t), [t]);
+  const integrationCommands = useMemo(() => buildIntegrationCommands(t), [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -142,7 +150,7 @@ export default function MoreScreen() {
           <View style={styles.panelHeader}>
             <Text style={styles.sectionTitle}>{t('more.commsBilling')}</Text>
             <View style={styles.panelBadgeSuccess}>
-              <Text style={styles.panelBadgeSuccessText}>Phase 2+</Text>
+              <Text style={styles.panelBadgeSuccessText}>{t('more.phase2Plus')}</Text>
             </View>
           </View>
           {integrationCommands.map((item, index) => (

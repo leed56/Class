@@ -12,6 +12,7 @@ import {
   CertificateType,
   CertificateEligibility,
   formatCertificateDate,
+  formatCertificateEligibilityBlocker,
   getCertificateEligibilityForStudents,
   isCertificateRevoked,
   issueCertificate,
@@ -22,7 +23,7 @@ import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup'
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -77,7 +78,7 @@ export default function StudentCertificatesScreen() {
       }
       if (!nextStudent) setLoadError(t('certificates.studentNotFound'));
     } catch (loadError) {
-      setLoadError(loadError instanceof Error ? loadError.message : t('certificates.loadFailed'));
+      setLoadError(resolveServiceErrorMessage(loadError, t, 'certificates.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +114,7 @@ export default function StudentCertificatesScreen() {
       setNote('');
       await load();
     } catch (issueError) {
-      setFormError(issueError instanceof Error ? issueError.message : t('certificates.issueFailed'));
+      setFormError(resolveServiceErrorMessage(issueError, t, 'certificates.issueFailed'));
     } finally {
       setIsIssuing(false);
     }
@@ -122,7 +123,11 @@ export default function StudentCertificatesScreen() {
   function confirmIssue() {
     if (!student) return;
     if (eligibility && !eligibility.eligible) {
-      setFormError(eligibility.blockers[0] ?? t('certificates.notEligible'));
+      setFormError(
+        eligibility.blockers[0]
+          ? formatCertificateEligibilityBlocker(eligibility.blockers[0], t)
+          : t('certificates.notEligible'),
+      );
       return;
     }
     Alert.alert(
@@ -217,7 +222,9 @@ export default function StudentCertificatesScreen() {
                   </Text>
                 </View>
                 {!eligibility.eligible ? (
-                  <Text style={styles.blockerText}>{eligibility.blockers[0]}</Text>
+                  <Text style={styles.blockerText}>
+                    {formatCertificateEligibilityBlocker(eligibility.blockers[0], t)}
+                  </Text>
                 ) : null}
               </PremiumCard>
             ) : null}

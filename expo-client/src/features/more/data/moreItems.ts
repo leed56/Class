@@ -22,123 +22,131 @@ export type MoreSetting = {
   href: string;
 };
 
-export const reportCommands: MoreCommand[] = [
-  {
-    id: 'attendance-sheet',
-    title: 'Daily Attendance',
-    subtitle: 'Class-wise present, late and absent report',
-    icon: 'clipboard-check-outline',
-    color: colors.primary,
-    href: '/reports',
-  },
-  {
-    id: 'monthly-outstanding',
-    title: 'Outstanding Fees',
-    subtitle: 'June pending and overdue student list',
-    icon: 'cash-clock',
-    color: colors.danger,
-    badge: '12 pending',
-    href: '/reports',
-  },
-  {
-    id: 'defaulters',
-    title: 'Defaulter List',
-    subtitle: 'Parents to follow up through WhatsApp',
-    icon: 'account-alert-outline',
-    color: colors.warning,
-    badge: 'High value',
-    href: '/reports',
-  },
-  {
-    id: 'receipts',
-    title: 'Receipts',
-    subtitle: 'View, share or print digital receipts',
-    icon: 'receipt-text-check-outline',
-    color: colors.success,
-    href: '/reports',
-  },
-];
+type Translate = (path: string) => string;
 
-export const setupCommands: MoreSetting[] = [
-  {
-    id: 'settings-home',
-    title: 'Settings Dashboard',
-    subtitle: 'Workspace, teacher profile, plan and launch setup',
-    icon: 'cog-outline',
-    color: colors.primary,
-    href: '/settings',
-  },
-  {
-    id: 'subjects',
-    title: 'Subjects',
-    subtitle: 'Main, language, literature and optional subjects',
-    icon: 'book-education-outline',
-    color: colors.info,
-    href: '/settings/subjects',
-  },
-  {
-    id: 'launch-checklist',
-    title: 'Launch Checklist',
-    subtitle: 'Production readiness, QA, env vars and store prep',
-    icon: 'rocket-launch-outline',
-    color: colors.warning,
-    value: 'Ready path',
-    href: '/settings/launch-checklist',
-  },
-  {
-    id: 'language',
-    title: 'Language',
-    subtitle: 'English, Sinhala and Tamil UI foundation',
-    icon: 'translate',
-    color: colors.primary,
-    value: 'English',
-    href: '/settings',
-  },
-  {
-    id: 'receipts-settings',
-    title: 'Receipt Settings',
-    subtitle: 'Teacher name, footer, numbering and branding',
-    icon: 'receipt-text-edit-outline',
-    color: colors.success,
-    href: '/settings',
-  },
-  {
-    id: 'privacy-consent',
-    title: 'Privacy & Consent',
-    subtitle: 'Parent consent and data-retention controls',
-    icon: 'shield-check-outline',
-    color: colors.warning,
-    value: 'PDPA-aware',
-    href: '/settings/launch-checklist',
-  },
-];
+export function buildReportCommands(t: Translate): MoreCommand[] {
+  return [
+    {
+      id: 'attendance-sheet',
+      title: t('moreItems.dailyAttendanceTitle'),
+      subtitle: t('moreItems.dailyAttendanceSubtitle'),
+      icon: 'clipboard-check-outline',
+      color: colors.primary,
+      href: '/reports',
+    },
+    {
+      id: 'monthly-outstanding',
+      title: t('moreItems.outstandingFeesTitle'),
+      subtitle: t('moreItems.outstandingFeesSubtitle'),
+      icon: 'cash-clock',
+      color: colors.danger,
+      badge: t('moreItems.outstandingFeesBadge'),
+      href: '/reports',
+    },
+    {
+      id: 'defaulters',
+      title: t('moreItems.defaulterListTitle'),
+      subtitle: t('moreItems.defaulterListSubtitle'),
+      icon: 'account-alert-outline',
+      color: colors.warning,
+      badge: t('moreItems.defaulterListBadge'),
+      href: '/reports',
+    },
+    {
+      id: 'receipts',
+      title: t('moreItems.receiptsTitle'),
+      subtitle: t('moreItems.receiptsSubtitle'),
+      icon: 'receipt-text-check-outline',
+      color: colors.success,
+      href: '/reports',
+    },
+  ];
+}
 
-export const integrationCommands: MoreSetting[] = [
-  {
-    id: 'reachwa',
-    title: 'ReachWA / WhatsApp',
-    subtitle: 'Fee reminders, absence alerts and class broadcasts',
-    icon: 'whatsapp',
-    color: colors.success,
-    value: 'Phase 2',
-    href: '/settings/communication',
-  },
-  {
-    id: 'sms',
-    title: 'SMS Fallback',
-    subtitle: 'Text.lk SMS fallback for parents offline',
-    icon: 'message-processing-outline',
-    color: colors.info,
-    value: 'Later',
-    href: '/settings/communication',
-  },
-  {
-    id: 'subscription',
-    title: 'Subscription Plan',
-    subtitle: 'Free, Starter and Institute SaaS billing',
-    icon: 'crown-outline',
-    color: colors.primary,
-    value: 'Free',
-    href: '/settings/subscription',
-  },
-];
+export function buildSetupCommands(t: Translate): MoreSetting[] {
+  return [
+    {
+      id: 'settings-home',
+      title: t('moreItems.settingsDashboardTitle'),
+      subtitle: t('moreItems.settingsDashboardSubtitle'),
+      icon: 'cog-outline',
+      color: colors.primary,
+      href: '/settings',
+    },
+    {
+      id: 'subjects',
+      title: t('moreItems.subjectsTitle'),
+      subtitle: t('moreItems.subjectsSubtitle'),
+      icon: 'book-education-outline',
+      color: colors.info,
+      href: '/settings/subjects',
+    },
+    {
+      id: 'launch-checklist',
+      title: t('moreItems.launchChecklistTitle'),
+      subtitle: t('moreItems.launchChecklistSubtitle'),
+      icon: 'rocket-launch-outline',
+      color: colors.warning,
+      value: t('moreItems.valueReadyPath'),
+      href: '/settings/launch-checklist',
+    },
+    {
+      id: 'language',
+      title: t('moreItems.languageTitle'),
+      subtitle: t('moreItems.languageSubtitle'),
+      icon: 'translate',
+      color: colors.primary,
+      value: t('moreItems.valueEnglish'),
+      href: '/settings',
+    },
+    {
+      id: 'receipts-settings',
+      title: t('moreItems.receiptSettingsTitle'),
+      subtitle: t('moreItems.receiptSettingsSubtitle'),
+      icon: 'receipt-text-edit-outline',
+      color: colors.success,
+      href: '/settings',
+    },
+    {
+      id: 'privacy-consent',
+      title: t('moreItems.privacyConsentTitle'),
+      subtitle: t('moreItems.privacyConsentSubtitle'),
+      icon: 'shield-check-outline',
+      color: colors.warning,
+      value: t('moreItems.valuePdpaAware'),
+      href: '/settings/launch-checklist',
+    },
+  ];
+}
+
+export function buildIntegrationCommands(t: Translate): MoreSetting[] {
+  return [
+    {
+      id: 'reachwa',
+      title: t('moreItems.reachwaTitle'),
+      subtitle: t('moreItems.reachwaSubtitle'),
+      icon: 'whatsapp',
+      color: colors.success,
+      value: t('moreItems.valuePhase2'),
+      href: '/settings/communication',
+    },
+    {
+      id: 'sms',
+      title: t('moreItems.smsFallbackTitle'),
+      subtitle: t('moreItems.smsFallbackSubtitle'),
+      icon: 'message-processing-outline',
+      color: colors.info,
+      value: t('moreItems.valueLater'),
+      href: '/settings/communication',
+    },
+    {
+      id: 'subscription',
+      title: t('moreItems.subscriptionTitle'),
+      subtitle: t('moreItems.subscriptionSubtitle'),
+      icon: 'crown-outline',
+      color: colors.primary,
+      value: t('moreItems.valueFree'),
+      href: '/settings/subscription',
+    },
+  ];
+}

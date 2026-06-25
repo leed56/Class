@@ -1,6 +1,7 @@
 import { Platform, Share } from 'react-native';
 
 import { ClassPerformanceRow, ReportSummary } from '@/features/reports/reportsService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 
 function escapeCsvCell(value: string | number) {
   const text = String(value);
@@ -50,7 +51,7 @@ export async function exportMonthlyReportCsv(summary: ReportSummary, classRows: 
 
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
-      throw new Error('CSV export is only available in the browser.');
+      throwServiceError('csvExportWebOnly');
     }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

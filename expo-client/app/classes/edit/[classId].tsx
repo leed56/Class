@@ -34,7 +34,7 @@ import { findHallScheduleConflicts } from '@/features/locations/timetableService
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { useI18n } from '@/i18n/I18nProvider';
-import { CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions } from '@/i18n';
+import { CLASS_SCHEDULE_WEEKDAYS, listWeekdayOptions, resolveServiceErrorMessage } from '@/i18n';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -115,7 +115,7 @@ export default function EditClassScreen() {
         setSelectedTemplateId(match?.id ?? null);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classForm.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classForm.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -196,7 +196,7 @@ export default function EditClassScreen() {
       });
       router.replace(`/classes/${params.classId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('classForm.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'classForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }

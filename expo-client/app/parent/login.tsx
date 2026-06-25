@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { requestParentOtp } from '@/features/parent/parentAuthService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_PARENT_OTP,
@@ -41,7 +41,7 @@ export default function ParentLoginScreen() {
         },
       });
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : t('parent.otpRequestFailed'));
+      setError(resolveServiceErrorMessage(submitError, t, 'parent.otpRequestFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +88,7 @@ export default function ParentLoginScreen() {
           ) : null}
           <FormTextField
             label={t('parent.phoneLabel')}
-            placeholder="+94 77 123 4567"
+            placeholder={t('parent.phonePlaceholder')}
             icon="phone-outline"
             keyboardType="phone-pad"
             value={phone}

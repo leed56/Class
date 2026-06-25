@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { LanguageCode, InstituteType, WorkspaceRow } from '@/lib/database.types';
 
 type AuthCredentials = {
@@ -72,7 +73,7 @@ export async function createTeacherWorkspace({ name, defaultLanguage }: Workspac
   } = await supabase.auth.getUser();
 
   if (userError) throw userError;
-  if (!user) throw new Error('Please sign in before creating a workspace.');
+  if (!user) throwServiceError('signInRequiredCreateWorkspace');
 
   const { data: workspace, error: workspaceError } = await supabase
     .from('workspaces')
@@ -132,10 +133,10 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   } = await supabase.auth.getUser();
 
   if (userError) throw userError;
-  if (!user) throw new Error('Please sign in before updating workspace settings.');
+  if (!user) throwServiceError('signInRequiredUpdateWorkspace');
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const updates: {
     name?: string;
@@ -156,7 +157,7 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
-    if (!trimmed) throw new Error('Institute name is required.');
+    if (!trimmed) throwServiceError('instituteNameRequired');
     updates.name = trimmed;
   }
   if (input.defaultLanguage !== undefined) {
@@ -188,12 +189,12 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.certificateCompletionBody !== undefined) {
     const trimmed = input.certificateCompletionBody.trim();
-    if (!trimmed) throw new Error('Completion certificate wording is required.');
+    if (!trimmed) throwServiceError('certificateCompletionBodyRequired');
     updates.certificate_completion_body = trimmed;
   }
   if (input.certificateAchievementBody !== undefined) {
     const trimmed = input.certificateAchievementBody.trim();
-    if (!trimmed) throw new Error('Achievement certificate wording is required.');
+    if (!trimmed) throwServiceError('certificateAchievementBodyRequired');
     updates.certificate_achievement_body = trimmed;
   }
   if (input.certificateFooterNote !== undefined) {
@@ -204,7 +205,7 @@ export async function updateWorkspace(input: WorkspaceUpdateInput) {
   }
   if (input.absenceAlertTemplate !== undefined) {
     const trimmed = input.absenceAlertTemplate.trim();
-    if (!trimmed) throw new Error('Absence alert template is required.');
+    if (!trimmed) throwServiceError('absenceAlertTemplateRequired');
     updates.absence_alert_template = trimmed;
   }
 
@@ -228,7 +229,7 @@ export async function updateTeacherProfile(input: TeacherProfileUpdateInput) {
 
   if (input.fullName !== undefined) {
     const trimmed = input.fullName.trim();
-    if (!trimmed) throw new Error('Display name is required.');
+    if (!trimmed) throwServiceError('displayNameRequired');
     metadata.full_name = trimmed;
   }
 
@@ -240,7 +241,7 @@ export async function updateTeacherProfile(input: TeacherProfileUpdateInput) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) throw new Error('Please sign in before updating your profile.');
+    if (!user) throwServiceError('signInRequiredUpdateProfile');
     return user;
   }
 

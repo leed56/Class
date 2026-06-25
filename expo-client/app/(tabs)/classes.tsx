@@ -12,7 +12,8 @@ import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
-import { CLASS_SCHEDULE_WEEKDAYS, formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
+import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
+import { CLASS_SCHEDULE_WEEKDAYS, formatWeekdayName, getCanonicalWeekday, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -21,6 +22,7 @@ const weekdayTabs = CLASS_SCHEDULE_WEEKDAYS.slice(0, 5);
 
 export default function ClassesScreen() {
   const { locale, t } = useI18n();
+  const { instituteType } = useWorkspaceShell();
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function ClassesScreen() {
       const nextClasses = await listClasses();
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classes.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classes.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -146,6 +148,7 @@ export default function ClassesScreen() {
                   item={item}
                   detailHref={`/classes/${item.id}` as Href}
                   attendanceHref={`/classes/${item.id}/attendance` as Href}
+                  instituteType={instituteType}
                 />
               ))}
             </View>

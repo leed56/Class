@@ -15,7 +15,7 @@ import {
   ReportSummary,
 } from '@/features/reports/reportsService';
 import { exportMonthlyReportCsv } from '@/features/reports/reportExport';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -41,7 +41,7 @@ export default function ReportsScreen() {
       setSummary(nextSummary);
       setClassRows(nextClassRows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('reportsHub.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'reportsHub.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +68,7 @@ export default function ReportsScreen() {
     } catch (exportError) {
       Alert.alert(
         t('reportsHub.exportFailedTitle'),
-        exportError instanceof Error ? exportError.message : t('reportsHub.exportFailedMessage'),
+        resolveServiceErrorMessage(exportError, t, 'reportsHub.exportFailedMessage'),
       );
     } finally {
       setIsExporting(false);

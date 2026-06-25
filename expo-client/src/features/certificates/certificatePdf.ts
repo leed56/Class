@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 
 import { CertificateType } from '@/features/certificates/certificateService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 
 export type CertificateTemplate = {
   workspaceName: string;
@@ -156,7 +157,7 @@ export function downloadCertificatePdf(input: CertificatePdfInput) {
     return fileName;
   }
 
-  throw new Error('PDF download is available on web. Open ClassFlow in your browser to export certificates.');
+  throwServiceError('certificatePdfWebOnly');
 }
 
 export { PLACEHOLDERS };

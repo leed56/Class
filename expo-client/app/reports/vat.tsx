@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getVatSummary, VatSummary } from '@/features/vat/localVatStore';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -36,7 +36,7 @@ export default function VatReportScreen() {
         const nextSummary = await getVatSummary();
         if (isMounted) setSummary(nextSummary);
       } catch (vatError) {
-        if (isMounted) setError(vatError instanceof Error ? vatError.message : t('vatReport.loadFailed'));
+        if (isMounted) setError(resolveServiceErrorMessage(vatError, t, 'vatReport.loadFailed'));
       } finally {
         if (isMounted) setIsLoading(false);
       }

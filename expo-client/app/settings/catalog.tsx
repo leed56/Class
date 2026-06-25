@@ -28,7 +28,7 @@ import {
   OfferingType,
 } from '@/features/catalog/catalogService';
 import { getCurrentWorkspace } from '@/features/auth/authService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -86,7 +86,7 @@ function CatalogContent() {
       setPrograms(tree);
       setInstituteType(workspace?.institute_type ?? 'solo');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('catalog.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'catalog.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +127,7 @@ function CatalogContent() {
       setNewProgramName('');
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('catalog.addProgramFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'catalog.addProgramFailed'));
     }
   }
 
@@ -142,7 +142,7 @@ function CatalogContent() {
       setNewBatchName('');
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('catalog.addBatchFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'catalog.addBatchFailed'));
     }
   }
 
@@ -158,7 +158,7 @@ function CatalogContent() {
       setAddingBatchId(null);
       await loadCatalog();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('catalog.addOfferingFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'catalog.addOfferingFailed'));
     }
   }
 

@@ -25,7 +25,7 @@ import {
 } from '@/features/auth/staffService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { WorkspaceRole } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -63,7 +63,7 @@ function StaffSettingsContent() {
       const rows = await listWorkspaceStaff();
       setStaff(rows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('staff.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'staff.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +83,7 @@ function StaffSettingsContent() {
       setEmail('');
       await loadStaff();
     } catch (addError) {
-      setError(addError instanceof Error ? addError.message : t('staff.addFailed'));
+      setError(resolveServiceErrorMessage(addError, t, 'staff.addFailed'));
     } finally {
       setIsAdding(false);
     }
@@ -97,7 +97,7 @@ function StaffSettingsContent() {
       await updateStaffMemberRole(member.userId, roleFromLabel(label));
       await loadStaff();
     } catch (changeError) {
-      setError(changeError instanceof Error ? changeError.message : t('staff.updateFailed'));
+      setError(resolveServiceErrorMessage(changeError, t, 'staff.updateFailed'));
     } finally {
       setWorkingUserId(null);
     }
@@ -118,7 +118,7 @@ function StaffSettingsContent() {
             await removeStaffMember(member.userId);
             await loadStaff();
           } catch (removeError) {
-            setError(removeError instanceof Error ? removeError.message : t('staff.removeFailed'));
+            setError(resolveServiceErrorMessage(removeError, t, 'staff.removeFailed'));
           } finally {
             setWorkingUserId(null);
           }

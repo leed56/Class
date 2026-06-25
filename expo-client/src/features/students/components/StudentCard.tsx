@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { NavPressable } from '@/components/NavPressable';
-import { formatStudentMeta } from '@/features/students/studentProfileModel';
+import { formatLocalizedStudentMeta } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -32,7 +32,14 @@ function getTrendColor(percent: number) {
 export function StudentCard({ student, href, workspaceType, academySector }: StudentCardProps) {
   const { t } = useI18n();
   const trendColor = getTrendColor(student.attendancePercent);
-  const meta = formatStudentMeta(student.grade, student.medium, student.school, workspaceType, academySector);
+  const meta = formatLocalizedStudentMeta(
+    student.grade,
+    student.medium,
+    student.school,
+    workspaceType,
+    academySector,
+    t,
+  );
 
   const card = (
     <PremiumCard style={styles.card}>

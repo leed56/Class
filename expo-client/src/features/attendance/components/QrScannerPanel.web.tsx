@@ -1,6 +1,7 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
@@ -10,7 +11,8 @@ type Props = {
 };
 
 export function QrScannerPanel({ onScan, onError }: Props) {
-  const [status, setStatus] = useState('Starting camera…');
+  const { t } = useI18n();
+  const [status, setStatus] = useState(() => t('classScan.qrStartingCamera'));
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
   const lastScanRef = useRef('');
   const onScanRef = useRef(onScan);
@@ -53,11 +55,11 @@ export function QrScannerPanel({ onScan, onError }: Props) {
         );
 
         if (!cancelled) {
-          setStatus('Point camera at student QR card');
+          setStatus(t('classScan.qrPointCamera'));
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Could not start camera.';
-        setStatus('Camera unavailable on this device.');
+        const message = error instanceof Error ? error.message : t('classScan.qrStartFailed');
+        setStatus(t('classScan.qrCameraUnavailable'));
         onErrorRef.current?.(message);
       }
     }
@@ -72,7 +74,7 @@ export function QrScannerPanel({ onScan, onError }: Props) {
         scanner.stop().catch(() => undefined);
       }
     };
-  }, []);
+  }, [t]);
 
   return (
     <View style={styles.wrapper}>

@@ -2,6 +2,7 @@ import { getCurrentWorkspace } from '@/features/auth/authService';
 import { ensureEnrollmentInvoice } from '@/features/fees/feeService';
 import { ScheduleState, TuitionClass } from '@/features/classes/models';
 import { Student } from '@/features/students/types';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { ClassEnrollmentRow, ClassRow, StudentRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -156,10 +157,10 @@ export async function getClassLabelsByStudent(studentIds: string[]) {
 
 export async function listClassRoster(classId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing enrollments.');
+  if (!workspace) throwServiceError('workspaceRequiredEnrollments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('class_enrollments')
@@ -185,10 +186,10 @@ export async function listClassRoster(classId: string) {
 
 export async function listStudentEnrollments(studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing enrollments.');
+  if (!workspace) throwServiceError('workspaceRequiredEnrollments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('class_enrollments')
@@ -214,10 +215,10 @@ export async function listStudentEnrollments(studentId: string) {
 
 export async function listAvailableStudentsForClass(classId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before enrolling students.');
+  if (!workspace) throwServiceError('workspaceRequiredEnrollments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: enrolled, error: enrolledError } = await supabase
     .from('class_enrollments')
@@ -245,10 +246,10 @@ export async function listAvailableStudentsForClass(classId: string) {
 
 export async function enrollStudentInClass(classId: string, studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before enrolling students.');
+  if (!workspace) throwServiceError('workspaceRequiredEnrollments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('class_enrollments')
@@ -262,7 +263,7 @@ export async function enrollStudentInClass(classId: string, studentId: string) {
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error('This student is already enrolled in this class.');
+      throwServiceError('studentAlreadyEnrolled');
     }
     throw new Error(error.message);
   }
@@ -274,10 +275,10 @@ export async function enrollStudentInClass(classId: string, studentId: string) {
 
 export async function unenrollStudentFromClass(classId: string, studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing enrollments.');
+  if (!workspace) throwServiceError('workspaceRequiredEnrollments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { error } = await supabase
     .from('class_enrollments')

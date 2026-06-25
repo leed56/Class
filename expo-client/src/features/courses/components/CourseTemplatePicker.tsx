@@ -3,20 +3,31 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
-  MARITIME_TRACKS,
   MaritimeTrack,
 } from '@/features/courses/maritimeCourseModel';
 import {
-  ACADEMY_SECTORS,
   AcademySector,
-  getSectorInfo,
+  ExamLevel,
   getTemplatesForSector,
   SlCourseTemplate,
-  SCHOOL_EXAM_LEVEL_OPTIONS,
-  ExamLevel,
 } from '@/features/courses/slCourseModel';
-import { interpolate } from '@/i18n';
+import {
+  listLocalizedExamLevels,
+  listLocalizedMaritimeTracks,
+} from '@/i18n/coursePickerLabels';
+import {
+  getLocalizedCourseTemplateDurationNote,
+  getLocalizedCourseTemplateLabel,
+  getLocalizedCourseTemplatePhaseLabel,
+  getLocalizedIntakeLabel,
+} from '@/i18n/courseTemplateLabels';
+import {
+  getLocalizedSectorInfo,
+  interpolate,
+  listLocalizedSectors,
+} from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -46,7 +57,15 @@ export function CourseTemplatePicker({
 }: Props) {
   const { t } = useI18n();
   const [maritimeTrack, setMaritimeTrack] = useState<MaritimeTrack>('officer_cadet');
-  const sectorInfo = getSectorInfo(sector);
+  const sectorInfo = getLocalizedSectorInfo(sector, t);
+  const localizedSectors = listLocalizedSectors(t);
+  const localizedExamLevels = listLocalizedExamLevels(t);
+  const localizedMaritimeTracks = listLocalizedMaritimeTracks(t);
+  const mediumLabels: Record<Medium, string> = {
+    English: t('settings.english'),
+    Sinhala: t('settings.sinhala'),
+    Tamil: t('settings.tamil'),
+  };
 
   function handleSectorChange(nextSector: AcademySector) {
     if (nextSector === 'maritime') setMaritimeTrack('officer_cadet');
@@ -86,7 +105,7 @@ export function CourseTemplatePicker({
           <Text style={styles.label}>{t('classForm.sectorLabel')}</Text>
           <Text style={styles.hint}>{t('classForm.sectorHint')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorRow}>
-            {ACADEMY_SECTORS.map((item) => {
+            {localizedSectors.map((item) => {
               const active = sector === item.id;
               return (
                 <Pressable
@@ -121,7 +140,7 @@ export function CourseTemplatePicker({
         <>
           <Text style={styles.label}>{t('classForm.examLevelLabel')}</Text>
           <View style={styles.levelRow}>
-            {SCHOOL_EXAM_LEVEL_OPTIONS.map((level) => {
+            {localizedExamLevels.map(({ value: level, label }) => {
               const active = examLevel === level;
               return (
                 <Pressable
@@ -129,7 +148,7 @@ export function CourseTemplatePicker({
                   style={[styles.levelChip, active && styles.levelChipActive]}
                   onPress={() => onExamLevelChange(level)}
                 >
-                  <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>{level}</Text>
+                  <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>{label}</Text>
                 </Pressable>
               );
             })}
@@ -142,7 +161,7 @@ export function CourseTemplatePicker({
           <Text style={styles.label}>{t('classForm.maritimeTrackLabel')}</Text>
           <Text style={styles.hint}>{t('classForm.maritimeTrackHint')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trackRow}>
-            {MARITIME_TRACKS.map((track) => {
+            {localizedMaritimeTracks.map((track) => {
               const active = maritimeTrack === track.id;
               return (
                 <Pressable
@@ -168,12 +187,29 @@ export function CourseTemplatePicker({
         ) : (
           templates.map((template) => {
             const active = selectedTemplateId === template.id;
-            const maritimeMeta =
-              'phaseLabel' in template && template.phaseLabel
-                ? ` • ${template.phaseLabel}`
-                : 'durationNote' in template && template.durationNote
-                  ? ` • ${template.durationNote}`
-                  : '';
+            const phaseLabel = getLocalizedCourseTemplatePhaseLabel(
+              template.id,
+              'phaseLabel' in template && typeof template.phaseLabel === 'string'
+                ? template.phaseLabel
+                : undefined,
+              t,
+            );
+            const durationNote = getLocalizedCourseTemplateDurationNote(
+              template.id,
+              'durationNote' in template && typeof template.durationNote === 'string'
+                ? template.durationNote
+                : undefined,
+              t,
+            );
+            const maritimeMeta = phaseLabel
+              ? ` • ${phaseLabel}`
+              : durationNote
+                ? ` • ${durationNote}`
+                : '';
+            const intakeLabel = getLocalizedIntakeLabel(template.intakeLabel, t);
+            const templateLabel = getLocalizedCourseTemplateLabel(template.id, template.label, t);
+            const mediumLabel = mediumLabels[template.medium as Medium] ?? template.medium;
+
             return (
               <Pressable
                 key={template.id}
@@ -188,13 +224,13 @@ export function CourseTemplatePicker({
                   />
                 </View>
                 <View style={styles.templateCopy}>
-                  <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>{template.label}</Text>
+                  <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>{templateLabel}</Text>
                   <Text style={styles.templateMeta}>
                     {interpolate(t('classForm.templateMeta'), {
-                      medium: template.medium,
+                      medium: mediumLabel,
                       fee: formatLkr(template.suggestedFee),
                     })}
-                    {template.intakeLabel ? ` • ${template.intakeLabel}` : ''}
+                    {intakeLabel ? ` • ${intakeLabel}` : ''}
                     {maritimeMeta}
                   </Text>
                 </View>

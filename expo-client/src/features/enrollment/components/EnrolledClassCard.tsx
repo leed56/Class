@@ -1,8 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { TuitionClass } from '@/features/classes/models';
+import { formatWeekdayName, interpolate } from '@/i18n';
+import { useI18n } from '@/i18n/I18nProvider';
+import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -16,6 +20,30 @@ function formatLkr(amount: number) {
 
 export function EnrolledClassCard({ tuitionClass }: EnrolledClassCardProps) {
   const router = useRouter();
+  const { locale, t } = useI18n();
+
+  const mediumLabels: Record<Medium, string> = useMemo(
+    () => ({
+      English: t('settings.english'),
+      Sinhala: t('settings.sinhala'),
+      Tamil: t('settings.tamil'),
+    }),
+    [t],
+  );
+  const medium = mediumLabels[tuitionClass.medium as Medium] ?? tuitionClass.medium;
+  const day = formatWeekdayName(locale, tuitionClass.day, 'long');
+
+  const meta = interpolate(t('studentProfile.enrolledClassMeta'), {
+    grade: tuitionClass.grade,
+    medium,
+    day,
+  });
+  const schedule = interpolate(t('studentProfile.enrolledClassSchedule'), {
+    start: tuitionClass.startTime,
+    end: tuitionClass.endTime,
+    fee: formatLkr(tuitionClass.monthlyFee),
+    perMonth: t('common.perMonth'),
+  });
 
   return (
     <Pressable
@@ -27,12 +55,8 @@ export function EnrolledClassCard({ tuitionClass }: EnrolledClassCardProps) {
       </View>
       <View style={styles.copy}>
         <Text style={styles.subject}>{tuitionClass.subject}</Text>
-        <Text style={styles.meta}>
-          Grade {tuitionClass.grade} • {tuitionClass.medium} • {tuitionClass.day}
-        </Text>
-        <Text style={styles.schedule}>
-          {tuitionClass.startTime} - {tuitionClass.endTime} • {formatLkr(tuitionClass.monthlyFee)}/mo
-        </Text>
+        <Text style={styles.meta}>{meta}</Text>
+        <Text style={styles.schedule}>{schedule}</Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
     </Pressable>

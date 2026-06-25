@@ -20,7 +20,7 @@ import {
 } from '@/features/locations/timetableBoardService';
 import { listWorkspaceScheduleConflicts } from '@/features/locations/timetableService';
 import { ScheduleConflictBanner } from '@/features/locations/components/ScheduleConflictBanner';
-import { formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
+import { formatWeekdayName, getCanonicalWeekday, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -57,7 +57,7 @@ function TimetableBoardContent() {
       setConflictCount(board.conflicts);
       setScheduleConflicts(conflicts.filter((item) => item.weekday === selectedDay));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('timetableBoard.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'timetableBoard.loadFailed'));
     } finally {
       setIsLoading(false);
     }

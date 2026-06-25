@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { MessageDeliveryRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -75,10 +76,10 @@ Please contact the teacher if there is a concern. Thank you.`;
 
 export async function createMessageDelivery(input: CreateMessageDeliveryInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before logging messages.');
+  if (!workspace) throwServiceError('workspaceRequiredMessages');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('message_deliveries')
@@ -107,10 +108,10 @@ export async function updateMessageDeliveryStatus(
   errorMessage?: string | null,
 ) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before updating messages.');
+  if (!workspace) throwServiceError('workspaceRequiredMessagesUpdate');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('message_deliveries')
@@ -130,10 +131,10 @@ export async function updateMessageDeliveryStatus(
 
 export async function listMessageDeliveries(limit = 50) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing message history.');
+  if (!workspace) throwServiceError('workspaceRequiredMessagesView');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('message_deliveries')

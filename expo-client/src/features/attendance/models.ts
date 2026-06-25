@@ -9,6 +9,7 @@ export type AttendanceStudent = {
   consentCaptured: boolean;
   feeStatus: 'paid' | 'partial' | 'pending' | 'overdue';
   attendanceStatus: AttendanceStatus;
+  lastMarkStatus?: Exclude<AttendanceStatus, 'unmarked'> | null;
   lastSeen?: string;
 };
 

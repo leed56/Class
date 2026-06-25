@@ -15,7 +15,7 @@ import { StudentFilterBar } from '@/features/students/components/StudentFilterBa
 import { usesSchoolStudentFields } from '@/features/students/studentProfileModel';
 import { listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -42,7 +42,7 @@ export default function StudentsScreen() {
       setWorkspaceType(workspace?.institute_type ?? 'solo');
       setAcademySector(workspace?.academy_sector ?? 'school_tuition');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('students.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'students.loadFailed'));
     } finally {
       setIsLoading(false);
     }

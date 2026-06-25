@@ -23,7 +23,7 @@ import { formatLocalizedTodayDate, formatWeekdayName, getCanonicalWeekday, getLo
 import { useI18n } from '@/i18n/I18nProvider';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
-import { formatClassMeta } from '@/features/courses/slCourseModel';
+import { formatLocalizedClassMeta } from '@/i18n';
 import { HallOccupancyPanel } from '@/features/dashboard/components/HallOccupancyPanel';
 import { HallRentSummaryPanel } from '@/features/dashboard/components/HallRentSummaryPanel';
 import { getFeeSummaryForMonth } from '@/features/fees/feeService';
@@ -193,7 +193,7 @@ export default function HomeScreen() {
                         <View style={styles.classInfo}>
                           <Text style={styles.className} numberOfLines={2}>{nextClass.subject}</Text>
                           <Text style={styles.muted} numberOfLines={2}>
-                            {formatClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType)}
+                            {formatLocalizedClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType, t)}
                           </Text>
                         </View>
                       </View>
@@ -264,7 +264,7 @@ export default function HomeScreen() {
                     key={item.id}
                     time={item.startTime}
                     title={item.subject}
-                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
+                    meta={formatLocalizedClassMeta(item.subject, item.grade, item.medium, instituteType, t)}
                     status={statusLabel(item.state)}
                     color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
                   />
@@ -295,7 +295,7 @@ export default function HomeScreen() {
                     <View style={styles.classInfo}>
                       <Text style={styles.className}>{nextClass.subject}</Text>
                       <Text style={styles.muted}>
-                        {formatClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType)}
+                        {formatLocalizedClassMeta(nextClass.subject, nextClass.grade, nextClass.medium, instituteType, t)}
                       </Text>
                     </View>
                   </View>
@@ -357,7 +357,7 @@ export default function HomeScreen() {
                     key={item.id}
                     time={item.startTime}
                     title={item.subject}
-                    meta={formatClassMeta(item.subject, item.grade, item.medium, instituteType)}
+                    meta={formatLocalizedClassMeta(item.subject, item.grade, item.medium, instituteType, t)}
                     status={statusLabel(item.state)}
                     color={item.state === 'completed' ? colors.success : item.state === 'inProgress' ? colors.primary : colors.warning}
                   />

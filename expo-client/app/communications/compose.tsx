@@ -16,7 +16,7 @@ import { getClassById } from '@/features/classes/classService';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { buildAbsenceAlertMessage, openWhatsAppChat } from '@/lib/whatsapp';
-import { interpolate } from '@/i18n';
+import { formatLocalizedComposeClassLabel, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -75,7 +75,9 @@ export default function MessageComposeScreen() {
           getClassById(params.classId),
           loadAttendanceSheet(params.classId, params.sessionDate),
         ]);
-        const resolvedClassLabel = tuitionClass ? `${tuitionClass.subject} Grade ${tuitionClass.grade}` : classFallback;
+        const resolvedClassLabel = tuitionClass
+          ? formatLocalizedComposeClassLabel(tuitionClass.subject, tuitionClass.grade, t)
+          : classFallback;
         setClassLabel(resolvedClassLabel);
         setSessionDateLabel(sheet.sessionView.date);
 
@@ -101,6 +103,7 @@ export default function MessageComposeScreen() {
               className: resolvedClassLabel,
               sessionDate: sheet.sessionView.date,
               template: workspace?.absence_alert_template,
+              t,
             }),
           );
         }
@@ -122,7 +125,7 @@ export default function MessageComposeScreen() {
 
       setError(t('compose.nothingToCompose'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('compose.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'compose.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -141,9 +144,10 @@ export default function MessageComposeScreen() {
         className: classLabel,
         sessionDate: sessionDateLabel,
         template: absenceTemplate,
+        t,
       }),
     );
-  }, [absenceTemplate, classLabel, current, index, params.flow, sessionDateLabel, workspaceName]);
+  }, [absenceTemplate, classLabel, current, index, params.flow, sessionDateLabel, t, workspaceName]);
 
   const progressLabel = useMemo(() => {
     if (targets.length <= 1) return t('compose.progressSingle');
@@ -178,7 +182,7 @@ export default function MessageComposeScreen() {
         setDeliveryId(created.id);
       }
 
-      const opened = await openWhatsAppChat(current.parentPhone, messageBody.trim());
+      const opened = await openWhatsAppChat(current.parentPhone, messageBody.trim(), t);
       if (!opened) {
         await updateMessageDeliveryStatus(activeDeliveryId, 'failed', t('compose.whatsappFailed'));
         setError(t('compose.whatsappFailed'));
@@ -192,10 +196,10 @@ export default function MessageComposeScreen() {
         await updateMessageDeliveryStatus(
           deliveryId,
           'failed',
-          sendError instanceof Error ? sendError.message : 'Send failed.',
+          resolveServiceErrorMessage(sendError, t, 'compose.sendFailed'),
         );
       }
-      setError(sendError instanceof Error ? sendError.message : t('compose.sendFailed'));
+      setError(resolveServiceErrorMessage(sendError, t, 'compose.sendFailed'));
     } finally {
       setIsSending(false);
       setDeliveryId(null);
@@ -210,12 +214,12 @@ export default function MessageComposeScreen() {
         sessionId: params.sessionId ?? null,
         parentPhone: current.parentPhone,
         messageType: 'absence_alert',
-        body: messageBody.trim() || 'Skipped absence alert',
+        body: messageBody.trim() || t('compose.skippedAbsenceBody'),
         status: 'skipped',
       });
       goNext();
     } catch (skipError) {
-      setError(skipError instanceof Error ? skipError.message : t('compose.skipFailed'));
+      setError(resolveServiceErrorMessage(skipError, t, 'compose.skipFailed'));
     }
   }
 

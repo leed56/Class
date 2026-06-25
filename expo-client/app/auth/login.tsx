@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/core/auth/AuthProvider';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_ACADEMY_EMAIL,
@@ -99,7 +99,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(email);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : t('auth.signInFailed'));
+      setError(resolveServiceErrorMessage(routeError, t, 'auth.signInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +147,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(DEMO_TEACHER_EMAIL);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : t('auth.demoSignInFailed'));
+      setError(resolveServiceErrorMessage(routeError, t, 'auth.demoSignInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +195,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(DEMO_ACADEMY_EMAIL);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : t('auth.demoAcademySignInFailed'));
+      setError(resolveServiceErrorMessage(routeError, t, 'auth.demoAcademySignInFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -237,7 +237,7 @@ export default function LoginScreen() {
     try {
       await routeAfterTeacherLogin(demoEmail);
     } catch (routeError) {
-      setError(routeError instanceof Error ? routeError.message : t('auth.demoSignInFailed'));
+      setError(resolveServiceErrorMessage(routeError, t, 'auth.demoSignInFailed'));
     } finally {
       setSubmitting(false);
     }

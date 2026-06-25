@@ -2,8 +2,11 @@ import { Alert } from 'react-native';
 
 import { sendLoggedDefaulterReminder, type DefaulterReminderTarget } from '@/features/fees/feeReminderService';
 import { FeeInvoice } from '@/features/fees/models';
+import { interpolate } from '@/i18n';
 import { LanguageCode } from '@/lib/database.types';
 import { normalizeWhatsAppPhone } from '@/lib/whatsapp';
+
+type Translate = (path: string) => string;
 
 export type { DefaulterReminderTarget };
 export function groupDefaulterReminders(invoices: FeeInvoice[]): DefaulterReminderTarget[] {
@@ -29,11 +32,11 @@ export function groupDefaulterReminders(invoices: FeeInvoice[]): DefaulterRemind
     .sort((a, b) => b.totalOutstanding - a.totalOutstanding);
 }
 
-function confirmAction(title: string, message: string): Promise<boolean> {
+function confirmAction(t: Translate, title: string, message: string): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'Continue', onPress: () => resolve(true) },
+      { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+      { text: t('whatsapp.continue'), onPress: () => resolve(true) },
     ]);
   });
 }
@@ -47,6 +50,7 @@ export type BulkReminderResult = {
 export async function runBulkDefaulterReminders(
   invoices: FeeInvoice[],
   workspaceName: string,
+  t: Translate,
   locale: LanguageCode = 'en',
 ): Promise<BulkReminderResult> {
   const targets = groupDefaulterReminders(invoices);
@@ -55,10 +59,14 @@ export async function runBulkDefaulterReminders(
   }
 
   const invoiceCount = invoices.length;
-  const parentLabel = targets.length === 1 ? '1 parent' : `${targets.length} parents`;
+  const parentLabel =
+    targets.length === 1
+      ? t('fees.bulkRemindOneParent')
+      : interpolate(t('fees.bulkRemindManyParents'), { count: targets.length });
   const shouldStart = await confirmAction(
-    'Remind all defaulters?',
-    `Open WhatsApp for ${parentLabel} one at a time (${invoiceCount} open invoice${invoiceCount === 1 ? '' : 's'}). Send each message before continuing.`,
+    t,
+    t('fees.bulkRemindConfirmTitle'),
+    interpolate(t('fees.bulkRemindConfirmMessage'), { parents: parentLabel, invoices: invoiceCount }),
   );
   if (!shouldStart) {
     return { opened: 0, skipped: 0, stoppedEarly: false };
@@ -75,11 +83,12 @@ export async function runBulkDefaulterReminders(
       const extraCount = target.invoices.length - 1;
       const label =
         extraCount > 0
-          ? `${target.parentLabel} (+${extraCount} more invoice${extraCount === 1 ? '' : 's'})`
+          ? interpolate(t('fees.bulkRemindExtraInvoices'), { name: target.parentLabel, count: extraCount })
           : target.parentLabel;
       const shouldContinue = await confirmAction(
-        `Reminder ${index + 1} of ${targets.length}`,
-        `Open WhatsApp for ${label}?`,
+        t,
+        interpolate(t('fees.bulkRemindStepTitle'), { current: index + 1, total: targets.length }),
+        interpolate(t('fees.bulkRemindStepMessage'), { label }),
       );
       if (!shouldContinue) {
         stoppedEarly = true;
@@ -91,6 +100,7 @@ export async function runBulkDefaulterReminders(
       workspaceName,
       target,
       locale,
+      t,
     });
     if (result.opened) {
       opened += 1;
@@ -102,19 +112,19 @@ export async function runBulkDefaulterReminders(
   return { opened, skipped, stoppedEarly };
 }
 
-export function showBulkReminderSummary(result: BulkReminderResult) {
+export function showBulkReminderSummary(result: BulkReminderResult, t: Translate) {
   if (result.opened === 0 && result.skipped === 0) return;
 
   const parts: string[] = [];
   if (result.opened > 0) {
-    parts.push(`Opened ${result.opened} WhatsApp chat${result.opened === 1 ? '' : 's'}.`);
+    parts.push(interpolate(t('fees.bulkRemindOpened'), { count: result.opened }));
   }
   if (result.skipped > 0) {
-    parts.push(`Skipped ${result.skipped} invalid phone number${result.skipped === 1 ? '' : 's'}.`);
+    parts.push(interpolate(t('fees.bulkRemindSkipped'), { count: result.skipped }));
   }
   if (result.stoppedEarly) {
-    parts.push('Stopped before all parents were reached.');
+    parts.push(t('fees.bulkRemindStoppedEarly'));
   }
 
-  Alert.alert('Reminders', parts.join(' '));
+  Alert.alert(t('fees.bulkRemindSummaryTitle'), parts.join(' '));
 }

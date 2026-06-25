@@ -1,4 +1,5 @@
 import { AcademySector } from '@/features/courses/slCourseModel';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { InstituteType } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -42,7 +43,7 @@ export async function isPlatformAdmin() {
 
 export async function listPlatformWorkspaces(): Promise<PlatformWorkspace[]> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('list_platform_workspaces');
   if (error) throw new Error(error.message);
@@ -60,7 +61,7 @@ export async function listPlatformWorkspaces(): Promise<PlatformWorkspace[]> {
 
 export async function listPlatformInvites(): Promise<PlatformInvite[]> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('list_platform_invites');
   if (error) throw new Error(error.message);
@@ -88,7 +89,7 @@ export async function createPlatformInvite(input: {
   expiresDays?: number;
 }) {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('create_platform_invite', {
     p_institute_type: input.instituteType,
@@ -105,7 +106,7 @@ export async function createPlatformInvite(input: {
 
 export async function getPlatformInvite(token: string): Promise<PlatformInvitePreset> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('get_platform_invite', { p_token: token });
   if (error) throw new Error(error.message);
@@ -120,7 +121,7 @@ export async function getPlatformInvite(token: string): Promise<PlatformInvitePr
 
 export async function consumePlatformInvite(token: string): Promise<PlatformInvitePreset> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('consume_platform_invite', { p_token: token });
   if (error) throw new Error(error.message);

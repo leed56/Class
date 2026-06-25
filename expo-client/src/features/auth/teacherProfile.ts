@@ -1,5 +1,8 @@
 import { User } from '@supabase/supabase-js';
 
+/** English fallback when profile name is unknown — compare with this, not localized labels. */
+export const TEACHER_DISPLAY_FALLBACK = 'Teacher';
+
 export function getTeacherDisplayName(user: User | null) {
   const fullName = user?.user_metadata?.full_name;
   if (typeof fullName === 'string' && fullName.trim()) {
@@ -11,7 +14,7 @@ export function getTeacherDisplayName(user: User | null) {
     return email.split('@')[0];
   }
 
-  return 'Teacher';
+  return TEACHER_DISPLAY_FALLBACK;
 }
 
 export function getTeacherInitials(user: User | null) {
@@ -22,22 +25,6 @@ export function getTeacherInitials(user: User | null) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
-}
-
-export function getTimeGreeting(date = new Date()) {
-  const hour = date.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-export function formatTodayDate(date = new Date()) {
-  return date.toLocaleDateString('en-LK', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
 }
 
 function formatLkr(amount: number) {

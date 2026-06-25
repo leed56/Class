@@ -17,7 +17,7 @@ import { exportDefaulterCsv } from '@/features/fees/feeExport';
 import { sendLoggedFeeReminder } from '@/features/fees/feeReminderService';
 import { groupDefaulterReminders, runBulkDefaulterReminders, showBulkReminderSummary } from '@/features/fees/bulkReminders';
 import { FeeInvoice, PaymentRecord } from '@/features/fees/models';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { LanguageCode } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -32,7 +32,7 @@ export default function FeesScreen() {
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [workspaceName, setWorkspaceName] = useState('Your workspace');
+  const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceLanguage, setWorkspaceLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -55,7 +55,7 @@ export default function FeesScreen() {
       setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setWorkspaceLanguage(workspace?.default_language ?? 'en');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('fees.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'fees.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -67,9 +67,10 @@ export default function FeesScreen() {
         workspaceName,
         invoice,
         locale: workspaceLanguage,
+        t,
       });
     },
-    [workspaceLanguage, workspaceName],
+    [t, workspaceLanguage, workspaceName],
   );
 
   const sendTopReminder = useCallback(async () => {
@@ -95,12 +96,12 @@ export default function FeesScreen() {
     if (invoices.length === 0) return;
     setIsBulkReminding(true);
     try {
-      const result = await runBulkDefaulterReminders(invoices, workspaceName, workspaceLanguage);
-      showBulkReminderSummary(result);
+      const result = await runBulkDefaulterReminders(invoices, workspaceName, t, workspaceLanguage);
+      showBulkReminderSummary(result, t);
     } finally {
       setIsBulkReminding(false);
     }
-  }, [invoices, workspaceLanguage, workspaceName]);
+  }, [invoices, t, workspaceLanguage, workspaceName]);
 
   const showRemindOptions = useCallback(() => {
     if (invoices.length === 0) return;
@@ -128,7 +129,7 @@ export default function FeesScreen() {
     } catch (exportError) {
       Alert.alert(
         t('fees.exportDefaulterFailedTitle'),
-        exportError instanceof Error ? exportError.message : t('fees.exportDefaulterFailedMessage'),
+        resolveServiceErrorMessage(exportError, t, 'fees.exportDefaulterFailedMessage'),
       );
     } finally {
       setIsExporting(false);

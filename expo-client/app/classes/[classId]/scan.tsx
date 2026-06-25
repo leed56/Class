@@ -15,7 +15,7 @@ import {
 import { QrScannerPanel } from '@/features/attendance/components/QrScannerPanel';
 import { parseStudentQrPayload } from '@/features/attendance/qrAttendance';
 import { AttendanceStudent } from '@/features/attendance/models';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -82,7 +82,7 @@ function ClassAttendanceScanContent() {
         }),
       );
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classScan.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classScan.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +133,7 @@ function ClassAttendanceScanContent() {
       ].slice(0, 8));
       setFlash(interpolate(t('classScan.markedPresent'), { name: studentName }));
     } catch (markError) {
-      setError(markError instanceof Error ? markError.message : t('classScan.markFailed'));
+      setError(resolveServiceErrorMessage(markError, t, 'classScan.markFailed'));
     } finally {
       setIsMarking(false);
       setTimeout(() => setFlash(null), 1500);

@@ -11,7 +11,7 @@ import {
   listMessageDeliveries,
   MessageDelivery,
 } from '@/features/communications/communicationService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -59,7 +59,7 @@ export default function DeliveryLogScreen() {
       setItems(deliveries);
       setStats(nextStats);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('deliveryLog.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'deliveryLog.loadFailed'));
     } finally {
       setIsLoading(false);
     }

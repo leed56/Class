@@ -19,7 +19,7 @@ import {
 } from '@/features/attendance/attendanceService';
 import { AttendanceSession, AttendanceStatus, AttendanceStudent } from '@/features/attendance/models';
 import { AttendanceSessionRow, Medium } from '@/lib/database.types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -64,7 +64,7 @@ function ClassAttendanceContent() {
       setStudents(sheet.students);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classAttendance.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classAttendance.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +101,7 @@ function ClassAttendanceContent() {
       const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (markError) {
-      setError(markError instanceof Error ? markError.message : t('classAttendance.updateFailed'));
+      setError(resolveServiceErrorMessage(markError, t, 'classAttendance.updateFailed'));
     }
   }
 
@@ -119,7 +119,7 @@ function ClassAttendanceContent() {
       const sheet = await loadAttendanceSheet(params.classId!, params.sessionDate);
       setPendingSyncCount(sheet.pendingSyncCount);
     } catch (bulkError) {
-      setError(bulkError instanceof Error ? bulkError.message : t('classAttendance.bulkFailed'));
+      setError(resolveServiceErrorMessage(bulkError, t, 'classAttendance.bulkFailed'));
     }
   }
 
@@ -138,7 +138,7 @@ function ClassAttendanceContent() {
         setError(interpolate(t('classAttendance.syncPartial'), { synced: result.synced, failed: result.failed }));
       }
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : t('classAttendance.syncFailed'));
+      setError(resolveServiceErrorMessage(syncError, t, 'classAttendance.syncFailed'));
     } finally {
       setIsSyncing(false);
     }
@@ -176,7 +176,7 @@ function ClassAttendanceContent() {
 
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('classAttendance.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'classAttendance.saveFailed'));
     } finally {
       setIsSaving(false);
     }

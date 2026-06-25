@@ -10,7 +10,7 @@ import { PremiumCard } from '@/components/PremiumCard';
 import { getBranchMonthlyReports } from '@/features/locations/branchReportsService';
 import { BranchReportRow } from '@/features/locations/models';
 import { getReportSummary } from '@/features/reports/reportsService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -34,7 +34,7 @@ export default function BranchReportsScreen() {
       setMonthLabel(summary.monthLabel);
       setRows(branchRows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('branchReports.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'branchReports.loadFailed'));
     } finally {
       setIsLoading(false);
     }

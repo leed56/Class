@@ -15,7 +15,7 @@ import {
   listAvailableStudentsForClass,
 } from '@/features/enrollment/enrollmentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -52,7 +52,7 @@ export default function EnrollStudentsScreen() {
       setAvailableStudents(students);
       if (!nextClass) setError(t('classEnroll.classNotFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classEnroll.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classEnroll.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ export default function EnrollStudentsScreen() {
         setTuitionClass({ ...tuitionClass, enrolledCount: tuitionClass.enrolledCount + 1 });
       }
     } catch (enrollError) {
-      setError(enrollError instanceof Error ? enrollError.message : t('classEnroll.enrollFailed'));
+      setError(resolveServiceErrorMessage(enrollError, t, 'classEnroll.enrollFailed'));
     } finally {
       setEnrollingId(null);
     }

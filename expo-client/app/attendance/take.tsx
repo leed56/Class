@@ -9,7 +9,7 @@ import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
-import { formatWeekdayName, getCanonicalWeekday, interpolate } from '@/i18n';
+import { formatWeekdayName, getCanonicalWeekday, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Locale } from '@/i18n/types';
 import { colors } from '@/theme/colors';
@@ -36,7 +36,7 @@ export default function AttendancePickerScreen() {
       const nextClasses = await listClasses();
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('attendancePicker.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'attendancePicker.loadFailed'));
     } finally {
       setIsLoading(false);
     }

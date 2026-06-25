@@ -13,6 +13,7 @@ import {
 } from '@/features/students/components/StudentProfileForm';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { createStudent } from '@/features/students/studentService';
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -57,7 +58,7 @@ export default function NewStudentScreen() {
       });
       router.replace('/(tabs)/students');
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('studentForm.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'studentForm.saveFailed'));
     } finally {
       setSubmitting(false);
     }

@@ -50,6 +50,7 @@ export async function sendLoggedFeeReminder(input: {
   workspaceName: string;
   invoice: FeeInvoice;
   locale?: LanguageCode;
+  t?: (path: string) => string;
 }) {
   const message = buildFeeReminderMessage({
     workspaceName: input.workspaceName,
@@ -69,11 +70,11 @@ export async function sendLoggedFeeReminder(input: {
     status: 'draft',
   });
 
-  const opened = await openWhatsAppChat(input.invoice.parentPhone, message);
+  const opened = await openWhatsAppChat(input.invoice.parentPhone, message, input.t);
   await updateMessageDeliveryStatus(
     delivery.id,
     opened ? 'sent' : 'failed',
-    opened ? null : 'Could not open WhatsApp.',
+    opened ? null : (input.t?.('compose.whatsappFailed') ?? 'Could not open WhatsApp.'),
   );
 
   return { opened, deliveryId: delivery.id };
@@ -83,6 +84,7 @@ export async function sendLoggedDefaulterReminder(input: {
   workspaceName: string;
   target: DefaulterReminderTarget;
   locale?: LanguageCode;
+  t?: (path: string) => string;
 }) {
   const message = buildDefaulterReminderMessage(input.workspaceName, input.target, input.locale ?? 'en');
   const primaryStudentId = input.target.invoices[0]?.studentId ?? null;
@@ -96,11 +98,11 @@ export async function sendLoggedDefaulterReminder(input: {
     status: 'draft',
   });
 
-  const opened = await openWhatsAppChat(input.target.parentPhone, message);
+  const opened = await openWhatsAppChat(input.target.parentPhone, message, input.t);
   await updateMessageDeliveryStatus(
     delivery.id,
     opened ? 'sent' : 'failed',
-    opened ? null : 'Could not open WhatsApp.',
+    opened ? null : (input.t?.('compose.whatsappFailed') ?? 'Could not open WhatsApp.'),
   );
 
   return { opened, deliveryId: delivery.id };

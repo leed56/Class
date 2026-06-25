@@ -13,7 +13,7 @@ import { FormTextField } from '@/features/students/components/FormTextField';
 import { getStudentById, listStudents } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
 import { InvoiceType } from '@/lib/database.types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -58,7 +58,7 @@ export default function IssueChargeScreen() {
         setClassLabel(GENERAL_CLASS);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('issueCharge.loadStudentsFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'issueCharge.loadStudentsFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +89,7 @@ export default function IssueChargeScreen() {
       setEnrollments(nextEnrollments);
       setClassLabel(GENERAL_CLASS);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('issueCharge.loadStudentFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'issueCharge.loadStudentFailed'));
     }
   }
 
@@ -111,7 +111,7 @@ export default function IssueChargeScreen() {
       });
       router.replace(`/fees/record-payment?studentId=${selectedStudentId}&invoiceId=${invoiceId}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('issueCharge.issueFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'issueCharge.issueFailed'));
     } finally {
       setIsSaving(false);
     }

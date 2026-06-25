@@ -1,18 +1,18 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace, updateWorkspace } from '@/features/auth/authService';
 import { PermissionGate } from '@/features/auth/PermissionGate';
-import { getDefaultCertificateBodies, PLACEHOLDERS } from '@/features/certificates/certificatePdf';
+import { PLACEHOLDERS } from '@/features/certificates/certificatePdf';
 import { getSectorCertificatePreset, listSectorCertificatePresets } from '@/features/certificates/certificateSectorPresets';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { InstituteType } from '@/lib/database.types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -28,14 +28,23 @@ export default function CertificateTemplatesScreen() {
 function CertificateTemplatesContent() {
   const router = useRouter();
   const { t } = useI18n();
+  const templateDefaults = useMemo(
+    () => ({
+      signatoryTitle: t('certTemplates.signatoryTitlePlaceholder'),
+      completionBody: t('certTemplates.defaultCompletionBody'),
+      achievementBody: t('certTemplates.defaultAchievementBody'),
+      footerNote: t('certTemplates.footerPlaceholder'),
+    }),
+    [t],
+  );
   const [instituteType, setInstituteType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
   const [signatoryName, setSignatoryName] = useState('');
-  const [signatoryTitle, setSignatoryTitle] = useState('Director');
-  const [completionBody, setCompletionBody] = useState(getDefaultCertificateBodies().completionBody);
-  const [achievementBody, setAchievementBody] = useState(getDefaultCertificateBodies().achievementBody);
-  const [footerNote, setFooterNote] = useState(getDefaultCertificateBodies().footerNote);
+  const [signatoryTitle, setSignatoryTitle] = useState('');
+  const [completionBody, setCompletionBody] = useState('');
+  const [achievementBody, setAchievementBody] = useState('');
+  const [footerNote, setFooterNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,16 +58,16 @@ function CertificateTemplatesContent() {
       setAcademySector(workspace?.academy_sector ?? null);
       setWorkspaceName(workspace?.name ?? '');
       setSignatoryName(workspace?.certificate_signatory_name ?? '');
-      setSignatoryTitle(workspace?.certificate_signatory_title ?? 'Director');
-      setCompletionBody(workspace?.certificate_completion_body ?? getDefaultCertificateBodies().completionBody);
-      setAchievementBody(workspace?.certificate_achievement_body ?? getDefaultCertificateBodies().achievementBody);
-      setFooterNote(workspace?.certificate_footer_note ?? getDefaultCertificateBodies().footerNote);
+      setSignatoryTitle(workspace?.certificate_signatory_title ?? templateDefaults.signatoryTitle);
+      setCompletionBody(workspace?.certificate_completion_body ?? templateDefaults.completionBody);
+      setAchievementBody(workspace?.certificate_achievement_body ?? templateDefaults.achievementBody);
+      setFooterNote(workspace?.certificate_footer_note ?? templateDefaults.footerNote);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('certTemplates.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'certTemplates.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t, templateDefaults]);
 
   useEffect(() => {
     loadSettings();
@@ -77,7 +86,7 @@ function CertificateTemplatesContent() {
       });
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('certTemplates.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'certTemplates.saveFailed'));
     } finally {
       setIsSaving(false);
     }

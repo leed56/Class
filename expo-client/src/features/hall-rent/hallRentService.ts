@@ -1,9 +1,11 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { TEACHER_DISPLAY_FALLBACK } from '@/features/auth/teacherProfile';
 import { getCurrentMonthKey, formatMonthLabel } from '@/features/fees/feeService';
 import { getHallLabel } from '@/features/locations/branchService';
 import { listWorkspaceStaff } from '@/features/auth/staffService';
 import { HallBookingRow, HallRentInvoiceRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
+import { throwServiceError } from '@/i18n/serviceErrors';
 
 import {
   HallBooking,
@@ -71,7 +73,7 @@ async function buildTeacherNameLookup() {
   return new Map(
     staff.map((member) => [
       member.userId,
-      member.fullName.trim() || member.email.split('@')[0] || 'Teacher',
+      member.fullName.trim() || member.email.split('@')[0] || TEACHER_DISPLAY_FALLBACK,
     ]),
   );
 }
@@ -150,7 +152,7 @@ export async function listHallBookings(includeInactive = false) {
   return Promise.all(
     rows.map(async (row) => {
       const hallLabel = (await getHallLabel(row.hall_id)) ?? 'Hall';
-      const teacherName = teacherNames.get(row.teacher_user_id) ?? 'Teacher';
+      const teacherName = teacherNames.get(row.teacher_user_id) ?? TEACHER_DISPLAY_FALLBACK;
       return mapBookingRow(row, hallLabel, teacherName);
     }),
   );
@@ -158,17 +160,17 @@ export async function listHallBookings(includeInactive = false) {
 
 export async function createHallBooking(input: HallBookingInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const startTime = parseTimeToDb(input.startTime, 'Start time is required.');
   const endTime = parseTimeToDb(input.endTime, 'End time is required.');
-  if (endTime <= startTime) throw new Error('End time must be after start time.');
+  if (endTime <= startTime) throwServiceError('endTimeAfterStart');
 
   const monthlyRent = Math.max(0, Math.round(input.monthlyRentLkr));
-  if (monthlyRent <= 0) throw new Error('Monthly hall rent is required.');
+  if (monthlyRent <= 0) throwServiceError('monthlyRentRequired');
 
   const { data, error } = await supabase
     .from('hall_bookings')
@@ -193,16 +195,16 @@ export async function createHallBooking(input: HallBookingInput) {
   return mapBookingRow(
     data as HallBookingRow,
     hallLabel,
-    teacherNames.get(data.teacher_user_id) ?? 'Teacher',
+    teacherNames.get(data.teacher_user_id) ?? TEACHER_DISPLAY_FALLBACK,
   );
 }
 
 export async function archiveHallBooking(bookingId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('hall_bookings')
@@ -214,7 +216,7 @@ export async function archiveHallBooking(bookingId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Booking not found or already archived.');
+  if (!data) throwServiceError('bookingNotFoundOrArchived');
 }
 
 export async function ensureHallRentInvoicesForMonth(monthKey = getCurrentMonthKey()) {
@@ -269,7 +271,7 @@ export async function listHallRentInvoices(monthKey = getCurrentMonthKey()) {
   const bookingMap = new Map(bookings.map((booking) => [booking.id, booking]));
 
   return ((data ?? []) as HallRentInvoiceRow[]).map((row) =>
-    mapInvoiceRow(row, bookingMap.get(row.booking_id) ?? null, teacherNames.get(row.teacher_user_id) ?? 'Teacher'),
+    mapInvoiceRow(row, bookingMap.get(row.booking_id) ?? null, teacherNames.get(row.teacher_user_id) ?? TEACHER_DISPLAY_FALLBACK),
   );
 }
 
@@ -299,13 +301,13 @@ export async function getHallRentSummary(monthKey = getCurrentMonthKey()): Promi
 
 export async function recordHallRentPayment(invoiceId: string, amount: number) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const payment = Math.max(0, Math.round(amount));
-  if (payment <= 0) throw new Error('Payment amount is required.');
+  if (payment <= 0) throwServiceError('paymentAmountRequired');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: invoice, error: loadError } = await supabase
     .from('hall_rent_invoices')
@@ -315,12 +317,12 @@ export async function recordHallRentPayment(invoiceId: string, amount: number) {
     .maybeSingle();
 
   if (loadError) throw new Error(loadError.message);
-  if (!invoice) throw new Error('Rent invoice not found.');
+  if (!invoice) throwServiceError('rentInvoiceNotFound');
 
   const row = invoice as HallRentInvoiceRow;
   const outstanding = Math.max(0, row.amount - row.paid_amount);
-  if (outstanding <= 0) throw new Error('This invoice is already settled.');
-  if (payment > outstanding) throw new Error('Payment exceeds outstanding rent.');
+  if (outstanding <= 0) throwServiceError('invoiceAlreadySettled');
+  if (payment > outstanding) throwServiceError('paymentExceedsOutstandingRent');
 
   const { error } = await supabase
     .from('hall_rent_invoices')

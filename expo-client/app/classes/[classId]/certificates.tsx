@@ -14,12 +14,13 @@ import {
   issueCertificatesBulk,
   CertificateType,
   getCertificateEligibilityForStudents,
+  formatCertificateEligibilityBlocker,
   CertificateEligibility,
 } from '@/features/certificates/certificateService';
 import { listClassRoster, ClassRosterEntry } from '@/features/enrollment/enrollmentService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -113,7 +114,7 @@ function ClassCertificatesContent() {
         setLoadError(t('certificates.classNotFound'));
       }
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : t('certificates.loadClassFailed'));
+      setLoadError(resolveServiceErrorMessage(error, t, 'certificates.loadClassFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -157,7 +158,7 @@ function ClassCertificatesContent() {
       setNote('');
       await load();
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : t('certificates.issueFailed'));
+      setFormError(resolveServiceErrorMessage(error, t, 'certificates.issueFailed'));
     } finally {
       setIsIssuing(false);
     }
@@ -351,7 +352,10 @@ function ClassCertificatesContent() {
                             </View>
                             {!eligibilityByStudent[entry.student.id].eligible ? (
                               <Text style={styles.blockerText}>
-                                {eligibilityByStudent[entry.student.id].blockers[0]}
+                                {formatCertificateEligibilityBlocker(
+                                  eligibilityByStudent[entry.student.id].blockers[0],
+                                  t,
+                                )}
                               </Text>
                             ) : null}
                           </>

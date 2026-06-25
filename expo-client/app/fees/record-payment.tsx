@@ -14,7 +14,7 @@ import { getInvoiceById, listOutstandingInvoices, listStudentOpenInvoices, recor
 import { FeeInvoice } from '@/features/fees/models';
 import { FormTextField } from '@/features/students/components/FormTextField';
 import { PaymentMethod } from '@/lib/database.types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -94,7 +94,7 @@ function RecordPaymentContent() {
         setInvoice(null);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('recordPayment.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'recordPayment.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +131,7 @@ function RecordPaymentContent() {
       });
       router.replace(`/fees/receipt/${result.receiptNo}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('recordPayment.recordFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'recordPayment.recordFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -168,7 +168,7 @@ function RecordPaymentContent() {
       setReceiptNo(result.payment.receiptNo);
       router.replace(`/fees/receipt/${result.payment.receiptNo}` as Href);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('recordPayment.recordFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'recordPayment.recordFailed'));
     } finally {
       setIsSaving(false);
     }

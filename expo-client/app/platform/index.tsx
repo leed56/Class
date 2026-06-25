@@ -13,7 +13,7 @@ import {
   PlatformInvite,
   PlatformWorkspace,
 } from '@/features/platform/platformService';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -49,7 +49,7 @@ export default function PlatformAdminScreen() {
       setWorkspaces(nextWorkspaces);
       setInvites(nextInvites);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('platformAdmin.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'platformAdmin.loadFailed'));
     } finally {
       setIsLoading(false);
     }

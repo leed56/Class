@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { flushQueuedParentOtpSms } from '@/features/notifications/smsOutboxService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { getSupabase } from '@/lib/supabase';
 
 const PARENT_SESSION_KEY = 'classflow:parent_session';
@@ -81,7 +82,7 @@ export async function clearParentSession() {
 
 export async function requestParentOtp(phone: string) {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('request_parent_otp', { raw_phone: phone.trim() });
   if (error) throw new Error(error.message);
@@ -103,7 +104,7 @@ export async function requestParentOtp(phone: string) {
 
 export async function verifyParentOtp(phone: string, code: string) {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase.rpc('verify_parent_otp', {
     raw_phone: phone.trim(),

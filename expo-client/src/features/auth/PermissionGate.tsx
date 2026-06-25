@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Permission } from '@/features/auth/permissions';
 import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
+import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
@@ -19,11 +20,13 @@ export function PermissionGate({
   permission,
   children,
   fallbackHref = '/(tabs)/more' as Href,
-  message = 'You do not have permission to open this screen.',
+  message,
 }: PermissionGateProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const { isLoading, hasPermission } = useWorkspaceRole();
   const allowed = hasPermission(permission);
+  const deniedMessage = message ?? t('common.permissionDenied');
 
   useEffect(() => {
     if (!isLoading && !allowed) {
@@ -45,7 +48,7 @@ export function PermissionGate({
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text style={styles.message}>{message}</Text>
+          <Text style={styles.message}>{deniedMessage}</Text>
         </View>
       </SafeAreaView>
     );

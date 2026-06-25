@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { WorkspaceRole } from '@/lib/database.types';
 
 import { getCurrentWorkspace } from './authService';
@@ -66,7 +67,7 @@ export async function listWorkspaceStaff(): Promise<WorkspaceStaffMember[]> {
 
 export async function addStaffMemberByEmail(email: string, role: WorkspaceRole) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const { error } = await supabase.rpc('add_workspace_member_by_email', {
     p_workspace_id: workspace.id,
@@ -79,7 +80,7 @@ export async function addStaffMemberByEmail(email: string, role: WorkspaceRole) 
 
 export async function updateStaffMemberRole(userId: string, role: WorkspaceRole) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const { error } = await supabase.rpc('update_workspace_member_role', {
     p_workspace_id: workspace.id,
@@ -92,7 +93,7 @@ export async function updateStaffMemberRole(userId: string, role: WorkspaceRole)
 
 export async function removeStaffMember(userId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const { error } = await supabase.rpc('remove_workspace_member', {
     p_workspace_id: workspace.id,

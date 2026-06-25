@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { BranchRow, HallRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -83,13 +84,13 @@ export async function listBranches(includeInactive = false) {
 
 export async function createBranch(name: string, address?: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Branch name is required.');
+  if (!trimmed) throwServiceError('branchNameRequired');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('branches')
@@ -108,18 +109,18 @@ export async function createBranch(name: string, address?: string) {
 
 export async function updateBranch(branchId: string, input: { name?: string; address?: string }) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const updates: { name?: string; address?: string | null } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
-    if (!trimmed) throw new Error('Branch name is required.');
+    if (!trimmed) throwServiceError('branchNameRequired');
     updates.name = trimmed;
   }
   if (input.address !== undefined) updates.address = input.address.trim() || null;
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('branches')
@@ -131,16 +132,16 @@ export async function updateBranch(branchId: string, input: { name?: string; add
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Branch not found.');
+  if (!data) throwServiceError('branchNotFound');
   return mapBranch(data as BranchRow);
 }
 
 export async function archiveBranch(branchId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('branches')
@@ -152,7 +153,7 @@ export async function archiveBranch(branchId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Branch not found or already archived.');
+  if (!data) throwServiceError('branchNotFoundOrArchived');
 }
 
 export async function listHalls(branchId?: string, includeInactive = false) {
@@ -185,13 +186,13 @@ export async function listHalls(branchId?: string, includeInactive = false) {
 
 export async function createHall(branchId: string, name: string, capacity?: number) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Hall name is required.');
+  if (!trimmed) throwServiceError('hallNameRequired');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('halls')
@@ -218,12 +219,12 @@ export async function updateHall(
   input: { name?: string; capacity?: number | null },
 ) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const updates: { name?: string; capacity?: number | null } = {};
   if (input.name !== undefined) {
     const trimmed = input.name.trim();
-    if (!trimmed) throw new Error('Hall name is required.');
+    if (!trimmed) throwServiceError('hallNameRequired');
     updates.name = trimmed;
   }
   if (input.capacity !== undefined) {
@@ -231,7 +232,7 @@ export async function updateHall(
   }
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('halls')
@@ -243,7 +244,7 @@ export async function updateHall(
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Hall not found.');
+  if (!data) throwServiceError('hallRecordNotFound');
   const branchName =
     typeof data.branches === 'object' && data.branches && 'name' in data.branches
       ? String(data.branches.name)
@@ -253,10 +254,10 @@ export async function updateHall(
 
 export async function archiveHall(hallId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Workspace not found.');
+  if (!workspace) throwServiceError('workspaceNotFound');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('halls')
@@ -268,7 +269,7 @@ export async function archiveHall(hallId: string) {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Hall not found or already archived.');
+  if (!data) throwServiceError('hallRecordNotFoundOrArchived');
 }
 
 export async function listHallOptions(): Promise<HallOption[]> {

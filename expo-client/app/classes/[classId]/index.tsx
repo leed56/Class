@@ -14,7 +14,7 @@ import { EnrolledStudentRow } from '@/features/enrollment/components/EnrolledStu
 import { ClassRosterEntry, listClassRoster, unenrollStudentFromClass } from '@/features/enrollment/enrollmentService';
 import { listInvoicesForMonth } from '@/features/fees/feeService';
 import { FeeInvoice } from '@/features/fees/models';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -50,7 +50,7 @@ export default function ClassDetailScreen() {
       setInvoices(nextInvoices.filter((invoice) => invoice.classId === params.classId));
       if (!nextClass) setError(t('classDetail.notFound'));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('classDetail.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'classDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +68,7 @@ export default function ClassDetailScreen() {
       await unenrollStudentFromClass(params.classId, studentId);
       await loadClass();
     } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : t('classDetail.removeFailed'));
+      setError(resolveServiceErrorMessage(removeError, t, 'classDetail.removeFailed'));
     }
   }
 
@@ -95,7 +95,7 @@ export default function ClassDetailScreen() {
       await archiveClass(params.classId);
       router.replace('/(tabs)/classes');
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : t('classDetail.archiveFailed'));
+      setError(resolveServiceErrorMessage(archiveError, t, 'classDetail.archiveFailed'));
     } finally {
       setIsArchiving(false);
     }

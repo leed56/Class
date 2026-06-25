@@ -6,8 +6,9 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
-import { ACADEMY_SECTORS, AcademySector } from '@/features/courses/slCourseModel';
+import { AcademySector } from '@/features/courses/slCourseModel';
 import { buildInviteUrl, createPlatformInvite } from '@/features/platform/platformService';
+import { listLocalizedSectors, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -34,6 +35,8 @@ export default function NewPlatformInviteScreen() {
     [t],
   );
 
+  const localizedSectors = useMemo(() => listLocalizedSectors(t), [t]);
+
   async function handleCreate() {
     setSubmitting(true);
     setError(null);
@@ -48,7 +51,7 @@ export default function NewPlatformInviteScreen() {
       });
       setInviteUrl(buildInviteUrl(result.token));
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('platformInvite.createFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'platformInvite.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +100,7 @@ export default function NewPlatformInviteScreen() {
             <>
               <Text style={styles.label}>{t('platformInvite.academySectorLabel')}</Text>
               <View style={styles.chipRow}>
-                {ACADEMY_SECTORS.map((sector) => (
+                {localizedSectors.map((sector) => (
                   <Pressable
                     key={sector.id}
                     style={[styles.chip, academySector === sector.id && styles.chipActive]}

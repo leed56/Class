@@ -1,6 +1,12 @@
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getStudentAttendancePercents } from '@/features/attendance/attendanceService';
 import { getStudentFeeSummaries } from '@/features/fees/feeService';
+import {
+  resolveServiceErrorMessage,
+  ServiceError,
+  ServiceErrorCode,
+  throwServiceError,
+} from '@/i18n/serviceErrors';
 import { CertificatePrintRow, CertificateRow } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 
@@ -48,12 +54,17 @@ export type IssueBulkCertificatesInput = {
   issuedOn?: string;
 };
 
+export type CertificateEligibilityBlocker = {
+  code: ServiceErrorCode;
+  params?: Record<string, string | number>;
+};
+
 export type CertificateEligibility = {
   studentId: string;
   attendancePercent: number;
   outstandingAmount: number;
   eligible: boolean;
-  blockers: string[];
+  blockers: CertificateEligibilityBlocker[];
 };
 
 export type IssueBulkCertificatesResult = {
@@ -95,9 +106,11 @@ export function getCertificateTemplateFromWorkspace(
     certificate_achievement_body?: string;
     certificate_footer_note?: string;
   } | null,
+  options?: { workspaceNameFallback?: string },
 ): CertificateTemplateSettings & { workspaceName: string } {
+  const workspaceNameFallback = options?.workspaceNameFallback ?? 'Your workspace';
   return {
-    workspaceName: workspace?.name ?? 'Your workspace',
+    workspaceName: workspace?.name ?? workspaceNameFallback,
     signatoryName: workspace?.certificate_signatory_name ?? '',
     signatoryTitle: workspace?.certificate_signatory_title ?? 'Director',
     completionBody:
@@ -122,8 +135,16 @@ export function formatCertificateDate(value: string) {
   return formatDate(value);
 }
 
-function formatLkr(value: number) {
-  return `LKR ${value.toLocaleString('en-LK')}`;
+export function formatCertificateEligibilityBlocker(
+  blocker: CertificateEligibilityBlocker,
+  t: (path: string) => string,
+) {
+  return resolveServiceErrorMessage(new ServiceError(blocker.code, blocker.params), t, 'certificates.notEligible');
+}
+
+function throwEligibilityBlocker(blocker: CertificateEligibilityBlocker | undefined) {
+  if (blocker) throwServiceError(blocker.code, blocker.params);
+  throwServiceError('studentNotEligibleForCertificate');
 }
 
 function buildEligibility(
@@ -133,12 +154,18 @@ function buildEligibility(
   minAttendanceForCertificate: number,
   requireFeesClearForCertificate: boolean,
 ): CertificateEligibility {
-  const blockers: string[] = [];
+  const blockers: CertificateEligibilityBlocker[] = [];
   if (attendancePercent < minAttendanceForCertificate) {
-    blockers.push(`Attendance ${attendancePercent}% is below required ${minAttendanceForCertificate}%.`);
+    blockers.push({
+      code: 'certificateAttendanceBelowRequired',
+      params: { actual: attendancePercent, required: minAttendanceForCertificate },
+    });
   }
   if (requireFeesClearForCertificate && outstandingAmount > 0) {
-    blockers.push(`Outstanding fees: ${formatLkr(outstandingAmount)}.`);
+    blockers.push({
+      code: 'certificateOutstandingFees',
+      params: { amount: outstandingAmount.toLocaleString('en-LK') },
+    });
   }
 
   return {
@@ -154,9 +181,9 @@ export async function getCertificateEligibilityForStudents(studentIds: string[])
   if (studentIds.length === 0) return new Map<string, CertificateEligibility>();
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
   if (workspace.institute_type === 'solo') {
-    throw new Error('Certification is available for academy and institute workspaces.');
+    throwServiceError('certificationAcademyInstituteOnly');
   }
 
   const uniqueIds = [...new Set(studentIds)];
@@ -185,7 +212,7 @@ export async function getCertificateEligibilityForStudents(studentIds: string[])
 
 async function getNextCertificateNumber(workspaceId: string) {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('certificates')
@@ -211,10 +238,10 @@ function formatCertificateSerialNo(value: number) {
 
 export async function listStudentCertificates(studentId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('certificates')
@@ -230,10 +257,10 @@ export async function listStudentCertificates(studentId: string) {
 
 export async function getStudentCertificateById(studentId: string, certificateId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('certificates')
@@ -250,21 +277,21 @@ export async function getStudentCertificateById(studentId: string, certificateId
 
 export async function issueCertificate(input: IssueCertificateInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
   if (workspace.institute_type === 'solo') {
-    throw new Error('Certification is available for academy and institute workspaces.');
+    throwServiceError('certificationAcademyInstituteOnly');
   }
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const title = input.title.trim();
-  if (!title) throw new Error('Certificate title is required.');
+  if (!title) throwServiceError('certificateTitleRequired');
 
   const eligibility = await getCertificateEligibilityForStudents([input.studentId]);
   const studentEligibility = eligibility.get(input.studentId);
   if (!studentEligibility?.eligible) {
-    throw new Error(studentEligibility?.blockers[0] ?? 'Student is not eligible for certification.');
+    throwEligibilityBlocker(studentEligibility?.blockers[0]);
   }
 
   const serialNo = formatCertificateSerialNo(await getNextCertificateNumber(workspace.id));
@@ -289,19 +316,19 @@ export async function issueCertificate(input: IssueCertificateInput) {
 
 export async function issueCertificatesBulk(input: IssueBulkCertificatesInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
   if (workspace.institute_type === 'solo') {
-    throw new Error('Certification is available for academy and institute workspaces.');
+    throwServiceError('certificationAcademyInstituteOnly');
   }
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const studentIds = [...new Set(input.studentIds)];
-  if (studentIds.length === 0) throw new Error('Select at least one student.');
+  if (studentIds.length === 0) throwServiceError('selectStudentForCertificate');
 
   const title = input.title.trim();
-  if (!title) throw new Error('Certificate title is required.');
+  if (!title) throwServiceError('certificateTitleRequired');
 
   const eligibilityMap = await getCertificateEligibilityForStudents(studentIds);
   const blocked = studentIds
@@ -309,7 +336,9 @@ export async function issueCertificatesBulk(input: IssueBulkCertificatesInput) {
     .filter((item): item is CertificateEligibility => !!item && !item.eligible);
   const eligibleIds = studentIds.filter((studentId) => eligibilityMap.get(studentId)?.eligible);
   if (eligibleIds.length === 0) {
-    throw new Error(blocked[0]?.blockers[0] ?? 'No eligible students selected for certification.');
+    const blocker = blocked[0]?.blockers[0];
+    if (blocker) throwServiceError(blocker.code, blocker.params);
+    throwServiceError('noEligibleStudentsForCertificate');
   }
 
   const issuedOn = input.issuedOn ?? new Date().toISOString().slice(0, 10);
@@ -335,10 +364,10 @@ export async function issueCertificatesBulk(input: IssueBulkCertificatesInput) {
 
 export async function listCertificatePrints(certificateId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('certificate_prints')
@@ -354,10 +383,10 @@ export async function listCertificatePrints(certificateId: string) {
 
 export async function logCertificatePrint(certificateId: string, action: CertificatePrintAction) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const {
     data: { user },
@@ -375,10 +404,10 @@ export async function logCertificatePrint(certificateId: string, action: Certifi
 
 export async function revokeCertificate(certificateId: string, reason?: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing certificates.');
+  if (!workspace) throwServiceError('workspaceRequiredCertificates');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('certificates')
@@ -393,6 +422,6 @@ export async function revokeCertificate(certificateId: string, reason?: string) 
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error('Certificate not found or already revoked.');
+  if (!data) throwServiceError('certificateNotFoundOrRevoked');
   return mapCertificateRow(data as CertificateRow);
 }

@@ -21,25 +21,27 @@ import {
   isDemoMaritimeAccountEmail,
   seedAcademyDemoData,
 } from '@/features/auth/demoSetupService';
-import { getTeacherDisplayName } from '@/features/auth/teacherProfile';
+import { getTeacherDisplayName, TEACHER_DISPLAY_FALLBACK } from '@/features/auth/teacherProfile';
 import {
-  ACADEMY_SECTORS,
   AcademySector,
   DEFAULT_ACADEMY_SECTOR,
-  getSectorInfo,
 } from '@/features/courses/slCourseModel';
 import { InstituteType, LanguageCode } from '@/lib/database.types';
 import { clearInviteToken, readInviteToken } from '@/features/platform/inviteStorage';
 import { consumePlatformInvite, getPlatformInvite } from '@/features/platform/platformService';
-import { interpolate } from '@/i18n';
+import { getLocalizedSectorInfo, interpolate, listLocalizedSectors, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-const languageOptionValues: { label: string; value: LanguageCode; helperKey: 'langEnHelper' | 'langSiHelper' | 'langTaHelper' }[] = [
-  { label: 'English', value: 'en', helperKey: 'langEnHelper' },
-  { label: 'සිංහල', value: 'si', helperKey: 'langSiHelper' },
-  { label: 'தமிழ்', value: 'ta', helperKey: 'langTaHelper' },
+const languageOptionValues: {
+  value: LanguageCode;
+  settingsLabelKey: 'english' | 'sinhala' | 'tamil';
+  helperKey: 'langEnHelper' | 'langSiHelper' | 'langTaHelper';
+}[] = [
+  { value: 'en', settingsLabelKey: 'english', helperKey: 'langEnHelper' },
+  { value: 'si', settingsLabelKey: 'sinhala', helperKey: 'langSiHelper' },
+  { value: 'ta', settingsLabelKey: 'tamil', helperKey: 'langTaHelper' },
 ];
 
 const workspaceTypeValues: {
@@ -80,6 +82,9 @@ export default function OnboardingScreen() {
 
   const isAcademyPreset = presetMode === 'academy' || presetMode === 'maritime' || presetMode === 'it';
 
+  const localizedSectors = useMemo(() => listLocalizedSectors(t), [t]);
+  const selectedSector = useMemo(() => getLocalizedSectorInfo(academySector, t), [academySector, t]);
+
   useEffect(() => {
     if (presetMode === 'maritime') {
       setWorkspaceType('academy');
@@ -100,7 +105,7 @@ export default function OnboardingScreen() {
     }
 
     const teacherName = getTeacherDisplayName(user);
-    setWorkspaceName(teacherName === 'Teacher' ? '' : `${teacherName} Classes`);
+    setWorkspaceName(teacherName === TEACHER_DISPLAY_FALLBACK ? '' : `${teacherName} Classes`);
     setWorkspaceType(presetMode === 'institute' ? 'institute' : presetMode === 'solo' ? 'solo' : 'academy');
   }, [user, isAcademyPreset, presetMode]);
 
@@ -208,7 +213,7 @@ export default function OnboardingScreen() {
       await clearInviteToken();
       router.replace('/(tabs)');
     } catch (setupError) {
-      setError(setupError instanceof Error ? setupError.message : t('onboarding.createFailed'));
+      setError(resolveServiceErrorMessage(setupError, t, 'onboarding.createFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -296,17 +301,17 @@ export default function OnboardingScreen() {
               </Text>
             </View>
             {inviteLocked ? (
-              getSectorInfo(academySector) ? (
+              selectedSector ? (
                 <View style={styles.sectorLockedCard}>
                   <MaterialCommunityIcons
-                    name={getSectorInfo(academySector)!.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                    name={selectedSector.icon as keyof typeof MaterialCommunityIcons.glyphMap}
                     size={22}
                     color={colors.primary}
                   />
                   <View style={styles.sectorLockedCopy}>
-                    <Text style={styles.sectorLockedTitle}>{getSectorInfo(academySector)!.label}</Text>
+                    <Text style={styles.sectorLockedTitle}>{selectedSector.label}</Text>
                     <Text style={styles.sectorHint}>
-                      {interpolate(t('onboarding.sectorExamples'), { examples: getSectorInfo(academySector)?.examples ?? '' })}
+                      {interpolate(t('onboarding.sectorExamples'), { examples: selectedSector.examples })}
                     </Text>
                   </View>
                   <MaterialCommunityIcons name="lock-outline" size={18} color={colors.textMuted} />
@@ -315,7 +320,7 @@ export default function OnboardingScreen() {
             ) : (
               <>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectorScroll}>
-                  {ACADEMY_SECTORS.map((item) => {
+                  {localizedSectors.map((item) => {
                     const active = academySector === item.id;
                     return (
                       <Pressable
@@ -335,8 +340,10 @@ export default function OnboardingScreen() {
                     );
                   })}
                 </ScrollView>
-                {getSectorInfo(academySector) ? (
-                  <Text style={styles.sectorHint}>e.g. {getSectorInfo(academySector)?.examples}</Text>
+                {selectedSector ? (
+                  <Text style={styles.sectorHint}>
+                    {interpolate(t('onboarding.sectorExamples'), { examples: selectedSector.examples })}
+                  </Text>
                 ) : null}
               </>
             )}
@@ -374,7 +381,7 @@ export default function OnboardingScreen() {
                   style={[styles.languageCard, isSelected && styles.languageCardActive]}
                   onPress={() => setDefaultLanguage(option.value)}
                 >
-                  <Text style={[styles.languageLabel, isSelected && styles.languageLabelActive]}>{option.label}</Text>
+                  <Text style={[styles.languageLabel, isSelected && styles.languageLabelActive]}>{t(`settings.${option.settingsLabelKey}`)}</Text>
                   <Text style={[styles.languageHelper, isSelected && styles.languageHelperActive]}>{t(`onboarding.${option.helperKey}`)}</Text>
                 </Pressable>
               );

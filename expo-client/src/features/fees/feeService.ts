@@ -8,6 +8,7 @@ import {
   PaymentRow,
   StudentRow,
 } from '@/lib/database.types';
+import { throwServiceError } from '@/i18n/serviceErrors';
 import { getSupabase } from '@/lib/supabase';
 
 import { FeeInvoice, PaymentAllocation, PaymentRecord } from './models';
@@ -197,10 +198,10 @@ function worstFeeStatus(statuses: FeeStatus[]): FeeStatus {
 
 export async function ensureMonthlyInvoices(monthKey = getCurrentMonthKey()) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: enrollments, error: enrollmentError } = await supabase
     .from('class_enrollments')
@@ -263,7 +264,7 @@ export async function ensureAdmissionInvoice(studentId: string) {
   if (!workspace || workspace.admission_fee_lkr <= 0) return null;
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data: existing, error: existingError } = await supabase
     .from('fee_invoices')
@@ -307,16 +308,16 @@ export type CreateOneOffInvoiceInput = {
 
 export async function createOneOffInvoice(input: CreateOneOffInvoiceInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const description = input.description.trim();
-  if (!description) throw new Error('Add a description for this charge.');
+  if (!description) throwServiceError('chargeDescriptionRequired');
 
   const amount = Math.round(input.amountLkr);
-  if (amount <= 0) throw new Error('Enter an amount greater than zero.');
+  if (amount <= 0) throwServiceError('chargeAmountGreaterThanZero');
 
   const { data, error } = await supabase
     .from('fee_invoices')
@@ -341,10 +342,10 @@ export async function createOneOffInvoice(input: CreateOneOffInvoiceInput) {
 
 export async function ensureEnrollmentInvoice(classId: string, studentId: string, enrolledAt = new Date()) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const monthKey = getCurrentMonthKey(enrolledAt);
 
@@ -356,7 +357,7 @@ export async function ensureEnrollmentInvoice(classId: string, studentId: string
     .maybeSingle();
 
   if (classError) throw new Error(classError.message);
-  if (!classInfo) throw new Error('Class not found.');
+  if (!classInfo) throwServiceError('classNotFound');
 
   const { data: existing, error: existingError } = await supabase
     .from('fee_invoices')
@@ -432,10 +433,10 @@ export async function listInvoicesForMonth(monthKey = getCurrentMonthKey()) {
   await refreshInvoiceStatuses(monthKey);
 
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const [monthlyResult, admissionResult, oneOffResult] = await Promise.all([
     supabase
@@ -501,10 +502,10 @@ export async function listStudentOpenInvoices(studentId: string, monthKey = getC
 
 export async function getInvoiceById(invoiceId: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('fee_invoices')
@@ -543,10 +544,10 @@ export async function getFeeSummaryForMonth(monthKey = getCurrentMonthKey()): Pr
 
 export async function listRecentPayments(limit = 10) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before managing fees.');
+  if (!workspace) throwServiceError('workspaceRequiredFees');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('payments')
@@ -590,10 +591,10 @@ export async function listRecentPayments(limit = 10) {
 
 export async function getPaymentByReceiptNo(receiptNo: string) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before viewing receipts.');
+  if (!workspace) throwServiceError('workspaceRequiredReceipts');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('payments')
@@ -630,10 +631,10 @@ export async function getPaymentByReceiptNo(receiptNo: string) {
 
 async function generateReceiptNo() {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before recording payments.');
+  if (!workspace) throwServiceError('workspaceRequiredPayments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const { data, error } = await supabase
     .from('payments')
@@ -662,18 +663,20 @@ export type RecordPaymentInput = {
 
 export async function recordPayment(input: RecordPaymentInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before recording payments.');
+  if (!workspace) throwServiceError('workspaceRequiredPayments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   const invoice = await getInvoiceById(input.invoiceId);
-  if (!invoice) throw new Error('Invoice not found.');
+  if (!invoice) throwServiceError('invoiceNotFound');
 
   const amount = Math.round(input.amount);
-  if (amount <= 0) throw new Error('Enter a payment amount greater than zero.');
+  if (amount <= 0) throwServiceError('paymentAmountGreaterThanZero');
   if (amount > invoice.outstandingAmount) {
-    throw new Error(`Amount cannot exceed the outstanding balance of LKR ${invoice.outstandingAmount.toLocaleString('en-LK')}.`);
+    throwServiceError('paymentExceedsOutstandingBalance', {
+      amount: invoice.outstandingAmount.toLocaleString('en-LK'),
+    });
   }
 
   const receiptNo = await generateReceiptNo();
@@ -855,24 +858,24 @@ export type RecordSplitPaymentInput = {
 
 export async function recordSplitPayment(input: RecordSplitPaymentInput) {
   const workspace = await getCurrentWorkspace();
-  if (!workspace) throw new Error('Create your workspace before recording payments.');
+  if (!workspace) throwServiceError('workspaceRequiredPayments');
 
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase is not configured.');
+  if (!supabase) throwServiceError('supabaseNotConfigured');
 
   if (input.lines.length === 0) {
-    throw new Error('Select at least one invoice to pay.');
+    throwServiceError('selectInvoiceToPay');
   }
 
   const invoices = await Promise.all(input.lines.map((line) => getInvoiceById(line.invoiceId)));
   const resolved = invoices.filter((invoice): invoice is FeeInvoice => invoice !== null);
   if (resolved.length !== input.lines.length) {
-    throw new Error('One or more invoices could not be found.');
+    throwServiceError('invoicesNotFound');
   }
 
   const studentIds = new Set(resolved.map((invoice) => invoice.studentId));
   if (studentIds.size !== 1 || !studentIds.has(input.studentId)) {
-    throw new Error('All selected invoices must belong to the same student.');
+    throwServiceError('splitPaymentSameStudent');
   }
 
   let totalAmount = 0;
@@ -880,9 +883,9 @@ export async function recordSplitPayment(input: RecordSplitPaymentInput) {
     const invoice = resolved.find((item) => item.id === line.invoiceId);
     if (!invoice) continue;
     const amount = Math.round(line.amount);
-    if (amount <= 0) throw new Error('Each payment line must be greater than zero.');
+    if (amount <= 0) throwServiceError('splitPaymentLineAmountRequired');
     if (amount > invoice.outstandingAmount) {
-      throw new Error(`Amount exceeds outstanding balance for ${invoice.className}.`);
+      throwServiceError('splitPaymentExceedsInvoiceBalance', { className: invoice.className });
     }
     totalAmount += amount;
   }

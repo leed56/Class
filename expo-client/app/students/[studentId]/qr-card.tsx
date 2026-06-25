@@ -11,7 +11,7 @@ import { buildStudentQrPayload } from '@/features/attendance/qrAttendance';
 import { generateQrDataUrl } from '@/features/attendance/qrCodeImage';
 import { getStudentById } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -51,7 +51,7 @@ export default function StudentQrCardScreen() {
       });
       setQrDataUrl(await generateQrDataUrl(nextPayload, 260));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('studentQrCard.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'studentQrCard.loadFailed'));
     } finally {
       setIsLoading(false);
     }

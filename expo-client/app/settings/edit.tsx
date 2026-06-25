@@ -16,6 +16,7 @@ import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getDefaultAbsenceAlertTemplate } from '@/features/communications/communicationService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { FormTextField } from '@/features/students/components/FormTextField';
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { LanguageCode, InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -90,7 +91,7 @@ function EditSettingsContent() {
       );
       setPhone(typeof user?.user_metadata?.phone === 'string' ? user.user_metadata.phone : '');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('settingsEdit.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'settingsEdit.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +121,7 @@ function EditSettingsContent() {
       ]);
       router.back();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('settingsEdit.saveFailed'));
+      setError(resolveServiceErrorMessage(saveError, t, 'settingsEdit.saveFailed'));
     } finally {
       setIsSaving(false);
     }

@@ -20,7 +20,7 @@ import { listArchivedClasses, restoreClass } from '@/features/classes/classServi
 import { TuitionClass } from '@/features/classes/models';
 import { listArchivedStudents, restoreStudent } from '@/features/students/studentService';
 import { Student } from '@/features/students/types';
-import { interpolate } from '@/i18n';
+import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
@@ -53,7 +53,7 @@ function ArchivedRecordsContent() {
       setStudents(nextStudents);
       setClasses(nextClasses);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('archivedRecords.loadFailed'));
+      setError(resolveServiceErrorMessage(loadError, t, 'archivedRecords.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +94,7 @@ function ArchivedRecordsContent() {
       await restoreStudent(studentId);
       await loadArchived();
     } catch (restoreError) {
-      setError(restoreError instanceof Error ? restoreError.message : t('archivedRecords.restoreStudentFailed'));
+      setError(resolveServiceErrorMessage(restoreError, t, 'archivedRecords.restoreStudentFailed'));
     } finally {
       setRestoringId(null);
     }
@@ -107,7 +107,7 @@ function ArchivedRecordsContent() {
       await restoreClass(classId);
       await loadArchived();
     } catch (restoreError) {
-      setError(restoreError instanceof Error ? restoreError.message : t('archivedRecords.restoreClassFailed'));
+      setError(resolveServiceErrorMessage(restoreError, t, 'archivedRecords.restoreClassFailed'));
     } finally {
       setRestoringId(null);
     }
