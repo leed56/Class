@@ -125,10 +125,3 @@ export function formatParentTimelineDate(value: string) {
   const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
   return date.toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
-export function feeStatusLabel(status: FeeStatus) {
-  if (status === 'paid') return 'All fees cleared';
-  if (status === 'partial') return 'Partially paid';
-  if (status === 'overdue') return 'Overdue';
-  return 'Payment pending';
-}

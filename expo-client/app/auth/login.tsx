@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/core/auth/AuthProvider';
-import { interpolate, resolveServiceErrorMessage } from '@/i18n';
+import { interpolate, resolveAuthErrorMessage, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_ACADEMY_EMAIL,
@@ -92,7 +92,7 @@ export default function LoginScreen() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setSubmitting(false);
-      setError(signInError.message);
+      setError(resolveAuthErrorMessage(signInError, t, 'auth.signInFailed'));
       return;
     }
 
@@ -134,7 +134,7 @@ export default function LoginScreen() {
       });
       if (signUpResult.error) {
         setSubmitting(false);
-        setError(signUpResult.error.message);
+        setError(resolveAuthErrorMessage(signUpResult.error, t, 'auth.demoSignInFailed'));
         return;
       }
       if (!signUpResult.data.session) {
@@ -182,7 +182,7 @@ export default function LoginScreen() {
       });
       if (signUpResult.error) {
         setSubmitting(false);
-        setError(signUpResult.error.message);
+        setError(resolveAuthErrorMessage(signUpResult.error, t, 'auth.demoSignInFailed'));
         return;
       }
       if (!signUpResult.data.session) {
@@ -224,7 +224,7 @@ export default function LoginScreen() {
       const signUpResult = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
       if (signUpResult.error) {
         setSubmitting(false);
-        setError(signUpResult.error.message);
+        setError(resolveAuthErrorMessage(signUpResult.error, t, 'auth.demoSignInFailed'));
         return;
       }
       if (!signUpResult.data.session) {

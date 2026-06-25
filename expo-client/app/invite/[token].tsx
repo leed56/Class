@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { saveInviteToken } from '@/features/platform/inviteStorage';
 import { getPlatformInvite } from '@/features/platform/platformService';
-import { resolveServiceErrorMessage } from '@/i18n';
+import { resolveAuthErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -32,7 +32,7 @@ export default function InviteLandingScreen() {
         router.replace(`/auth/signup?invite=${encodeURIComponent(inviteToken)}` as Href);
       } catch (inviteError) {
         if (!active) return;
-        setError(resolveServiceErrorMessage(inviteError, t, 'auth.inviteInvalidOrExpired'));
+        setError(resolveAuthErrorMessage(inviteError, t, 'auth.inviteInvalidOrExpired'));
       }
     }
 

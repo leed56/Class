@@ -55,6 +55,10 @@ export {
   listLocalizedSchoolSubjects,
 } from '@/i18n/schoolSubjectLabels';
 export {
+  resolveAuthErrorMessage,
+  resolveParentAuthErrorMessage,
+} from '@/i18n/authErrors';
+export {
   resolveServiceErrorMessage,
   ServiceError,
   throwServiceError,

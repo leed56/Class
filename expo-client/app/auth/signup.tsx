@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PremiumCard } from '@/components/PremiumCard';
 import { signUpTeacher } from '@/features/auth/authService';
 import { readInviteToken, saveInviteToken } from '@/features/platform/inviteStorage';
-import { resolveServiceErrorMessage } from '@/i18n';
+import { resolveAuthErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -55,7 +55,7 @@ export default function SignupScreen() {
 
       setSuccessMessage(t('auth.signupSuccess'));
     } catch (authError) {
-      setError(resolveServiceErrorMessage(authError, t, 'auth.signupFailed'));
+      setError(resolveAuthErrorMessage(authError, t, 'auth.signupFailed'));
     } finally {
       setIsLoading(false);
     }

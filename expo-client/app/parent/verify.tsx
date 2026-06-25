@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEMO_PARENT_OTP } from '@/features/auth/demoAuth';
 import { formatParentPhone, verifyParentOtp } from '@/features/parent/parentAuthService';
 import { FormTextField } from '@/features/students/components/FormTextField';
-import { interpolate, resolveServiceErrorMessage } from '@/i18n';
+import { interpolate, resolveParentAuthErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
@@ -53,7 +53,7 @@ export default function ParentVerifyScreen() {
       }
       router.replace('/parent' as Href);
     } catch (verifyError) {
-      setError(resolveServiceErrorMessage(verifyError, t, 'parent.verifyFailed'));
+      setError(resolveParentAuthErrorMessage(verifyError, t, 'parent.verifyFailed'));
     } finally {
       setIsSubmitting(false);
     }

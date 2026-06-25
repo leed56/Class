@@ -123,6 +123,12 @@ export type TranslationTree = {
     inviteInvalid: string;
     inviteInvalidOrExpired: string;
     inviteLoading: string;
+    invalidCredentials: string;
+    emailNotConfirmed: string;
+    userAlreadyRegistered: string;
+    weakPassword: string;
+    tooManyRequests: string;
+    signupDisabled: string;
   };
   settings: {
     title: string;
@@ -214,6 +220,9 @@ export type TranslationTree = {
     loginHeroTitle: string;
     loginHeroNote: string;
     otpRequestFailed: string;
+    otpInvalid: string;
+    otpExpired: string;
+    phoneNotRegistered: string;
     demoTitle: string;
     demoText: string;
     quickDemoLogin: string;
@@ -454,6 +463,8 @@ export type TranslationTree = {
     parentSessionExpired: string;
     noOutstandingInvoicesToExport: string;
     csvExportWebOnly: string;
+    attendanceUpdateFailed: string;
+    markAllPresentFailed: string;
   };
   dashboard: {
     titleHome: string;

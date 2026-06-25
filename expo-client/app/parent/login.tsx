@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { requestParentOtp } from '@/features/parent/parentAuthService';
-import { interpolate, resolveServiceErrorMessage } from '@/i18n';
+import { interpolate, resolveAuthErrorMessage, resolveParentAuthErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import {
   DEMO_PARENT_OTP,
@@ -41,7 +41,7 @@ export default function ParentLoginScreen() {
         },
       });
     } catch (submitError) {
-      setError(resolveServiceErrorMessage(submitError, t, 'parent.otpRequestFailed'));
+      setError(resolveParentAuthErrorMessage(submitError, t, 'parent.otpRequestFailed'));
     } finally {
       setIsSubmitting(false);
     }

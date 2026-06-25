@@ -347,7 +347,7 @@ export async function setStudentAttendance(
     );
   } catch (error) {
     if (!context || !isLikelyNetworkError(error)) {
-      throw error instanceof Error ? error : new Error('Could not update attendance.');
+      throwServiceError('attendanceUpdateFailed');
     }
     await enqueueAttendanceMark({
       workspaceId: workspace.id,
@@ -414,7 +414,7 @@ export async function markAllPresent(
     if (error) throw error;
   } catch (error) {
     if (!context || !isLikelyNetworkError(error)) {
-      throw error instanceof Error ? error : new Error('Could not mark all present.');
+      throwServiceError('markAllPresentFailed');
     }
     for (const studentId of studentIds) {
       await enqueueAttendanceMark({

@@ -1,6 +1,7 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -58,7 +59,7 @@ export function QrScannerPanel({ onScan, onError }: Props) {
           setStatus(t('classScan.qrPointCamera'));
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : t('classScan.qrStartFailed');
+        const message = resolveServiceErrorMessage(error, t, 'classScan.qrStartFailed');
         setStatus(t('classScan.qrCameraUnavailable'));
         onErrorRef.current?.(message);
       }

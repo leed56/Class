@@ -86,6 +86,8 @@ export const SERVICE_ERROR_CODES = {
   parentSessionExpired: 'parentSessionExpired',
   noOutstandingInvoicesToExport: 'noOutstandingInvoicesToExport',
   csvExportWebOnly: 'csvExportWebOnly',
+  attendanceUpdateFailed: 'attendanceUpdateFailed',
+  markAllPresentFailed: 'markAllPresentFailed',
 } as const;
 
 export type ServiceErrorCode = (typeof SERVICE_ERROR_CODES)[keyof typeof SERVICE_ERROR_CODES];
@@ -180,6 +182,8 @@ const EN_MESSAGES: Record<ServiceErrorCode, string> = {
   parentSessionExpired: 'Parent session expired. Please sign in again.',
   noOutstandingInvoicesToExport: 'No outstanding invoices to export.',
   csvExportWebOnly: 'CSV export is only available in the browser.',
+  attendanceUpdateFailed: 'Could not update attendance.',
+  markAllPresentFailed: 'Could not mark all present.',
 };
 
 export class ServiceError extends Error {

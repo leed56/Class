@@ -5,6 +5,7 @@ import { Link } from 'expo-router';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
 import { ensureDefaultLocationSetup, listHallOptions } from '@/features/locations/branchService';
 import { HallOption } from '@/features/locations/models';
+import { resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -32,7 +33,7 @@ export function HallPicker({ selectedHallId, onSelect }: Props) {
         setOptions(nextOptions);
       } catch (loadError) {
         if (!active) return;
-        setError(loadError instanceof Error ? loadError.message : t('branches.loadHallsFailed'));
+        setError(resolveServiceErrorMessage(loadError, t, 'branches.loadHallsFailed'));
       } finally {
         if (active) setIsLoading(false);
       }
