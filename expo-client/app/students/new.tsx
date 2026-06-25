@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   resolveStudentGradeForSave,
@@ -19,7 +20,7 @@ import { InstituteType, Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function NewStudentScreen() {
+function NewStudentScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
@@ -161,6 +162,14 @@ export default function NewStudentScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function NewStudentScreen() {
+  return (
+    <PermissionGate permission="manage_students">
+      <NewStudentScreenContent />
+    </PermissionGate>
   );
 }
 

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getVatSummary, VatSummary } from '@/features/vat/localVatStore';
 import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -22,7 +23,7 @@ function formatDateRange(start: string, end: string) {
   return `${startDate.toLocaleDateString('en-LK', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-LK', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
-export default function VatReportScreen() {
+function VatReportScreenContent() {
   const { t } = useI18n();
   const [summary, setSummary] = useState<VatSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +87,14 @@ export default function VatReportScreen() {
         {summary ? <VatDashboard summary={summary} /> : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function VatReportScreen() {
+  return (
+    <PermissionGate permission="view_reports">
+      <VatReportScreenContent />
+    </PermissionGate>
   );
 }
 

@@ -10,6 +10,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { FeeInvoiceCard } from '@/features/fees/components/FeeInvoiceCard';
 import { PaymentRow } from '@/features/fees/components/PaymentRow';
 import { FeeSummary, getFeeSummaryForMonth, listOutstandingInvoices, listRecentPayments } from '@/features/fees/feeService';
@@ -29,6 +30,8 @@ function formatLkr(amount: number) {
 
 export default function FeesScreen() {
   const { t } = useI18n();
+  const { hasPermission } = useWorkspaceRole();
+  const canRecordPayments = hasPermission('record_payments');
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -144,9 +147,13 @@ export default function FeesScreen() {
             <Text style={styles.title}>{t('fees.title')}</Text>
             <Text style={styles.subtitle}>{t('fees.subtitle')}</Text>
           </View>
-          <NavPressable href="/fees/record-payment" style={styles.addButton}>
-            <MaterialCommunityIcons name="cash-plus" size={23} color="white" />
-          </NavPressable>
+          {canRecordPayments ? (
+            <NavPressable href="/fees/record-payment" style={styles.addButton}>
+              <MaterialCommunityIcons name="cash-plus" size={23} color="white" />
+            </NavPressable>
+          ) : (
+            <View style={styles.addButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -195,47 +202,55 @@ export default function FeesScreen() {
             </View>
 
             <View style={styles.actionColumn}>
-              <NavPressable href="/fees/record-payment" style={styles.primaryAction}>
-                <MaterialCommunityIcons name="cash-register" size={19} color="white" />
-                <Text style={styles.primaryActionText}>{t('common.recordPayment')}</Text>
-              </NavPressable>
-              <View style={styles.actionRow}>
-                <NavPressable href="/fees/charge" style={styles.chargeAction}>
-                  <MaterialCommunityIcons name="file-document-plus-outline" size={19} color={colors.warning} />
-                  <Text style={styles.chargeActionText}>{t('common.issueCharge')}</Text>
+              {canRecordPayments ? (
+                <NavPressable href="/fees/record-payment" style={styles.primaryAction}>
+                  <MaterialCommunityIcons name="cash-register" size={19} color="white" />
+                  <Text style={styles.primaryActionText}>{t('common.recordPayment')}</Text>
                 </NavPressable>
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={showRemindOptions}
-                  disabled={invoices.length === 0 || isBulkReminding}
-                >
-                  {isBulkReminding ? (
-                    <ActivityIndicator color={colors.success} size="small" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
-                      <Text style={styles.secondaryActionText}>{t('common.remind')}</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={styles.exportAction}
-                  onPress={handleExportDefaulters}
-                  disabled={invoices.length === 0 || isExporting}
-                >
-                  {isExporting ? (
-                    <ActivityIndicator color={colors.primary} size="small" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="file-delimited-outline" size={19} color={colors.primary} />
-                      <Text style={styles.exportActionText}>{t('common.exportCsv')}</Text>
-                    </>
-                  )}
-                </Pressable>
+              ) : null}
+              <View style={styles.actionRow}>
+                {canRecordPayments ? (
+                  <NavPressable href="/fees/charge" style={styles.chargeAction}>
+                    <MaterialCommunityIcons name="file-document-plus-outline" size={19} color={colors.warning} />
+                    <Text style={styles.chargeActionText}>{t('common.issueCharge')}</Text>
+                  </NavPressable>
+                ) : null}
+                {canRecordPayments ? (
+                  <Pressable
+                    style={styles.secondaryAction}
+                    onPress={showRemindOptions}
+                    disabled={invoices.length === 0 || isBulkReminding}
+                  >
+                    {isBulkReminding ? (
+                      <ActivityIndicator color={colors.success} size="small" />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="whatsapp" size={19} color={colors.success} />
+                        <Text style={styles.secondaryActionText}>{t('common.remind')}</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
+                {hasPermission('view_reports') ? (
+                  <Pressable
+                    style={styles.exportAction}
+                    onPress={handleExportDefaulters}
+                    disabled={invoices.length === 0 || isExporting}
+                  >
+                    {isExporting ? (
+                      <ActivityIndicator color={colors.primary} size="small" />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="file-delimited-outline" size={19} color={colors.primary} />
+                        <Text style={styles.exportActionText}>{t('common.exportCsv')}</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
               </View>
             </View>
 
-            {defaulterCount > 0 ? (
+            {canRecordPayments && defaulterCount > 0 ? (
               <Pressable onPress={showRemindOptions} disabled={isBulkReminding}>
                 <PremiumCard style={styles.alertCard}>
                   <View style={styles.alertIcon}>
@@ -267,16 +282,26 @@ export default function FeesScreen() {
                   title={t('fees.allCaughtUp')}
                   message={t('fees.allCaughtUpMessage')}
                   actionLabel={t('common.recordPayment')}
-                  actionHref="/fees/record-payment"
+                  actionHref={canRecordPayments ? '/fees/record-payment' : undefined}
                 />
               </PremiumCard>
             ) : (
               <View style={styles.list}>
-                {invoices.map((invoice) => (
-                  <NavPressable key={invoice.id} href={`/fees/record-payment?invoiceId=${invoice.id}` as Href}>
-                    <FeeInvoiceCard invoice={invoice} onRemind={() => sendFeeReminder(invoice)} />
-                  </NavPressable>
-                ))}
+                {invoices.map((invoice) => {
+                  const card = (
+                    <FeeInvoiceCard
+                      invoice={invoice}
+                      onRemind={canRecordPayments ? () => sendFeeReminder(invoice) : undefined}
+                    />
+                  );
+                  return canRecordPayments ? (
+                    <NavPressable key={invoice.id} href={`/fees/record-payment?invoiceId=${invoice.id}` as Href}>
+                      {card}
+                    </NavPressable>
+                  ) : (
+                    <View key={invoice.id}>{card}</View>
+                  );
+                })}
               </View>
             )}
 
@@ -289,11 +314,17 @@ export default function FeesScreen() {
                 <Text style={styles.emptyPayments}>{t('fees.emptyPayments')}</Text>
               ) : (
                 <View style={styles.paymentsList}>
-                  {payments.map((payment) => (
-                    <NavPressable key={payment.id} href={`/fees/receipt/${payment.receiptNo}` as Href}>
-                      <PaymentRow payment={payment} />
-                    </NavPressable>
-                  ))}
+                  {payments.map((payment) =>
+                    canRecordPayments ? (
+                      <NavPressable key={payment.id} href={`/fees/receipt/${payment.receiptNo}` as Href}>
+                        <PaymentRow payment={payment} />
+                      </NavPressable>
+                    ) : (
+                      <View key={payment.id}>
+                        <PaymentRow payment={payment} />
+                      </View>
+                    ),
+                  )}
                 </View>
               )}
             </PremiumCard>
@@ -311,6 +342,7 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
   subtitle: { maxWidth: 280, marginTop: 4, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   addButton: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  addButtonPlaceholder: { width: 48, height: 48 },
   hero: { borderRadius: radius.hero, padding: spacing.xxl, overflow: 'hidden' },
   heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
   heroLabel: { color: '#E7DEFF', fontSize: 12, fontWeight: '800' },

@@ -10,6 +10,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { StudentCard } from '@/features/students/components/StudentCard';
 import { StudentFilterBar } from '@/features/students/components/StudentFilterBar';
 import { usesSchoolStudentFields } from '@/features/students/studentProfileModel';
@@ -27,6 +28,9 @@ function formatLkr(amount: number) {
 
 export default function StudentsScreen() {
   const { t } = useI18n();
+  const { hasPermission } = useWorkspaceRole();
+  const canManageStudents = hasPermission('manage_students');
+  const canArchiveRecords = hasPermission('archive_records');
   const [students, setStudents] = useState<Student[]>([]);
   const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
   const [academySector, setAcademySector] = useState<string | null>('school_tuition');
@@ -75,9 +79,13 @@ export default function StudentsScreen() {
             <Text style={styles.title}>{t('students.title')}</Text>
             <Text style={styles.subtitle}>{t('students.subtitle')}</Text>
           </View>
-          <NavPressable href="/students/new" style={styles.addButton}>
-            <MaterialCommunityIcons name="account-plus" size={22} color="white" />
-          </NavPressable>
+          {canManageStudents ? (
+            <NavPressable href="/students/new" style={styles.addButton}>
+              <MaterialCommunityIcons name="account-plus" size={22} color="white" />
+            </NavPressable>
+          ) : (
+            <View style={styles.addButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -116,9 +124,11 @@ export default function StudentsScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('students.recentStudents')}</Text>
-          <NavPressable href="/settings/archived">
-            <Text style={styles.sectionAction}>{t('common.archived')}</Text>
-          </NavPressable>
+          {canArchiveRecords ? (
+            <NavPressable href="/settings/archived">
+              <Text style={styles.sectionAction}>{t('common.archived')}</Text>
+            </NavPressable>
+          ) : null}
         </View>
 
         {isLoading ? (
@@ -141,7 +151,7 @@ export default function StudentsScreen() {
               title={t('students.emptyTitle')}
               message={t('students.emptyMessage')}
               actionLabel={t('common.addStudent')}
-              actionHref="/students/new"
+              actionHref={canManageStudents ? '/students/new' : undefined}
             />
           </PremiumCard>
         ) : (
@@ -169,6 +179,7 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
   subtitle: { maxWidth: 270, marginTop: 4, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   addButton: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  addButtonPlaceholder: { width: 48, height: 48 },
   hero: { minHeight: 138, flexDirection: 'row', alignItems: 'center', gap: spacing.lg, borderRadius: radius.hero, padding: spacing.xxl, overflow: 'hidden' },
   heroIcon: { width: 58, height: 58, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   heroCopy: { flex: 1 },

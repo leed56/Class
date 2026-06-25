@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import {
   AttendanceSessionSummary,
   listClassAttendanceSessions,
@@ -18,7 +19,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function ClassAttendanceHistoryScreen() {
+function ClassAttendanceHistoryScreenContent() {
   const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
   const [classLabel, setClassLabel] = useState('');
@@ -146,6 +147,14 @@ export default function ClassAttendanceHistoryScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function ClassAttendanceHistoryScreen() {
+  return (
+    <PermissionGate permission="take_attendance">
+      <ClassAttendanceHistoryScreenContent />
+    </PermissionGate>
   );
 }
 

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Link, Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import {
   ClassPerformanceRow,
   getClassPerformanceRows,
@@ -15,31 +16,38 @@ import {
   ReportSummary,
 } from '@/features/reports/reportsService';
 import { exportMonthlyReportCsv } from '@/features/reports/reportExport';
+import { getCurrentWorkspace } from '@/features/auth/authService';
 import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
-import { Link, Href } from 'expo-router';
+import { InstituteType } from '@/lib/database.types';
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export default function ReportsScreen() {
+function ReportsScreenContent() {
   const { t } = useI18n();
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [classRows, setClassRows] = useState<ClassPerformanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [workspaceType, setWorkspaceType] = useState<InstituteType>('solo');
 
   const loadReports = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [nextSummary, nextClassRows] = await Promise.all([getReportSummary(), getClassPerformanceRows()]);
+      const [nextSummary, nextClassRows, workspace] = await Promise.all([
+        getReportSummary(),
+        getClassPerformanceRows(),
+        getCurrentWorkspace(),
+      ]);
       setSummary(nextSummary);
       setClassRows(nextClassRows);
+      setWorkspaceType(workspace?.institute_type ?? 'solo');
     } catch (loadError) {
       setError(resolveServiceErrorMessage(loadError, t, 'reportsHub.loadFailed'));
     } finally {
@@ -58,6 +66,7 @@ export default function ReportsScreen() {
   const averageStudentAttendance = summary?.averageStudentAttendance ?? 0;
   const defaulters = summary?.defaulterCount ?? 0;
   const outstanding = summary?.outstanding ?? 0;
+  const showBranchReports = workspaceType === 'institute';
 
   async function handleExportCsv() {
     if (!summary) return;
@@ -170,7 +179,9 @@ export default function ReportsScreen() {
             </View>
 
             <View style={styles.reportGrid}>
-              <ReportTile title={t('reportsHub.tileBranchReports')} subtitle={t('reportsHub.tileBranchSubtitle')} icon="source-branch" color={colors.primary} href="/reports/branches" openLabel={t('reportsHub.open')} exportLabel={t('reportsHub.export')} />
+              {showBranchReports ? (
+                <ReportTile title={t('reportsHub.tileBranchReports')} subtitle={t('reportsHub.tileBranchSubtitle')} icon="source-branch" color={colors.primary} href="/reports/branches" openLabel={t('reportsHub.open')} exportLabel={t('reportsHub.export')} />
+              ) : null}
               <ReportTile title={t('reportsHub.tileVat')} subtitle={t('reportsHub.tileVatSubtitle')} icon="receipt-text-check-outline" color={colors.info} href="/reports/vat" openLabel={t('reportsHub.open')} exportLabel={t('reportsHub.export')} />
               <ReportTile title={t('reportsHub.tileFeeCollection')} subtitle={t('reportsHub.tileFeeSubtitle')} icon="cash-clock" color={colors.success} href="/(tabs)/fees" openLabel={t('reportsHub.open')} exportLabel={t('reportsHub.export')} />
               <ReportTile title={t('reportsHub.tileDefaulter')} subtitle={t('reportsHub.tileDefaulterSubtitle')} icon="account-cancel-outline" color={colors.danger} href="/(tabs)/fees" openLabel={t('reportsHub.open')} exportLabel={t('reportsHub.export')} />
@@ -215,6 +226,14 @@ export default function ReportsScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function ReportsScreen() {
+  return (
+    <PermissionGate permission="view_reports">
+      <ReportsScreenContent />
+    </PermissionGate>
   );
 }
 

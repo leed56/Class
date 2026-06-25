@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import {
   getCommunicationStats,
   listMessageDeliveries,
@@ -36,7 +37,7 @@ function formatWhen(value: string) {
   });
 }
 
-export default function DeliveryLogScreen() {
+function DeliveryLogScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const [items, setItems] = useState<MessageDelivery[]>([]);
@@ -158,6 +159,14 @@ export default function DeliveryLogScreen() {
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function DeliveryLogScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <DeliveryLogScreenContent />
+    </PermissionGate>
   );
 }
 

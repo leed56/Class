@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { listClasses } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { formatWeekdayName, getCanonicalWeekday, interpolate, resolveServiceErrorMessage } from '@/i18n';
@@ -15,7 +16,7 @@ import { Locale } from '@/i18n/types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function AttendancePickerScreen() {
+function AttendancePickerScreenContent() {
   const router = useRouter();
   const { locale, t } = useI18n();
   const params = useLocalSearchParams<{ classId?: string }>();
@@ -126,6 +127,14 @@ export default function AttendancePickerScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function AttendancePickerScreen() {
+  return (
+    <PermissionGate permission="take_attendance">
+      <AttendancePickerScreenContent />
+    </PermissionGate>
   );
 }
 

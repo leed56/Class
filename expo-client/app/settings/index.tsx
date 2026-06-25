@@ -14,7 +14,7 @@ import { getTeacherDisplayName, getTeacherInitials } from '@/features/auth/teach
 import { roleLabel } from '@/features/auth/permissions';
 import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
-import { LanguageCode } from '@/lib/database.types';
+import { LanguageCode, InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
@@ -24,6 +24,7 @@ export default function SettingsScreen() {
   const { locale, setLocale, t } = useI18n();
   const [workspaceName, setWorkspaceName] = useState(t('common.yourWorkspace'));
   const [defaultLanguage, setDefaultLanguage] = useState<LanguageCode>('en');
+  const [instituteType, setInstituteType] = useState<InstituteType>('solo');
   const [isLoading, setIsLoading] = useState(true);
   const [savingLanguage, setSavingLanguage] = useState(false);
 
@@ -48,6 +49,7 @@ export default function SettingsScreen() {
       const workspace = await getCurrentWorkspace();
       setWorkspaceName(workspace?.name ?? t('common.yourWorkspace'));
       setDefaultLanguage(workspace?.default_language ?? 'en');
+      setInstituteType(workspace?.institute_type ?? 'solo');
     } finally {
       setIsLoading(false);
     }
@@ -199,8 +201,12 @@ export default function SettingsScreen() {
                 <>
                   <SetupTile title={t('subjectsSetup.title')} subtitle={t('settings.tileSubjectsSubtitle')} icon="book-education-outline" color={colors.primary} href="/settings/subjects" />
                   <SetupTile title={t('catalog.title')} subtitle={t('settings.tileCatalogSubtitle')} icon="book-open-page-variant" color={colors.info} href="/settings/catalog" />
-                  <SetupTile title={t('timetableBoard.title')} subtitle={t('settings.tileTimetableSubtitle')} icon="calendar-clock" color={colors.info} href={'/settings/timetable-board' as Href} />
-                  <SetupTile title={t('branches.title')} subtitle={t('settings.tileBranchesSubtitle')} icon="source-branch" color={colors.primary} href="/settings/branches" />
+                  {instituteType === 'institute' ? (
+                    <>
+                      <SetupTile title={t('timetableBoard.title')} subtitle={t('settings.tileTimetableSubtitle')} icon="calendar-clock" color={colors.info} href={'/settings/timetable-board' as Href} />
+                      <SetupTile title={t('branches.title')} subtitle={t('settings.tileBranchesSubtitle')} icon="source-branch" color={colors.primary} href="/settings/branches" />
+                    </>
+                  ) : null}
                   {hasPermission('manage_hall_rent') ? (
                     <SetupTile title={t('sidebar.hallRent')} subtitle={t('settings.tileHallRentSubtitle')} icon="cash-clock" color={colors.danger} href="/settings/hall-rent" />
                   ) : null}

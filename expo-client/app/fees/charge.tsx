@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { createOneOffInvoice } from '@/features/fees/feeService';
 import { listStudentEnrollments, StudentEnrollmentEntry } from '@/features/enrollment/enrollmentService';
 import { ChoiceChipGroup } from '@/features/students/components/ChoiceChipGroup';
@@ -22,7 +23,7 @@ type ChargeType = Extract<InvoiceType, 'material' | 'exam'>;
 
 const GENERAL_CLASS = 'General';
 
-export default function IssueChargeScreen() {
+function IssueChargeScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId?: string }>();
@@ -282,6 +283,14 @@ export default function IssueChargeScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function IssueChargeScreen() {
+  return (
+    <PermissionGate permission="record_payments">
+      <IssueChargeScreenContent />
+    </PermissionGate>
   );
 }
 

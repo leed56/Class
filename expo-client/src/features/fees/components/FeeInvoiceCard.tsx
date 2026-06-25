@@ -90,7 +90,7 @@ export function FeeInvoiceCard({ invoice, onRemind }: FeeInvoiceCardProps) {
           <MaterialCommunityIcons name="phone-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.parentText}>{invoice.parentPhone}</Text>
         </View>
-        {invoice.outstandingAmount > 0 ? (
+        {invoice.outstandingAmount > 0 && onRemind ? (
           <Pressable style={styles.reminderButton} onPress={onRemind}>
             <MaterialCommunityIcons name="whatsapp" size={15} color={colors.success} />
             <Text style={styles.reminderText}>{t('common.remind')}</Text>

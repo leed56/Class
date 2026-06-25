@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { archiveClass, getClassById } from '@/features/classes/classService';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { TuitionClass } from '@/features/classes/models';
 import { EnrolledStudentRow } from '@/features/enrollment/components/EnrolledStudentRow';
 import { ClassRosterEntry, listClassRoster, unenrollStudentFromClass } from '@/features/enrollment/enrollmentService';
@@ -27,6 +28,12 @@ function formatLkr(amount: number) {
 export default function ClassDetailScreen() {
   const router = useRouter();
   const { t } = useI18n();
+  const { hasPermission } = useWorkspaceRole();
+  const canManageSettings = hasPermission('manage_settings');
+  const canManageStudents = hasPermission('manage_students');
+  const canTakeAttendance = hasPermission('take_attendance');
+  const canIssueCertificates = hasPermission('issue_certificates');
+  const canArchiveRecords = hasPermission('archive_records');
   const params = useLocalSearchParams<{ classId: string }>();
   const [tuitionClass, setTuitionClass] = useState<TuitionClass | null>(null);
   const [roster, setRoster] = useState<ClassRosterEntry[]>([]);
@@ -154,11 +161,15 @@ export default function ClassDetailScreen() {
               })}
             </Text>
           </View>
-          <Link href={`/classes/edit/${params.classId}` as Href} asChild>
-            <Pressable style={styles.iconButton}>
-              <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
-            </Pressable>
-          </Link>
+          {canManageSettings ? (
+            <Link href={`/classes/edit/${params.classId}` as Href} asChild>
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
+              </Pressable>
+            </Link>
+          ) : (
+            <View style={styles.iconButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
@@ -187,23 +198,30 @@ export default function ClassDetailScreen() {
         </LinearGradient>
 
         <View style={styles.actionRow}>
-          <NavPressable href={`/classes/${params.classId}/attendance-history` as Href} style={styles.secondaryAction}>
-            <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>{t('classDetail.history')}</Text>
-          </NavPressable>
-          <NavPressable href={`/classes/${params.classId}/certificates` as Href} style={styles.secondaryAction}>
-            <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>{t('classDetail.certificates')}</Text>
-          </NavPressable>
-          <Pressable
-            style={styles.secondaryAction}
-            onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}
-          >
-            <MaterialCommunityIcons name="account-multiple-plus" size={18} color={colors.primary} />
-            <Text style={styles.secondaryActionText}>{t('classDetail.enrollStudent')}</Text>
-          </Pressable>
+          {canTakeAttendance ? (
+            <NavPressable href={`/classes/${params.classId}/attendance-history` as Href} style={styles.secondaryAction}>
+              <MaterialCommunityIcons name="history" size={18} color={colors.primary} />
+              <Text style={styles.secondaryActionText}>{t('classDetail.history')}</Text>
+            </NavPressable>
+          ) : null}
+          {canIssueCertificates ? (
+            <NavPressable href={`/classes/${params.classId}/certificates` as Href} style={styles.secondaryAction}>
+              <MaterialCommunityIcons name="certificate-outline" size={18} color={colors.primary} />
+              <Text style={styles.secondaryActionText}>{t('classDetail.certificates')}</Text>
+            </NavPressable>
+          ) : null}
+          {canManageStudents ? (
+            <Pressable
+              style={styles.secondaryAction}
+              onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}
+            >
+              <MaterialCommunityIcons name="account-multiple-plus" size={18} color={colors.primary} />
+              <Text style={styles.secondaryActionText}>{t('classDetail.enrollStudent')}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
+        {canTakeAttendance ? (
         <View style={styles.primaryActionRow}>
           <NavPressable href={`/classes/${params.classId}/attendance` as Href} style={styles.primaryActionFull}>
             <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="white" />
@@ -214,6 +232,7 @@ export default function ClassDetailScreen() {
             <Text style={styles.qrActionText}>{t('classDetail.qrScan')}</Text>
           </NavPressable>
         </View>
+        ) : null}
 
         <PremiumCard>
           <Text style={styles.cardTitle}>{t('classDetail.snapshotTitle')}</Text>
@@ -227,9 +246,11 @@ export default function ClassDetailScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('classDetail.enrolledStudents')}</Text>
-          <Pressable onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}>
-            <Text style={styles.sectionAction}>{t('classDetail.enrollAction')}</Text>
-          </Pressable>
+          {canManageStudents ? (
+            <Pressable onPress={() => router.push(`/classes/${params.classId}/enroll` as Href)}>
+              <Text style={styles.sectionAction}>{t('classDetail.enrollAction')}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {error ? <Text style={styles.inlineError}>{error}</Text> : null}
@@ -241,7 +262,7 @@ export default function ClassDetailScreen() {
               title={t('classDetail.emptyTitle')}
               message={t('classDetail.emptyMessage')}
               actionLabel={t('classDetail.emptyAction')}
-              actionHref={`/classes/${params.classId}/enroll` as Href}
+              actionHref={canManageStudents ? (`/classes/${params.classId}/enroll` as Href) : undefined}
             />
           </PremiumCard>
         ) : (
@@ -254,18 +275,21 @@ export default function ClassDetailScreen() {
                   student={entry.student}
                   monthlyFee={tuitionClass.monthlyFee}
                   feeStatus={invoice?.status ?? 'pending'}
-                  onRemove={() => handleUnenroll(entry.student.id)}
+                  onRemove={canManageStudents ? () => handleUnenroll(entry.student.id) : undefined}
                 />
               );
             })}
           </View>
         )}
 
-        <Pressable style={styles.addStudentLink} onPress={() => router.push('/students/new')}>
-          <MaterialCommunityIcons name="account-plus-outline" size={18} color={colors.primary} />
-          <Text style={styles.addStudentText}>{t('classDetail.addStudentLink')}</Text>
-        </Pressable>
+        {canManageStudents ? (
+          <Pressable style={styles.addStudentLink} onPress={() => router.push('/students/new')}>
+            <MaterialCommunityIcons name="account-plus-outline" size={18} color={colors.primary} />
+            <Text style={styles.addStudentText}>{t('classDetail.addStudentLink')}</Text>
+          </Pressable>
+        ) : null}
 
+        {canArchiveRecords ? (
         <PremiumCard style={styles.archiveCard}>
           <View style={styles.archiveCopy}>
             <Text style={styles.archiveTitle}>{t('classDetail.archiveTitle')}</Text>
@@ -282,6 +306,7 @@ export default function ClassDetailScreen() {
             )}
           </Pressable>
         </PremiumCard>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -302,6 +327,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  iconButtonPlaceholder: { width: 46, height: 46 },
   headerCopy: { flex: 1 },
   title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
   subtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 12, fontWeight: '700' },

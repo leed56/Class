@@ -1239,6 +1239,15 @@ export type TranslationTree = {
     snapshotTitle: string;
     rowMeta: string;
     due: string;
+    unassignedLocation: string;
+    unassignedHall: string;
+    hallMeta: string;
+    exportFailedTitle: string;
+    exportFailedMessage: string;
+    panelTitle: string;
+    panelSubtitle: string;
+    panelOpen: string;
+    panelEmpty: string;
   };
   vatReport: {
     title: string;

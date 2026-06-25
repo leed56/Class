@@ -2,13 +2,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getBranchMonthlyReports } from '@/features/locations/branchReportsService';
-import { BranchReportRow } from '@/features/locations/models';
+import { exportBranchReportCsv } from '@/features/locations/branchReportExport';
+import { BranchMonthlyReport, UNASSIGNED_BRANCH_ID, UNASSIGNED_HALL_ID } from '@/features/locations/models';
 import { getReportSummary } from '@/features/reports/reportsService';
 import { interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -19,11 +21,12 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export default function BranchReportsScreen() {
+function BranchReportsScreenContent() {
   const { t } = useI18n();
-  const [rows, setRows] = useState<BranchReportRow[]>([]);
+  const [rows, setRows] = useState<BranchMonthlyReport[]>([]);
   const [monthLabel, setMonthLabel] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -48,6 +51,37 @@ export default function BranchReportsScreen() {
 
   const totalCollected = rows.reduce((sum, row) => sum + row.collected, 0);
 
+  const branchLabel = (row: BranchMonthlyReport) =>
+    row.branchId === UNASSIGNED_BRANCH_ID || !row.branchName
+      ? t('branchReports.unassignedLocation')
+      : row.branchName;
+
+  const hallLabel = (hallId: string, hallName: string) =>
+    hallId === UNASSIGNED_HALL_ID || !hallName ? t('branchReports.unassignedHall') : hallName;
+
+  async function handleExport() {
+    if (rows.length === 0) return;
+    setIsExporting(true);
+    try {
+      const exportRows = rows.map((row) => ({
+        ...row,
+        branchName: branchLabel(row),
+        halls: row.halls.map((hall) => ({
+          ...hall,
+          hallName: hallLabel(hall.hallId, hall.hallName),
+        })),
+      }));
+      await exportBranchReportCsv(monthLabel, exportRows);
+    } catch (exportError) {
+      Alert.alert(
+        t('branchReports.exportFailedTitle'),
+        resolveServiceErrorMessage(exportError, t, 'branchReports.exportFailedMessage'),
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -61,6 +95,13 @@ export default function BranchReportsScreen() {
             <Text style={styles.title}>{t('branchReports.title')}</Text>
             <Text style={styles.subtitle}>{t('branchReports.subtitle')}</Text>
           </View>
+          <Pressable style={styles.iconButton} onPress={handleExport} disabled={isLoading || isExporting || rows.length === 0}>
+            {isExporting ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <MaterialCommunityIcons name="download-outline" size={22} color={colors.primary} />
+            )}
+          </Pressable>
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} style={styles.hero}>
@@ -101,7 +142,7 @@ export default function BranchReportsScreen() {
                 {index > 0 ? <View style={styles.divider} /> : null}
                 <View style={styles.row}>
                   <View style={styles.rowCopy}>
-                    <Text style={styles.branchName}>{row.branchName}</Text>
+                    <Text style={styles.branchName}>{branchLabel(row)}</Text>
                     <Text style={styles.rowMeta}>
                       {interpolate(t('branchReports.rowMeta'), {
                         classes: row.classCount,
@@ -115,12 +156,39 @@ export default function BranchReportsScreen() {
                     <Text style={styles.due}>{interpolate(t('branchReports.due'), { amount: formatLkr(row.outstanding) })}</Text>
                   </View>
                 </View>
+                {row.halls.length > 1 || (row.halls.length === 1 && row.halls[0].hallId !== UNASSIGNED_HALL_ID) ? (
+                  <View style={styles.hallList}>
+                    {row.halls.map((hall) => (
+                      <View key={hall.hallId} style={styles.hallRow}>
+                        <View style={styles.hallCopy}>
+                          <Text style={styles.hallName}>{hallLabel(hall.hallId, hall.hallName)}</Text>
+                          <Text style={styles.hallMeta}>
+                            {interpolate(t('branchReports.hallMeta'), {
+                              classes: hall.classCount,
+                              attendance: hall.attendancePercent,
+                              collection: hall.collectionPercent,
+                            })}
+                          </Text>
+                        </View>
+                        <Text style={styles.hallAmount}>{formatLkr(hall.collected)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ))}
           </PremiumCard>
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function BranchReportsScreen() {
+  return (
+    <PermissionGate permission="view_reports">
+      <BranchReportsScreenContent />
+    </PermissionGate>
   );
 }
 
@@ -151,4 +219,10 @@ const styles = StyleSheet.create({
   amount: { color: colors.success, fontSize: 14, fontWeight: '900' },
   due: { marginTop: 2, color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border },
+  hallList: { marginLeft: spacing.md, marginBottom: spacing.sm, gap: spacing.xs, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: spacing.md },
+  hallRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xs },
+  hallCopy: { flex: 1 },
+  hallName: { color: colors.textPrimary, fontSize: 12, fontWeight: '800' },
+  hallMeta: { marginTop: 2, color: colors.textSecondary, fontSize: 10, fontWeight: '700' },
+  hallAmount: { color: colors.success, fontSize: 12, fontWeight: '900' },
 });

@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { loadAttendanceSheet } from '@/features/attendance/attendanceService';
 import {
@@ -28,7 +29,7 @@ type ComposeTarget = {
   consentCaptured: boolean;
 };
 
-export default function MessageComposeScreen() {
+function MessageComposeScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const params = useLocalSearchParams<{
@@ -328,6 +329,14 @@ export default function MessageComposeScreen() {
         </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function MessageComposeScreen() {
+  return (
+    <PermissionGate permission="take_attendance">
+      <MessageComposeScreenContent />
+    </PermissionGate>
   );
 }
 

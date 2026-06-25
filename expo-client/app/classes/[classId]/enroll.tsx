@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getClassById } from '@/features/classes/classService';
 import { TuitionClass } from '@/features/classes/models';
 import { EnrollPickerRow } from '@/features/enrollment/components/EnrollPickerRow';
@@ -21,7 +22,7 @@ import { Medium } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function EnrollStudentsScreen() {
+function EnrollStudentsScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const params = useLocalSearchParams<{ classId: string }>();
@@ -206,6 +207,14 @@ export default function EnrollStudentsScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function EnrollStudentsScreen() {
+  return (
+    <PermissionGate permission="manage_students">
+      <EnrollStudentsScreenContent />
+    </PermissionGate>
   );
 }
 

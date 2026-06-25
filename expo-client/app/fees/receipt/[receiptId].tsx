@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getPaymentByReceiptNo } from '@/features/fees/feeService';
 import { PaymentRecord } from '@/features/fees/models';
@@ -19,7 +20,7 @@ function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK')}`;
 }
 
-export default function ReceiptDetailScreen() {
+function ReceiptDetailScreenContent() {
   const params = useLocalSearchParams<{ receiptId: string }>();
   const { t } = useI18n();
   const [payment, setPayment] = useState<PaymentRecord | null>(null);
@@ -199,6 +200,14 @@ export default function ReceiptDetailScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function ReceiptDetailScreen() {
+  return (
+    <PermissionGate permission="record_payments">
+      <ReceiptDetailScreenContent />
+    </PermissionGate>
   );
 }
 

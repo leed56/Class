@@ -13,6 +13,7 @@ import { TuitionClass } from '@/features/classes/models';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
 import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { CLASS_SCHEDULE_WEEKDAYS, formatWeekdayName, getCanonicalWeekday, interpolate, resolveServiceErrorMessage } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
@@ -22,6 +23,9 @@ const weekdayTabs = CLASS_SCHEDULE_WEEKDAYS.slice(0, 5);
 
 export default function ClassesScreen() {
   const { locale, t } = useI18n();
+  const { hasPermission } = useWorkspaceRole();
+  const canManageSettings = hasPermission('manage_settings');
+  const canArchiveRecords = hasPermission('archive_records');
   const { instituteType } = useWorkspaceShell();
   const [classes, setClasses] = useState<TuitionClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,9 +70,13 @@ export default function ClassesScreen() {
             <Text style={styles.title}>{t('classes.title')}</Text>
             <Text style={styles.subtitle}>{t('classes.subtitle')}</Text>
           </View>
-          <NavPressable href={'/classes/new' as Href} style={styles.addButton}>
-            <MaterialCommunityIcons name="plus" size={24} color="white" />
-          </NavPressable>
+          {canManageSettings ? (
+            <NavPressable href={'/classes/new' as Href} style={styles.addButton}>
+              <MaterialCommunityIcons name="plus" size={24} color="white" />
+            </NavPressable>
+          ) : (
+            <View style={styles.addButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -98,9 +106,11 @@ export default function ClassesScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('classes.scheduleTitle')}</Text>
-          <NavPressable href="/settings/archived">
-            <Text style={styles.sectionAction}>{t('common.archived')}</Text>
-          </NavPressable>
+          {canArchiveRecords ? (
+            <NavPressable href="/settings/archived">
+              <Text style={styles.sectionAction}>{t('common.archived')}</Text>
+            </NavPressable>
+          ) : null}
         </View>
 
         {isLoading ? (
@@ -123,7 +133,7 @@ export default function ClassesScreen() {
               title={t('classes.emptyTitle')}
               message={t('classes.emptyMessage')}
               actionLabel={t('common.createClass')}
-              actionHref={'/classes/new' as Href}
+              actionHref={canManageSettings ? ('/classes/new' as Href) : undefined}
             />
           </PremiumCard>
         ) : (
@@ -166,6 +176,7 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 28, fontWeight: '900', letterSpacing: -0.8 },
   subtitle: { maxWidth: 278, marginTop: 4, color: colors.textSecondary, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   addButton: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  addButtonPlaceholder: { width: 48, height: 48 },
   hero: { minHeight: 138, flexDirection: 'row', alignItems: 'center', gap: spacing.lg, borderRadius: radius.hero, padding: spacing.xxl, overflow: 'hidden' },
   heroIcon: { width: 58, height: 58, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   heroTextBlock: { flex: 1 },

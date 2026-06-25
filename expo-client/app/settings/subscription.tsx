@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
@@ -14,7 +15,7 @@ const currentStudents = 5;
 const freeLimit = 30;
 const usagePercent = Math.round((currentStudents / freeLimit) * 100);
 
-export default function SubscriptionScreen() {
+function SubscriptionScreenContent() {
   const { t } = useI18n();
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -109,6 +110,14 @@ export default function SubscriptionScreen() {
         </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function SubscriptionScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <SubscriptionScreenContent />
+    </PermissionGate>
   );
 }
 

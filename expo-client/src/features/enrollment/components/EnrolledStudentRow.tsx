@@ -15,7 +15,7 @@ type EnrolledStudentRowProps = {
   student: Student;
   monthlyFee: number;
   feeStatus?: FeeStatus;
-  onRemove: () => void;
+  onRemove?: () => void;
 };
 
 function formatLkr(amount: number) {
@@ -44,6 +44,7 @@ export function EnrolledStudentRow({ student, monthlyFee, feeStatus = 'pending',
   );
 
   function confirmRemove() {
+    if (!onRemove) return;
     Alert.alert(
       t('classDetail.removeStudentTitle'),
       interpolate(t('classDetail.removeStudentMessage'), { name: student.name }),
@@ -87,9 +88,11 @@ export function EnrolledStudentRow({ student, monthlyFee, feeStatus = 'pending',
           <View style={[styles.statusDot, { backgroundColor: feeStatusStyle.dot }]} />
           <Text style={[styles.statusText, { color: feeStatusStyle.color }]}>{feeStatusStyle.label}</Text>
         </View>
-        <Pressable style={styles.removeButton} onPress={confirmRemove} hitSlop={8}>
-          <MaterialCommunityIcons name="account-remove-outline" size={18} color={colors.danger} />
-        </Pressable>
+        {onRemove ? (
+          <Pressable style={styles.removeButton} onPress={confirmRemove} hitSlop={8}>
+            <MaterialCommunityIcons name="account-remove-outline" size={18} color={colors.danger} />
+          </Pressable>
+        ) : null}
       </View>
     </PremiumCard>
   );

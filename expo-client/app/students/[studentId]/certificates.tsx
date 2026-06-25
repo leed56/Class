@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { NavPressable } from '@/components/NavPressable';
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   CertificateType,
@@ -29,7 +30,7 @@ import { InstituteType } from '@/lib/database.types';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function StudentCertificatesScreen() {
+function StudentCertificatesScreenContent() {
   const params = useLocalSearchParams<{ studentId: string }>();
   const { t } = useI18n();
   const [student, setStudent] = useState<Student | null>(null);
@@ -310,6 +311,14 @@ export default function StudentCertificatesScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function StudentCertificatesScreen() {
+  return (
+    <PermissionGate permission="issue_certificates">
+      <StudentCertificatesScreenContent />
+    </PermissionGate>
   );
 }
 

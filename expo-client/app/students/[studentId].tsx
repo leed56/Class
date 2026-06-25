@@ -42,6 +42,9 @@ export default function StudentProfileScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { hasPermission } = useWorkspaceRole();
+  const canManageStudents = hasPermission('manage_students');
+  const canRecordPayments = hasPermission('record_payments');
+  const canIssueCertificates = hasPermission('issue_certificates');
   const params = useLocalSearchParams<{ studentId: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollmentEntry[]>([]);
@@ -173,11 +176,15 @@ export default function StudentProfileScreen() {
             <Text style={styles.title}>{t('studentProfile.title')}</Text>
             <Text style={styles.subtitle}>{t('studentProfile.subtitle')}</Text>
           </View>
-          <Link href={`/students/edit/${student.id}` as Href} asChild>
-            <Pressable style={styles.iconButton}>
-              <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
-            </Pressable>
-          </Link>
+          {canManageStudents ? (
+            <Link href={`/students/edit/${student.id}` as Href} asChild>
+              <Pressable style={styles.iconButton}>
+                <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.primary} />
+              </Pressable>
+            </Link>
+          ) : (
+            <View style={styles.iconButtonPlaceholder} />
+          )}
         </View>
 
         <LinearGradient colors={[colors.primaryDark, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -211,12 +218,14 @@ export default function StudentProfileScreen() {
             color={colors.info}
             href={`/students/${student.id}/qr-card` as Href}
           />
-          <ProfileAction
-            icon="cash-plus"
-            label={t('studentProfile.actionPayment')}
-            color={colors.success}
-            href={openInvoices.length > 0 ? (`/fees/record-payment?studentId=${student.id}` as Href) : undefined}
-          />
+          {canRecordPayments ? (
+            <ProfileAction
+              icon="cash-plus"
+              label={t('studentProfile.actionPayment')}
+              color={colors.success}
+              href={openInvoices.length > 0 ? (`/fees/record-payment?studentId=${student.id}` as Href) : undefined}
+            />
+          ) : null}
           <ProfileAction icon="whatsapp" label={t('studentProfile.actionMessage')} color={colors.warning} onPress={messageParent} />
         </View>
 
@@ -312,21 +321,23 @@ export default function StudentProfileScreen() {
             </View>
           )}
 
-          <View style={styles.ledgerActions}>
-            <NavPressable href={`/fees/charge?studentId=${student.id}` as Href} style={styles.ledgerActionSecondary}>
-              <MaterialCommunityIcons name="file-document-plus-outline" size={18} color={colors.warning} />
-              <Text style={styles.ledgerActionSecondaryText}>{t('studentProfile.issueCharge')}</Text>
-            </NavPressable>
-            {openInvoices.length > 0 ? (
-              <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
-                <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
-                <Text style={styles.ledgerActionText}>{t('studentProfile.recordPayment')}</Text>
+          {canRecordPayments ? (
+            <View style={styles.ledgerActions}>
+              <NavPressable href={`/fees/charge?studentId=${student.id}` as Href} style={styles.ledgerActionSecondary}>
+                <MaterialCommunityIcons name="file-document-plus-outline" size={18} color={colors.warning} />
+                <Text style={styles.ledgerActionSecondaryText}>{t('studentProfile.issueCharge')}</Text>
               </NavPressable>
-            ) : null}
-          </View>
+              {openInvoices.length > 0 ? (
+                <NavPressable href={`/fees/record-payment?studentId=${student.id}` as Href} style={styles.ledgerAction}>
+                  <MaterialCommunityIcons name="cash-multiple" size={18} color={colors.primary} />
+                  <Text style={styles.ledgerActionText}>{t('studentProfile.recordPayment')}</Text>
+                </NavPressable>
+              ) : null}
+            </View>
+          ) : null}
         </PremiumCard>
 
-        {workspaceType !== 'solo' ? (
+        {workspaceType !== 'solo' && canIssueCertificates ? (
           <PremiumCard style={styles.certificateCard}>
             <View style={styles.cardHeaderRow}>
               <View>
@@ -424,6 +435,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  iconButtonPlaceholder: { width: 46, height: 46 },
   headerCopy: { flex: 1 },
   title: { color: colors.textPrimary, fontSize: 25, fontWeight: '900', letterSpacing: -0.7 },
   subtitle: { marginTop: 3, color: colors.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '700' },

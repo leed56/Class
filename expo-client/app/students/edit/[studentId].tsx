@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import {
   resolveStudentGradeForSave,
@@ -23,7 +24,7 @@ function displayValue(value: string, fallback: string) {
   return value === fallback ? '' : value;
 }
 
-export default function EditStudentScreen() {
+function EditStudentScreenContent() {
   const router = useRouter();
   const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string }>();
@@ -217,6 +218,14 @@ export default function EditStudentScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function EditStudentScreen() {
+  return (
+    <PermissionGate permission="manage_students">
+      <EditStudentScreenContent />
+    </PermissionGate>
   );
 }
 

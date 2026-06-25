@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { getClassById, updateClass } from '@/features/classes/classService';
 import { CourseTemplatePicker } from '@/features/courses/components/CourseTemplatePicker';
@@ -42,7 +43,7 @@ import { radius, spacing } from '@/theme/spacing';
 const ALL_COURSE_TEMPLATES = [...SL_COURSE_TEMPLATES, ...MARITIME_COURSE_TEMPLATES];
 const MEDIUM_VALUES = ['English', 'Sinhala', 'Tamil'] as const;
 
-export default function EditClassScreen() {
+function EditClassScreenContent() {
   const router = useRouter();
   const { locale, t } = useI18n();
   const weekdayOptions = useMemo(
@@ -330,6 +331,14 @@ export default function EditClassScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function EditClassScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <EditClassScreenContent />
+    </PermissionGate>
   );
 }
 

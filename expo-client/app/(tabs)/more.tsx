@@ -18,6 +18,7 @@ import {
   buildIntegrationCommands,
   buildReportCommands,
   buildSetupCommands,
+  filterMoreItems,
 } from '@/features/more/data/moreItems';
 import { getWorkspaceHealth } from '@/features/reports/reportsService';
 import { interpolate } from '@/i18n';
@@ -29,7 +30,7 @@ import { radius, spacing } from '@/theme/spacing';
 export default function MoreScreen() {
   const { user, signOut, demoMode } = useAuth();
   const { t } = useI18n();
-  const { role } = useWorkspaceRole();
+  const { role, hasPermission } = useWorkspaceRole();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [workspaceName, setWorkspaceName] = useState(() => t('common.yourWorkspace'));
   const [dataHealth, setDataHealth] = useState(100);
@@ -54,9 +55,18 @@ export default function MoreScreen() {
     }
   }, [t]);
 
-  const reportCommands = useMemo(() => buildReportCommands(t), [t]);
-  const setupCommands = useMemo(() => buildSetupCommands(t), [t]);
-  const integrationCommands = useMemo(() => buildIntegrationCommands(t), [t]);
+  const reportCommands = useMemo(
+    () => filterMoreItems(buildReportCommands(t), hasPermission),
+    [hasPermission, t],
+  );
+  const setupCommands = useMemo(
+    () => filterMoreItems(buildSetupCommands(t), hasPermission),
+    [hasPermission, t],
+  );
+  const integrationCommands = useMemo(
+    () => filterMoreItems(buildIntegrationCommands(t), hasPermission),
+    [hasPermission, t],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -110,16 +120,21 @@ export default function MoreScreen() {
           </PremiumCard>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('more.reports')}</Text>
-          <Text style={styles.sectionAction}>{t('more.exportLater')}</Text>
-        </View>
-        <View style={styles.commandGrid}>
-          {reportCommands.map((item) => (
-            <CommandTile key={item.id} item={item} href="/reports" />
-          ))}
-        </View>
+        {reportCommands.length > 0 ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('more.reports')}</Text>
+              <Text style={styles.sectionAction}>{t('more.exportLater')}</Text>
+            </View>
+            <View style={styles.commandGrid}>
+              {reportCommands.map((item) => (
+                <CommandTile key={item.id} item={item} href="/reports" />
+              ))}
+            </View>
+          </>
+        ) : null}
 
+        {setupCommands.length > 0 ? (
         <PremiumCard style={styles.panelCard}>
           <View style={styles.panelHeader}>
             <Text style={styles.sectionTitle}>{t('more.setup')}</Text>
@@ -145,7 +160,9 @@ export default function MoreScreen() {
             </View>
           ))}
         </PremiumCard>
+        ) : null}
 
+        {integrationCommands.length > 0 ? (
         <PremiumCard style={styles.panelCard}>
           <View style={styles.panelHeader}>
             <Text style={styles.sectionTitle}>{t('more.commsBilling')}</Text>
@@ -169,6 +186,7 @@ export default function MoreScreen() {
             </View>
           ))}
         </PremiumCard>
+        ) : null}
 
         {showPlatformAdmin ? (
           <PremiumCard style={styles.panelCard}>

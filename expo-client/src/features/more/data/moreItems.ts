@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { Permission } from '@/features/auth/permissions';
 import { colors } from '@/theme/colors';
 
 export type MoreCommand = {
@@ -10,6 +11,7 @@ export type MoreCommand = {
   color: string;
   badge?: string;
   href: string;
+  permission?: Permission;
 };
 
 export type MoreSetting = {
@@ -20,9 +22,17 @@ export type MoreSetting = {
   color: string;
   value?: string;
   href: string;
+  permission?: Permission;
 };
 
 type Translate = (path: string) => string;
+
+export function filterMoreItems<T extends { permission?: Permission }>(
+  items: T[],
+  hasPermission: (permission: Permission) => boolean,
+) {
+  return items.filter((item) => !item.permission || hasPermission(item.permission));
+}
 
 export function buildReportCommands(t: Translate): MoreCommand[] {
   return [
@@ -33,6 +43,7 @@ export function buildReportCommands(t: Translate): MoreCommand[] {
       icon: 'clipboard-check-outline',
       color: colors.primary,
       href: '/reports',
+      permission: 'view_reports',
     },
     {
       id: 'monthly-outstanding',
@@ -42,6 +53,7 @@ export function buildReportCommands(t: Translate): MoreCommand[] {
       color: colors.danger,
       badge: t('moreItems.outstandingFeesBadge'),
       href: '/reports',
+      permission: 'view_reports',
     },
     {
       id: 'defaulters',
@@ -51,6 +63,7 @@ export function buildReportCommands(t: Translate): MoreCommand[] {
       color: colors.warning,
       badge: t('moreItems.defaulterListBadge'),
       href: '/reports',
+      permission: 'view_reports',
     },
     {
       id: 'receipts',
@@ -59,6 +72,7 @@ export function buildReportCommands(t: Translate): MoreCommand[] {
       icon: 'receipt-text-check-outline',
       color: colors.success,
       href: '/reports',
+      permission: 'view_reports',
     },
   ];
 }
@@ -80,6 +94,7 @@ export function buildSetupCommands(t: Translate): MoreSetting[] {
       icon: 'book-education-outline',
       color: colors.info,
       href: '/settings/subjects',
+      permission: 'manage_catalog',
     },
     {
       id: 'launch-checklist',
@@ -89,6 +104,7 @@ export function buildSetupCommands(t: Translate): MoreSetting[] {
       color: colors.warning,
       value: t('moreItems.valueReadyPath'),
       href: '/settings/launch-checklist',
+      permission: 'manage_settings',
     },
     {
       id: 'language',
@@ -106,6 +122,7 @@ export function buildSetupCommands(t: Translate): MoreSetting[] {
       icon: 'receipt-text-edit-outline',
       color: colors.success,
       href: '/settings',
+      permission: 'manage_settings',
     },
     {
       id: 'privacy-consent',
@@ -115,6 +132,7 @@ export function buildSetupCommands(t: Translate): MoreSetting[] {
       color: colors.warning,
       value: t('moreItems.valuePdpaAware'),
       href: '/settings/launch-checklist',
+      permission: 'manage_settings',
     },
   ];
 }
@@ -129,6 +147,7 @@ export function buildIntegrationCommands(t: Translate): MoreSetting[] {
       color: colors.success,
       value: t('moreItems.valuePhase2'),
       href: '/settings/communication',
+      permission: 'manage_settings',
     },
     {
       id: 'sms',
@@ -138,6 +157,7 @@ export function buildIntegrationCommands(t: Translate): MoreSetting[] {
       color: colors.info,
       value: t('moreItems.valueLater'),
       href: '/settings/communication',
+      permission: 'manage_settings',
     },
     {
       id: 'subscription',
@@ -147,6 +167,7 @@ export function buildIntegrationCommands(t: Translate): MoreSetting[] {
       color: colors.primary,
       value: t('moreItems.valueFree'),
       href: '/settings/subscription',
+      permission: 'manage_settings',
     },
   ];
 }

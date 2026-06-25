@@ -3,7 +3,7 @@
 Strategic product roadmap aligned to the Sri Lankan tuition market: solo tutors, academies, and institutes.
 
 **Last updated:** June 2026  
-**Status:** Phase 1.5 complete; Phase 2A in progress
+**Status:** Phase 1.5 complete; Phase 2A complete (trilingual i18n); Sprint 5 complete; Sprint 6 complete
 
 ---
 
@@ -144,11 +144,11 @@ Classes are **A/L Combined Maths — Theory**, not "Grade 11 Maths". Tuition bui
 
 **Goal:** Non-owner staff can safely operate daily workflows.
 
-| Item | Acceptance criteria |
-|------|---------------------|
-| Role model | Owner / admin / teacher / front-desk |
-| Permission gates | Fees, certs, settings restricted by role |
-| Staff onboarding | Invite or assign role per workspace member |
+| Item | Status | Acceptance criteria |
+|------|--------|---------------------|
+| Role model | ✅ | Owner / admin / teacher / front-desk |
+| Permission gates | ✅ | Fees, certs, settings, reports, class CRUD restricted by role |
+| Staff onboarding | ✅ | Invite or assign role per workspace member |
 
 **Exit:** Front desk records payments; teacher cannot change workspace settings.
 
@@ -158,11 +158,11 @@ Classes are **A/L Combined Maths — Theory**, not "Grade 11 Maths". Tuition bui
 
 **Goal:** Multi-branch ops visible in one dashboard.
 
-| Item | Acceptance criteria |
-|------|---------------------|
-| Branch + hall management | CRUD branches and halls |
-| Timetable conflict detection | Warn on double-booked hall |
-| Branch reports | Collection and attendance by branch/hall |
+| Item | Status | Acceptance criteria |
+|------|--------|---------------------|
+| Branch + hall management | ✅ | CRUD branches and halls |
+| Timetable conflict detection | ✅ | Warn on double-booked hall |
+| Branch reports | ✅ | Collection and attendance by branch/hall |
 
 **Exit:** Institute owner sees per-branch monthly collection.
 

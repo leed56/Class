@@ -6,13 +6,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCommunicationStats } from '@/features/communications/communicationService';
 import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/spacing';
 
-export default function CommunicationSetupScreen() {
+function CommunicationSetupScreenContent() {
   const { t } = useI18n();
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0, skipped: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +136,14 @@ export default function CommunicationSetupScreen() {
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function CommunicationSetupScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <CommunicationSetupScreenContent />
+    </PermissionGate>
   );
 }
 

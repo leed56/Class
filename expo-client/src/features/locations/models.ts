@@ -43,3 +43,20 @@ export type BranchReportRow = {
   collectionPercent: number;
   attendancePercent: number;
 };
+
+export type HallReportRow = {
+  hallId: string;
+  hallName: string;
+  classCount: number;
+  collected: number;
+  outstanding: number;
+  collectionPercent: number;
+  attendancePercent: number;
+};
+
+export type BranchMonthlyReport = BranchReportRow & {
+  halls: HallReportRow[];
+};
+
+export const UNASSIGNED_BRANCH_ID = 'unassigned';
+export const UNASSIGNED_HALL_ID = 'unassigned-hall';

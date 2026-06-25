@@ -14,6 +14,8 @@ import { QuickActionTile } from '@/components/QuickActionTile';
 import { useAuth } from '@/core/auth/AuthProvider';
 import { useWorkspaceShell } from '@/core/layout/WorkspaceShellContext';
 import { getCurrentWorkspace } from '@/features/auth/authService';
+import { Permission } from '@/features/auth/permissions';
+import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import {
   formatLkrCompact,
   getTeacherDisplayName,
@@ -26,6 +28,9 @@ import { TuitionClass } from '@/features/classes/models';
 import { formatLocalizedClassMeta } from '@/i18n';
 import { HallOccupancyPanel } from '@/features/dashboard/components/HallOccupancyPanel';
 import { HallRentSummaryPanel } from '@/features/dashboard/components/HallRentSummaryPanel';
+import { BranchReportsPanel } from '@/features/dashboard/components/BranchReportsPanel';
+import { getBranchMonthlyReports } from '@/features/locations/branchReportsService';
+import { BranchMonthlyReport } from '@/features/locations/models';
 import { getFeeSummaryForMonth } from '@/features/fees/feeService';
 import { getHallRentSummary } from '@/features/hall-rent/hallRentService';
 import { HallRentSummary } from '@/features/hall-rent/models';
@@ -37,6 +42,7 @@ import { Href } from 'expo-router';
 export default function HomeScreen() {
   const { user } = useAuth();
   const { locale, t } = useI18n();
+  const { hasPermission } = useWorkspaceRole();
   const { useDesktopShell, instituteType } = useWorkspaceShell();
   const [workspaceName, setWorkspaceName] = useState<string | null>(null);
   const [classes, setClasses] = useState<TuitionClass[]>([]);
@@ -46,6 +52,8 @@ export default function HomeScreen() {
   const [defaulterCount, setDefaulterCount] = useState(0);
   const [averageAttendance, setAverageAttendance] = useState(0);
   const [hallRentSummary, setHallRentSummary] = useState<HallRentSummary | null>(null);
+  const [branchReports, setBranchReports] = useState<BranchMonthlyReport[]>([]);
+  const [reportMonthLabel, setReportMonthLabel] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
@@ -69,6 +77,18 @@ export default function HomeScreen() {
 
       setWorkspaceName(workspace?.name ?? null);
       setHallRentSummary(nextHallRentSummary);
+
+      let nextBranchReports: BranchMonthlyReport[] = [];
+      if (workspace?.institute_type === 'institute') {
+        try {
+          nextBranchReports = await getBranchMonthlyReports();
+        } catch {
+          nextBranchReports = [];
+        }
+      }
+
+      setBranchReports(nextBranchReports);
+      setReportMonthLabel(feeSummary.monthLabel);
       setClasses(nextClasses);
       setStudentCount(students.length);
       setCollected(feeSummary.collected);
@@ -88,6 +108,8 @@ export default function HomeScreen() {
       setDefaulterCount(0);
       setAverageAttendance(0);
       setHallRentSummary(null);
+      setBranchReports([]);
+      setReportMonthLabel('');
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +151,45 @@ export default function HomeScreen() {
     if (state === 'inProgress') return t('common.statusNow');
     return t('common.statusUpcoming');
   };
+
+  const quickActions = useMemo(
+    () =>
+      (
+        [
+          {
+            label: t('common.addStudent'),
+            icon: 'account-plus' as const,
+            color: colors.primary,
+            href: '/students/new' as Href,
+            permission: 'manage_students' as Permission,
+          },
+          {
+            label: t('common.createClass'),
+            icon: 'plus-box' as const,
+            color: colors.info,
+            href: '/classes/new' as Href,
+            permission: 'manage_settings' as Permission,
+          },
+          {
+            label: useDesktopShell ? t('common.recordPayment') : t('common.payment'),
+            icon: 'cash-plus' as const,
+            color: colors.success,
+            href: '/fees/record-payment' as Href,
+            permission: 'record_payments' as Permission,
+          },
+          {
+            label: t('common.reports'),
+            icon: 'chart-box-outline' as const,
+            color: colors.warning,
+            href: '/reports' as Href,
+            permission: 'view_reports' as Permission,
+          },
+        ] as const
+      ).filter((action) => hasPermission(action.permission)),
+    [hasPermission, t, useDesktopShell],
+  );
+
+  const canTakeAttendance = hasPermission('take_attendance');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -205,11 +266,13 @@ export default function HomeScreen() {
                           {nextClass.hall}
                         </Text>
                       </View>
-                      <View style={styles.primaryButton}>
-                        <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
-                          <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
-                        </NavPressable>
-                      </View>
+                      {canTakeAttendance ? (
+                        <View style={styles.primaryButton}>
+                          <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
+                            <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
+                          </NavPressable>
+                        </View>
+                      ) : null}
                     </>
                   ) : (
                     <Text style={styles.emptyCopy}>{t('dashboard.emptyNextClass')}</Text>
@@ -246,12 +309,20 @@ export default function HomeScreen() {
 
             <View>
               <Text style={styles.sectionTitle}>{t('common.quickActions')}</Text>
-              <View style={styles.quickRowDesktopGrid}>
-                <QuickActionTile fill label={t('common.addStudent')} icon="account-plus" color={colors.primary} href="/students/new" />
-                <QuickActionTile fill label={t('common.createClass')} icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
-                <QuickActionTile fill label={t('common.recordPayment')} icon="cash-plus" color={colors.success} href="/fees/record-payment" />
-                <QuickActionTile fill label={t('common.reports')} icon="chart-box-outline" color={colors.warning} href="/reports" />
-              </View>
+              {quickActions.length > 0 ? (
+                <View style={styles.quickRowDesktopGrid}>
+                  {quickActions.map((action) => (
+                    <QuickActionTile
+                      key={action.href.toString()}
+                      fill
+                      label={action.label}
+                      icon={action.icon}
+                      color={action.color}
+                      href={action.href}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             <PremiumCard style={styles.panelCard}>
@@ -273,6 +344,9 @@ export default function HomeScreen() {
             </PremiumCard>
 
             {isInstituteDesktop && hallRentSummary ? <HallRentSummaryPanel summary={hallRentSummary} /> : null}
+            {isInstituteDesktop && hasPermission('view_reports') && branchReports.length > 0 ? (
+              <BranchReportsPanel monthLabel={reportMonthLabel} rows={branchReports} />
+            ) : null}
             {isInstituteDesktop ? <HallOccupancyPanel classes={classes} weekday={todayName} /> : null}
           </DashboardSection>
         ) : (
@@ -305,11 +379,13 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={styles.metaText}>{nextClass.hall}</Text>
                   </View>
-                  <View style={styles.primaryButton}>
-                    <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
-                      <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
-                    </NavPressable>
-                  </View>
+                  {canTakeAttendance ? (
+                    <View style={styles.primaryButton}>
+                      <NavPressable href={`/classes/${nextClass.id}/attendance` as Href} style={styles.primaryButtonInner}>
+                        <Text style={styles.primaryButtonText}>{t('common.takeAttendance')}</Text>
+                      </NavPressable>
+                    </View>
+                  ) : null}
                 </>
               ) : (
                 <Text style={styles.emptyCopy}>{t('dashboard.emptyNextClass')}</Text>
@@ -318,12 +394,19 @@ export default function HomeScreen() {
 
             <View>
               <Text style={styles.sectionTitle}>{t('common.quickActions')}</Text>
-              <View style={styles.quickRow}>
-                <QuickActionTile label={t('common.addStudent')} icon="account-plus" color={colors.primary} href="/students/new" />
-                <QuickActionTile label={t('common.createClass')} icon="plus-box" color={colors.info} href={'/classes/new' as Href} />
-                <QuickActionTile label={t('common.payment')} icon="cash-plus" color={colors.success} href="/fees/record-payment" />
-                <QuickActionTile label={t('common.reports')} icon="chart-box-outline" color={colors.warning} href="/reports" />
-              </View>
+              {quickActions.length > 0 ? (
+                <View style={styles.quickRow}>
+                  {quickActions.map((action) => (
+                    <QuickActionTile
+                      key={action.href.toString()}
+                      label={action.label}
+                      icon={action.icon}
+                      color={action.color}
+                      href={action.href}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             <PremiumCard>

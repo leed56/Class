@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { getCurrentWorkspace } from '@/features/auth/authService';
 import { useWorkspaceRole } from '@/features/auth/useWorkspaceRole';
 import { downloadCertificatePdf } from '@/features/certificates/certificatePdf';
@@ -38,7 +39,7 @@ function formatPrintTime(value: string) {
   });
 }
 
-export default function CertificateDetailScreen() {
+function CertificateDetailScreenContent() {
   const { t } = useI18n();
   const params = useLocalSearchParams<{ studentId: string; certificateId: string }>();
   const { hasPermission } = useWorkspaceRole();
@@ -371,6 +372,14 @@ export default function CertificateDetailScreen() {
         </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function CertificateDetailScreen() {
+  return (
+    <PermissionGate permission="issue_certificates">
+      <CertificateDetailScreenContent />
+    </PermissionGate>
   );
 }
 

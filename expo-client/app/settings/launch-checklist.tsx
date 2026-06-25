@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumCard } from '@/components/PremiumCard';
+import { PermissionGate } from '@/features/auth/PermissionGate';
 import { interpolate } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { colors } from '@/theme/colors';
@@ -14,7 +15,7 @@ const completedItems = 7;
 const totalItems = 12;
 const readinessPercent = Math.round((completedItems / totalItems) * 100);
 
-export default function LaunchChecklistScreen() {
+function LaunchChecklistScreenContent() {
   const { t } = useI18n();
 
   const checklistItems = [
@@ -118,6 +119,14 @@ export default function LaunchChecklistScreen() {
         </PremiumCard>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function LaunchChecklistScreen() {
+  return (
+    <PermissionGate permission="manage_settings">
+      <LaunchChecklistScreenContent />
+    </PermissionGate>
   );
 }
 
